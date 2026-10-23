@@ -8,15 +8,24 @@
 
 **Input**: User description: "App foundation for Plainpaper. As the developer, I need the project converted from the current Android-only template into a Kotlin Multiplatform app that runs on Android and iOS from one codebase, with an app shell users can open: a Home screen showing an empty "No documents yet" state with a primary "Scan" action and a secondary "Import photos" action (both can lead to placeholder screens for now), a Settings screen (language, theme: system/light/dark), English and Arabic with correct right-to-left layout, light and dark themes, and app name and icon "Plainpaper". Every pull request must automatically run formatting checks, static analysis, all unit tests on both platforms, a coverage report, and build both apps. Success: the app launches on an Android phone and an iPhone simulator, switching to Arabic flips the layout to right-to-left, and the CI pipeline passes on a pull request."
 
+## Clarifications
+
+### Session 2026-10-23
+
+- Q: Which minimum operating system versions should Plainpaper support on Android and iOS? → A: Android 8.0 (API 26) and iOS 15
+- Q: How is Settings reached from Home, and what is the app's top-level navigation? → A: Taken from the approved design (https://claude.ai/artifact/Jb33rzynpyyvUC2ML1SM2D): a floating bottom tab bar with Documents, Folders and Settings, plus a floating Scan button beside it. Folders is a placeholder in this feature.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Open the app on either phone (Priority: P1)
 
 A person installs Plainpaper on an Android phone or an iPhone, taps the "Plainpaper" icon, and
-lands on a Home screen. Because they have no documents yet, Home shows a friendly empty state
-that says "No documents yet", a prominent primary "Scan" action, and a secondary
-"Import photos" action. Tapping either action opens a placeholder screen that names the
-upcoming capability and lets the person go back to Home.
+lands on the Home screen, titled "Documents". Because they have no documents yet, Home shows a
+friendly empty state that says "No documents yet", a prominent primary "Scan a page" action,
+and a secondary "Import photos" action. A floating bottom tab bar (Documents, Folders,
+Settings) and a round floating "Scan" button are always visible. Tapping any scan or import
+action opens a placeholder screen that names the upcoming capability and lets the person go
+back to Home.
 
 **Why this priority**: Nothing else in the product can be built or demonstrated until one
 codebase produces a launchable app on both platforms with the first screen a user sees.
@@ -29,15 +38,22 @@ placeholder and returns to Home.
 
 1. **Given** a fresh install on an Android phone, **When** the user taps the Plainpaper icon,
    **Then** the app opens to Home within a few seconds, showing "No documents yet", a primary
-   "Scan" action and a secondary "Import photos" action.
+   "Scan a page" action, a secondary "Import photos" action, the bottom tab bar and the
+   floating "Scan" button.
 2. **Given** a fresh install on an iPhone simulator, **When** the user launches the app,
    **Then** the same Home empty state is shown with identical content and actions.
-3. **Given** the Home screen, **When** the user taps "Scan", **Then** a placeholder screen for
-   scanning opens, and a back action returns the user to Home.
+3. **Given** the Home screen, **When** the user taps "Scan a page" or the floating "Scan"
+   button, **Then** a placeholder screen for scanning opens, and a back action returns the
+   user to Home.
 4. **Given** the Home screen, **When** the user taps "Import photos", **Then** a placeholder
    screen for importing opens, and a back action returns the user to Home.
 5. **Given** the device home screen or app list, **When** the user looks for the app,
    **Then** it is labelled "Plainpaper" and shows the Plainpaper icon on both platforms.
+6. **Given** the Home screen, **When** the user taps "Settings" in the bottom tab bar,
+   **Then** the Settings screen opens with the Documents tab no longer highlighted; tapping
+   "Documents" returns to Home.
+7. **Given** the Home screen, **When** the user taps "Folders" in the bottom tab bar,
+   **Then** a placeholder screen for folders opens inside the same tab bar.
 
 ---
 
@@ -152,13 +168,19 @@ confirm the pipeline reports a failure; fix it and confirm all checks pass.
   Android app and an installable iOS app.
 - **FR-002**: The app MUST be named "Plainpaper" on both platforms and MUST show a Plainpaper
   launcher icon in the system app list and home screen.
-- **FR-003**: On launch, the app MUST open to a Home screen. When no documents exist, Home
-  MUST show an empty state with the message "No documents yet", a primary "Scan" action and a
-  secondary "Import photos" action.
-- **FR-004**: Tapping "Scan" MUST open a placeholder screen that names the upcoming scanning
-  capability; tapping "Import photos" MUST open a placeholder screen for importing. Each
-  placeholder MUST offer a way back to Home.
-- **FR-005**: The app MUST provide a Settings screen reachable from Home.
+- **FR-003**: On launch, the app MUST open to the Home screen, titled "Documents". When no
+  documents exist, Home MUST show an empty state with the message "No documents yet", a short
+  explanatory line, a primary "Scan a page" action and a secondary "Import photos" action.
+- **FR-004**: Tapping "Scan a page" or the floating "Scan" button MUST open a placeholder
+  screen that names the upcoming scanning capability; tapping "Import photos" MUST open a
+  placeholder screen for importing. Each placeholder MUST offer a way back to Home.
+- **FR-005**: The app shell MUST show a floating bottom tab bar with three destinations,
+  Documents (Home), Folders and Settings, and a round floating "Scan" button beside it, on
+  every top-level screen. The current tab MUST be visually highlighted. Folders MUST open a
+  placeholder screen in this feature.
+- **FR-005a**: The visual design MUST follow the approved Plainpaper design and its token
+  sheet (colors for light and dark, type scale, spacing, radii, glass material) so later
+  features reuse the same components.
 - **FR-006**: Settings MUST let the user choose the app language from: Follow system, English,
   Arabic. The selection MUST apply immediately without restarting the app and MUST persist
   across launches.
@@ -187,6 +209,8 @@ confirm the pipeline reports a failure; fix it and confirm all checks pass.
 - **FR-016**: The Home, Settings and placeholder screens MUST each have unit tests for their
   state and user actions, written with or before the implementation, in line with the
   constitution's test-first rule.
+- **FR-017**: The app MUST install and run on Android 8.0 (API 26) and newer, and on iOS 15
+  and newer.
 
 ### Key Entities
 
@@ -221,12 +245,15 @@ confirm the pipeline reports a failure; fix it and confirm all checks pass.
 
 - The existing Android-only template contains no user-facing functionality worth preserving;
   it will be replaced rather than migrated.
-- Minimum supported platforms are Android 8.0 (API 26) and iOS 15, covering the low-end
-  Android audience while keeping modern platform capabilities available.
+- Minimum supported platforms (Android 8.0 / iOS 15, see FR-017) were chosen to cover the
+  low-end Android audience while keeping modern platform capabilities available.
 - "Placeholder" screens contain only a title, a one-line explanation that the feature is coming,
   and a back action; they carry no camera or gallery behavior.
-- Settings is reached from an icon or action on the Home screen; the exact placement is a
-  design decision for the plan.
+- The approved design (https://claude.ai/artifact/Jb33rzynpyyvUC2ML1SM2D, boards "Home —
+  empty", "Home — Arabic", "Settings", "Design tokens & components") is the visual source of
+  truth. Elements on those boards that belong to later features (search bar, filter chips,
+  document grid, Pro banner, Scanning settings group, App lock, Folders content) are not built
+  here; Settings shows only the Language and Appearance rows plus the About group.
 - The launcher icon for this feature is a simple provisional Plainpaper mark (sheet of paper
   with a folded corner); final brand artwork may replace it later without a spec change.
 - The iOS target is verified on the iPhone simulator; verification on a physical iPhone is not
