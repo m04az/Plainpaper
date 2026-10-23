@@ -58,8 +58,20 @@ Xcode and its JSON is committed like the Android one.
 
 ## 5. CI gate demonstration (SC-009)
 
-Push a throwaway commit that lowers `whitenessMin` handling (e.g. disables the white-point
-rescale) → `scan-quality` fails and the PR is blocked; revert; `scan-quality` is green.
+Push a throwaway commit that breaks a pipeline stage → `scan-quality` fails and the PR is
+blocked; revert; `scan-quality` is green.
+
+Demonstrated 2026-10-23 with commit `2caaab9` (`kFlipThreshold` raised to 1.10 so the
+upside-down vote can never win): synthetic orientation accuracy fell to 0.636 (gate ≥ 1.000),
+`QualityGateTest.everyEnforcedCheckPasses` failed and the PR reported `BLOCKED`:
+<https://github.com/m04az/Plainpaper/actions/runs/40009914478/job/120607752803>. Reverted in
+`a64079e`.
+
+Two rehearsals that did **not** trip the gate, and why: weakening the white-point rescale
+(`kWhitePoint × 0.55`) and inverting the Sauvola `k` both left the Scan output white, because the
+ink floor (`kInkFloorStdDev`), the ink luminance cap (`kInkMaxLuminance`) and the local threshold
+hold paper white whatever the global level. A tone regression has to defeat those guards before
+the style check sees it; corner and orientation regressions are caught directly.
 
 ## 6. Cancellation check
 

@@ -221,7 +221,7 @@
 - [X] T088 [P] [US5] Create `tools/scansuite/src/main/kotlin/app/plainpaper/scansuite/CompetitorComparison.kt` (downscale Plainpaper output to 150 DPI long edge for comparison; compute whiteness + legibility on competitor images; per-app summary) and extend `Report.kt` with per-category legibility and the competitor table
 - [ ] T089 [US5] Owner captures competitor outputs for ≥ 15 reference photos per app (Adobe Scan, Microsoft Lens, CamScanner; gallery import, default document mode, best-quality export, resized to 150 DPI by `scripts/scanref/ingest.py --competitor <app>`) and adds them to the manifest; commit per app
 - [X] T090 [US5] Enable SC-003 and SC-008 assertions in `QualityGateTest`, run the suite, tune Scan parameters if any language subset is < 0.90 relative legibility or the competitor rate < 60%; commit
-- [ ] T091 [US5] Demonstrate SC-009: push a throwaway commit disabling the white-point rescale in `illumination.cpp`; confirm `scan-quality` fails and the PR is blocked; revert; record the run URL in `specs/002-scan-engine/quickstart.md`
+- [X] T091 [US5] Demonstrate SC-009: push a throwaway commit disabling the white-point rescale in `illumination.cpp`; confirm `scan-quality` fails and the PR is blocked; revert; record the run URL in `specs/002-scan-engine/quickstart.md`
 
 **Checkpoint**: metrics, competitor comparison and the CI gate are live.
 
