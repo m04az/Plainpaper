@@ -13,7 +13,7 @@
 
 | Job id | Runner | Gradle / shell commands | Artifacts |
 |--------|--------|-------------------------|-----------|
-| `static-analysis` | ubuntu-latest | `./gradlew spotlessCheck detekt --no-daemon` | detekt SARIF (`build/reports/detekt/merge.sarif`) uploaded to code scanning |
+| `static-analysis` | ubuntu-latest | `./gradlew spotlessCheck detekt --no-daemon`, then `scripts/check-hardcoded-strings.sh` | detekt HTML reports (`**/build/reports/detekt/*.html`) as a workflow artifact |
 | `test-android` | ubuntu-latest | `./gradlew testAndroidHostTest --continue` (Android host-test task of the KMP library plugin; exact name confirmed in T012 and kept in sync here), then `./gradlew koverXmlReport koverVerify` | `**/build/test-results/**/*.xml`, `build/reports/kover/report.xml` |
 | `build-android` | ubuntu-latest | `./gradlew :androidApp:assembleDebug` | `androidApp/build/outputs/apk/debug/*.apk` |
 | `test-ios` | macos-26 | `sudo xcode-select -s /Applications/Xcode_26.4.app` (or latest 26.x present), `./gradlew iosSimulatorArm64Test` | `**/build/test-results/iosSimulatorArm64Test/*.xml` |
@@ -21,7 +21,8 @@
 
 Shared steps for every job: `actions/checkout@v7`, `actions/setup-java@v6` (temurin 21),
 `gradle/actions/setup-gradle@v6` (cache enabled, `cache-read-only` on non-main),
-and for macOS jobs `actions/cache@v4` on `~/.konan` keyed by `libs.versions.toml` hash.
+`actions/upload-artifact@v7`, and for macOS jobs `actions/cache@v6` on `~/.konan` keyed by
+`libs.versions.toml` hash. Xcode: the newest `/Applications/Xcode_26*.app` on the image.
 
 Environment: `GRADLE_OPTS=-Dorg.gradle.jvmargs=-Xmx4g`, `ORG_GRADLE_PROJECT_ci=true`.
 
@@ -43,8 +44,8 @@ settings.)
 ## Coverage gate
 
 Kover root configuration merges `:core:domain`, `:feature:home`, `:feature:settings` and
-excludes `*Screen*`, `*Route*`, `*Preview*`, `*ComposableSingletons*`, `*Module*Kt` and
-generated `Res` classes. Rule: minimum 80% `LINE` coverage, `koverVerify` fails the build
+excludes functions annotated `@Composable`, plus `*Screen*`, `*Sheet*`, `*PickerOption*`,
+`*Route*`, `*Preview*`, `*ComposableSingletons*`, `*Module*Kt` and generated `Res` classes. Rule: minimum 80% `LINE` coverage, `koverVerify` fails the build
 otherwise and prints the measured value (spec acceptance scenario US4-4).
 
 ## Localization guard
@@ -57,5 +58,5 @@ fails on any match (FR-008). Allowed exception: `*Preview*.kt` files.
 
 - A formatting violation fails `static-analysis` with the Spotless diff in the log (US4-2).
 - A failing unit test fails `test-android` and/or `test-ios`; the JUnit XML is uploaded and
-  summarised with `dorny/test-reporter@v2` so the failing test name appears in the PR checks
+  summarised with `dorny/test-reporter@v3` so the failing test name appears in the PR checks
   (US4-3).

@@ -8,15 +8,19 @@ compatibility guide and the Compose Multiplatform 1.12.2 release notes on 2026-1
 ## R1. Toolchain versions
 
 **Decision**: Kotlin 2.4.21, Compose Multiplatform 1.12.2, AGP 9.3.1, Gradle 9.6.0 (wrapper
-already present), JDK 21 (installed locally; CI uses Temurin 21), compileSdk/targetSdk 36,
-minSdk 26, iOS deployment target 15.0, Xcode 26.4 on CI.
+already present), JDK 21 (installed locally; CI uses Temurin 21; the Gradle daemon JVM is
+pinned to 21 in `gradle/gradle-daemon-jvm.properties` because detekt 1.23 cannot run on the
+template's JDK 25), compileSdk 37, targetSdk 36, minSdk 26, iOS deployment target 15.0,
+Xcode 26.x on CI.
 
 **Rationale**: The KMP compatibility guide row for Kotlin 2.4.20–2.4.21 is Gradle 7.6.3–9.7.0,
 AGP 8.5.2–9.3.1, Xcode 26.4. The template ships AGP 9.4.1, which is outside the tested range,
 so the plan steps it down to 9.3.1. Compose Multiplatform 1.12.2 is the current stable (Oct
 15, 2026) and is always compatible with the latest Kotlin; the Compose compiler plugin version
-must equal the Kotlin version. compileSdk 36 is the 2026 Play target requirement and avoids
-depending on API 37 support in AGP 9.3.
+must equal the Kotlin version. compileSdk is 37 because Compose 1.12.1 (the Jetpack version
+under Compose Multiplatform 1.12.2) requires compiling against API 37; targetSdk stays 36,
+the 2026 Play requirement. Verified during implementation: AGP 9.3.1 resolves the installed
+`android-37.0` platform.
 
 **Alternatives considered**: Kotlin 2.5.0-Beta2 (rejected, pre-release). AGP 9.4.1 (rejected,
 untested with Kotlin 2.4.x per JetBrains). Compose Multiplatform 1.13.0-alpha02 (rejected,
@@ -136,7 +140,9 @@ differs by OEM). Google Fonts provider (rejected: network, Principle I).
 `io.nlopez.compose.rules:ktlint` is deferred); detekt 1.23.8 with `detekt-formatting` off (ktlint
 owns formatting) and a project `detekt.yml`; Kover 0.9.11 with a merged report and a verify
 rule of 80% line coverage over `:core:domain`, `:feature:home` and `:feature:settings`
-(presentation). Core modules enable `explicitApi()`.
+(presentation). Functions annotated `@Composable` and `*Screen*`/`*Sheet*` classes are excluded
+from the measurement: UI is verified on device, line coverage targets ViewModels, use cases,
+repositories and mappers. Core modules enable `explicitApi()`.
 
 **Rationale**: All current stable releases. detekt 2.0 is still alpha.6. Kover's merged
 report lets the gate target the modules the constitution names rather than UI-only code.
@@ -174,8 +180,10 @@ to `main`, with jobs:
 | `build-ios` | macos-26 | `linkDebugFrameworkIosSimulatorArm64`, then `xcodebuild -scheme iosApp -sdk iphonesimulator -configuration Debug build` |
 
 Actions: `actions/checkout@v7`, `actions/setup-java@v6` (Temurin 21), `gradle/actions/setup-gradle@v6`
-(Gradle cache), Kotlin/Native cache via `actions/cache` on `~/.konan`. Concurrency group per
-ref cancels superseded runs. Branch protection on `main` requires all five jobs.
+(Gradle cache), `actions/cache@v6` on `~/.konan`, `actions/upload-artifact@v7`,
+`dorny/test-reporter@v3`. detekt HTML reports are uploaded as artifacts (SARIF code scanning
+needs GitHub Advanced Security on a private repository). Concurrency group per ref cancels
+superseded runs. Branch protection on `main` requires all five jobs.
 
 **Rationale**: Constitution VII lists exactly these checks; macOS runners are expensive, so iOS
 tests and build are separate from the fast ubuntu jobs. `macos-26` has Xcode 26.x and iOS

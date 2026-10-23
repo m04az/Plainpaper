@@ -7,7 +7,7 @@ How to build, test and validate feature 001 end-to-end. Commands run from the re
 | Tool | Version | Notes |
 |------|---------|-------|
 | JDK | 21 (Temurin or Zulu) | `java -version` |
-| Android SDK | platforms 36, build-tools 36.0.0 | Android Studio or `sdkmanager` |
+| Android SDK | platform 37 (compileSdk), build-tools 36.0.0 | Android Studio or `sdkmanager` |
 | Xcode | 26.4 | **Not installed on the dev Mac yet** (research R12). Required for `test-ios`/`build-ios` locally; CI covers iOS until then. |
 | Android device/emulator | API 26+ | Pixel-class emulator image or a physical phone |
 | iPhone simulator | iOS 17+ runtime | installed with Xcode |

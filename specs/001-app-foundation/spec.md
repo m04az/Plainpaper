@@ -265,3 +265,7 @@ confirm the pipeline reports a failure; fix it and confirm all checks pass.
   the repository is hosted on GitHub.
 - Crash reporting is out of scope for this feature; the constitution permits it later only
   without personal data.
+- Implementation notes (2026-10-23): the app compiles against Android API 37 (required by the
+  UI toolkit) while targeting API 36; the status bar icon color follows the app theme on
+  Android; the floating tab bar shows icons only above 1.3× system font scale, with the tab
+  label kept as the spoken description.

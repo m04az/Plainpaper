@@ -39,7 +39,7 @@ no database in this feature.
 `androidLibrary { withHostTestBuilder {} }` and run with the generated task
 (`testAndroidHostTest`, name confirmed in T012); iOS tests run on `iosSimulatorArm64Test`.
 
-**Target Platform**: Android 8.0+ (minSdk 26, compileSdk/targetSdk 36); iOS 15.0+ (arm64 device,
+**Target Platform**: Android 8.0+ (minSdk 26, compileSdk 37, targetSdk 36); iOS 15.0+ (arm64 device,
 arm64 simulator; x64 simulator omitted). Development machine: macOS, JDK 21, Android SDK 36,
 Xcode not yet installed (research R12).
 
