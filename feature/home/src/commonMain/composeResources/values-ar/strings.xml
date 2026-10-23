@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_title">المستندات</string>
+    <string name="home_empty_title">لا توجد مستندات بعد</string>
+    <string name="home_empty_body">صوّر صفحة بالكاميرا، أو حوّل الصور الموجودة لديك إلى مستندات ممسوحة نظيفة.</string>
+    <string name="home_scan_button">مسح صفحة</string>
+    <string name="home_import_button">استيراد صور</string>
+    <string name="home_empty_illustration_cd">رسم توضيحي لصفحة فارغة</string>
+</resources>

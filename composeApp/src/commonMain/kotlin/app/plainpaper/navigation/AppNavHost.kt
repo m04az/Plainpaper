@@ -11,6 +11,7 @@ import app.plainpaper.composeapp.resources.placeholder_import_body
 import app.plainpaper.composeapp.resources.placeholder_import_title
 import app.plainpaper.composeapp.resources.placeholder_scan_body
 import app.plainpaper.composeapp.resources.placeholder_scan_title
+import app.plainpaper.feature.home.HomeRoute
 import app.plainpaper.placeholder.PlaceholderScreen
 import org.jetbrains.compose.resources.stringResource
 
@@ -18,8 +19,10 @@ import org.jetbrains.compose.resources.stringResource
 fun AppNavHost(navController: NavHostController) {
     NavHost(navController = navController, startDestination = Home) {
         composable<Home> {
-            // Replaced by HomeRoute in US1 (T049).
-            PlaceholderScreen(title = "", body = "", onBack = null)
+            HomeRoute(
+                onNavigateToScan = { navController.navigate(ScanPlaceholder) },
+                onNavigateToImport = { navController.navigate(ImportPlaceholder) },
+            )
         }
         composable<Folders> {
             PlaceholderScreen(
