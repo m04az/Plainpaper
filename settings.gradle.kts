@@ -41,9 +41,11 @@ include(":core:domain")
 include(":core:data")
 include(":core:designsystem")
 include(":core:testing")
+include(":core:scanengine")
+include(":core:scanengine-android")
 include(":feature:home")
 include(":feature:settings")
+include(":tools:scansuite")
 
 // Reserved for later features (see constitution Principle IX: created only when needed):
 // include(":core:database")   // Feature 6 - Document library (Room KMP)
-// include(":core:scanengine") // Feature 2 - Scan engine (OpenCV C++ core)
