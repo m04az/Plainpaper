@@ -27,9 +27,9 @@ androidxCore = "1.19.1"
 # Scan engine (002, research R1/R12)
 opencv = "4.13.0"
 # SHA-256 of the prebuilt packages the Gradle download tasks verify (DownloadArchiveTask)
-opencvAndroidSdkSha256 = "TBD_ANDROID_SDK_SHA256"
-opencvIosXcframeworkSha256 = "TBD_IOS_XCFRAMEWORK_SHA256"
-opencvSourceSha256 = "TBD_SOURCE_SHA256"
+opencvAndroidSdkSha256 = "edfda20fdf65d0bd45391d168ec5261dd30b600b00279c4d910d7f1c3e020f0f"
+opencvIosXcframeworkSha256 = "41fc3bf0f2af1660e24694a3e05d5c56e5869a133cea7084a7e262d54dd5b675"
+opencvSourceSha256 = "1d40ca017ea51c533cf9fd5cbde5b5fe7ae248291ddf2af99d4c17cf8e13017d"
 exifinterface = "1.4.2"
 androidNdk = "30.0.16248370"
 
