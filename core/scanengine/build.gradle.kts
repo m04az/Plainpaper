@@ -177,8 +177,8 @@ kotlin {
     }
 }
 
-val xcodeInstalled = hasXcode
 tasks.withType<CInteropProcess>().configureEach {
+    val xcodeInstalled = hasXcode // captured as a value: the configuration cache cannot serialise the script
     onlyIf("Xcode is installed") { xcodeInstalled }
     dependsOn(if (konanTarget.name.contains("simulator")) buildNativeIosSimulatorArm64 else buildNativeIosArm64)
 }
