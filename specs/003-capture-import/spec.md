@@ -356,7 +356,8 @@ permission in system settings and confirm the camera works on return.
   conversion starts; no photo is ever dropped without the person being told.
 - **SC-010**: Every control on the camera and import screens has a screen-reader label and a
   48 dp target, and the screens render correctly in Arabic (right-to-left) in light and dark
-  themes, verified by screenshot tests.
+  themes, verified by automated UI checks of labels, sizes and mirroring plus reviewed
+  screenshots attached to the pull request.
 
 ## Assumptions
 
