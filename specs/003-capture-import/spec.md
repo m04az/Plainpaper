@@ -20,6 +20,16 @@ pages, and the permission handling. It does not edit pages, save documents or se
 The screens follow the approved design (artboards `Camera` and `Import progress` in the design
 canvas linked from `specs/001-app-foundation/spec.md`).
 
+## Clarifications
+
+### Session 2026-10-23
+
+- Q: Should the camera screen itself offer an "Import photos" entry, which the approved Camera artboard does not show? → A: No. Import is reached from Home and from the camera-permission denial screen only; the camera screen follows the approved design.
+- Q: In this feature, what proportions do ID card pages get before Feature 7 composes front and back on one page? → A: Natural proportions (the card's own aspect), tagged as ID front/back so Feature 7 can place them at real size.
+- Q: Should auto-capture fire when the engine's detection confidence is low (page edges partly outside the frame, open book, weak edges)? → A: No. Auto-capture requires high confidence; with low confidence the hint asks the person to adjust or tap the shutter, and the shutter always works.
+- Q: Where does the default page size come from until the onboarding/localization feature exists? → A: From the device region using the scan engine's rule (Letter in US, Canada, Mexico, Philippines; A4 elsewhere); Receipt and ID card modes use Natural.
+- Q: What happens to an import in progress when the app goes to the background? → A: It keeps converting for as long as the system allows, then pauses and resumes exactly where it stopped when the app returns; no progress is lost and no photo is converted twice.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Scan a page with the camera (Priority: P1)
@@ -43,8 +53,8 @@ counter reads 1, and Done opens the review hand-off showing a clean page.
 
 1. **Given** the camera is open and a page is in view, **When** the phone moves, **Then** the
    outline moves with the page edges without visible lag and disappears when no page is found.
-2. **Given** Auto is on and a page is in view, **When** the outline stays steady for the
-   steadiness period, **Then** one photo is taken, a brief confirmation flash is shown, the
+2. **Given** Auto is on and a page is in view with high detection confidence, **When** the
+   outline stays steady for the steadiness period, **Then** one photo is taken, a brief confirmation flash is shown, the
    counter increments, and auto-capture does not fire again until the view changes
    meaningfully (a new page or a clearly moved page).
 3. **Given** the camera is open, **When** the person taps the shutter, **Then** a photo is
@@ -202,10 +212,11 @@ permission in system settings and confirm the camera works on return.
   pauses; the shutter still works.
 - No page found for several seconds with Auto on: the hint changes to "Move closer or tap the
   shutter"; the shutter captures the whole frame and the page is marked for attention.
-- The page fills the whole frame: the outline is the frame edge, auto-capture still works when
-  steady, and the page is marked low confidence for review.
-- Two pages in view (open book): the outline follows the larger page; the hint suggests
-  scanning one page at a time.
+- The page fills the whole frame: the outline is the frame edge, confidence is low so
+  auto-capture does not fire, the hint asks to move back or tap the shutter, and a captured
+  page is marked for attention in review.
+- Two pages in view (open book): the outline follows the larger page with low confidence, so
+  auto-capture waits; the hint suggests scanning one page at a time.
 - Engine reports "too dark" or fails on a captured photo: the page keeps the original photo,
   is marked for attention, and the session continues; nothing crashes.
 - Storage nearly full: capture stops with a clear message before any photo is lost; pages
@@ -216,6 +227,9 @@ permission in system settings and confirm the camera works on return.
 - Import picks include very large photos (over 12 megapixels) or HEIC on Android: they are
   converted like any other photo; a photo that cannot be decoded is skipped with a warning.
 - Import picks include the same photo twice: both become pages; no de-duplication.
+- The app goes to the background during an import: conversion continues while the system
+  allows, then pauses and resumes from the same photo on return; the progress screen shows
+  the correct count when it reappears.
 - Device rotated to landscape: the camera screen stays portrait with controls fixed; the
   engine's orientation correction uprights the page.
 - Low-end device: the live outline runs at a lower rate and auto-capture needs a slightly
@@ -230,13 +244,15 @@ permission in system settings and confirm the camera works on return.
 
 - **FR-001**: The Scan action on Home (primary button and floating Scan button) MUST open the
   camera screen; the "Import photos" action on Home MUST open the system photo picker. The
-  camera screen MUST also offer an import entry.
+  camera screen itself has no import entry (approved design); import is also offered on the
+  camera-permission denial screen (FR-018).
 - **FR-002**: The camera screen MUST show a full-screen live preview with a page outline drawn
   over the detected page edges, updated continuously, and hidden when no page is detected.
-- **FR-003**: With Auto on, the app MUST capture a photo automatically when the detected page
-  has been steady for the steadiness period (outline corners moving less than 1.5% of the
+- **FR-003**: With Auto on, the app MUST capture a photo automatically only when detection
+  confidence is high and the detected page has been steady for the steadiness period (outline corners moving less than 1.5% of the
   frame diagonal for 0.7 s on the mid-range device, 1.0 s on low-end) and the page covers at
-  least 20% of the frame; after an automatic capture it MUST NOT capture again until the
+  least 20% of the frame; with low confidence the hint MUST ask the person to adjust or tap
+  the shutter; after an automatic capture it MUST NOT capture again until the
   outline has moved by more than 10% of the diagonal or disappeared and reappeared.
 - **FR-004**: The shutter button MUST capture immediately regardless of detection state.
 - **FR-005**: The camera screen MUST offer a flash toggle (Off/On) and an Auto toggle, both
@@ -245,8 +261,10 @@ permission in system settings and confirm the camera works on return.
 - **FR-006**: Captures MUST use the camera's full photo resolution up to 12 megapixels; the
   original photo MUST be stored for the session so later features can re-edit it.
 - **FR-007**: Every captured or imported photo MUST be processed by the scan engine on the
-  device, in the background, in the Scan style with the user's default page size (Natural in
-  Receipt mode), while the person continues capturing or waits on the import screen.
+  device, in the background, in the Scan style with the default page size (from the device
+  region: Letter in US, Canada, Mexico and the Philippines, A4 elsewhere, until a settings
+  default exists; Natural in Receipt and ID card modes), while the person continues capturing
+  or waits on the import screen. Imported pages carry the Document mode tag.
 - **FR-008**: The session MUST keep an ordered list of pages, each with its original photo,
   its processed page (when ready), detected corners and confidence, capture mode tag, source
   (camera or import), and processing state (pending, ready, needs attention, failed).
@@ -266,13 +284,15 @@ permission in system settings and confirm the camera works on return.
   free.
 - **FR-014**: Import MUST be cancellable; cancellation MUST stop processing within one second
   and let the person keep the already-converted pages (continue to review) or discard them.
+  When the app goes to the background, an import MUST keep running while the system allows,
+  then pause and resume from the same photo on return without converting any photo twice.
 - **FR-015**: An unreadable or non-image item in an import MUST be skipped with a visible
   warning without stopping the batch; a photo with no detectable page MUST still become a page
   marked for attention.
 - **FR-016**: The camera MUST offer the modes Document (default), ID card and Receipt. ID card
-  mode MUST guide front then back and tag the two captures as sides of one card. Receipt mode
-  MUST produce pages at natural proportions and tag them as receipts. Mode tags MUST be part
-  of each page.
+  mode MUST guide front then back, tag the two captures as sides of one card and produce each
+  side at natural (card) proportions. Receipt mode MUST produce pages at natural proportions
+  and tag them as receipts. Mode tags MUST be part of each page.
 - **FR-017**: The camera permission MUST be requested only when the person first opens the
   camera, preceded by an in-app explanation; the app MUST NOT ask on launch or on Home.
 - **FR-018**: When the camera permission is denied, the camera screen MUST show an explanation
@@ -319,7 +339,7 @@ permission in system settings and confirm the camera works on return.
   the page on the mid-range device, and at least 6 times per second on the low-end device.
 - **SC-003**: With a printed page on a desk under normal room light, auto-capture fires within
   1 s of the page becoming steady in at least 90% of 20 trials, and zero automatic captures
-  happen during 2 minutes with no page in view.
+  happen during 2 minutes with no page in view or with a page only partly in the frame.
 - **SC-004**: After a capture, the preview is live again within 1 s, and in a 10-page session
   every page is processed within 5 s of the last capture on the mid-range device.
 - **SC-005**: Importing 10 photos of 12 megapixels completes within 25 s on the mid-range
@@ -357,6 +377,8 @@ permission in system settings and confirm the camera works on return.
   Feature 7; this feature records the tags they need.
 - The system photo picker is used on both platforms, so import needs no storage or photo
   permission; on Android 8–12 the system picker may be a document picker, which is acceptable.
+- Until the onboarding/localization feature adds a page-size setting, the default page size
+  follows the device region using the scan engine's rule.
 - The camera screen is portrait only in this feature.
 - The Pro sheet shown at the import limit is a short explanation with a "See Pro" action that
   opens the Pro placeholder until Feature 9 exists; it never appears unless the person picks

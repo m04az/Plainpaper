@@ -35,4 +35,7 @@
   under Assumptions for `/speckit-clarify`: the temporary hand-off screen until Feature 4,
   session storage and recovery, free limit per import, portrait-only camera, system picker
   without a photo permission.
+- Validation pass 2 (2026-10-23, after `/speckit-clarify`): all 16 items still pass. Five
+  decisions recorded under `## Clarifications` and folded into FR-001, FR-003, FR-007, FR-014,
+  FR-016, SC-003, Edge Cases and Assumptions.
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`
