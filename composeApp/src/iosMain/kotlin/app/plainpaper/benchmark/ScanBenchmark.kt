@@ -1,6 +1,6 @@
 package app.plainpaper.benchmark
 
-import app.plainpaper.core.domain.coroutines.DispatcherProvider
+import app.plainpaper.core.data.coroutines.DefaultDispatcherProvider
 import app.plainpaper.core.domain.model.OutputStyle
 import app.plainpaper.core.domain.model.PageSize
 import app.plainpaper.core.scanengine.AnalyzeResult
@@ -11,8 +11,6 @@ import app.plainpaper.core.scanengine.IosPhotoDecoder
 import app.plainpaper.core.scanengine.RenderResult
 import app.plainpaper.core.scanengine.bridge.platformNativeBridge
 import app.plainpaper.core.scanengine.model.RenderOptions
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlin.time.TimeSource
 
@@ -24,19 +22,13 @@ import kotlin.time.TimeSource
 object ScanBenchmark {
     private const val MICROS_PER_MILLI = 1000.0
 
-    private class IosDispatchers : DispatcherProvider {
-        override val main: CoroutineDispatcher = Dispatchers.Main
-        override val io: CoroutineDispatcher = Dispatchers.IO
-        override val default: CoroutineDispatcher = Dispatchers.Default
-    }
-
     fun run(
         paths: List<String>,
         iterations: Int,
     ): String =
         runBlocking {
             val capability = IosCapabilityProvider()
-            val dispatchers = IosDispatchers()
+            val dispatchers = DefaultDispatcherProvider()
             val engine = DefaultScanEngine(platformNativeBridge(), capability, dispatchers)
             val decoder = IosPhotoDecoder(dispatchers)
             val runs = StringBuilder()
