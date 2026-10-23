@@ -12,6 +12,7 @@ import app.plainpaper.composeapp.resources.placeholder_import_title
 import app.plainpaper.composeapp.resources.placeholder_scan_body
 import app.plainpaper.composeapp.resources.placeholder_scan_title
 import app.plainpaper.feature.home.HomeRoute
+import app.plainpaper.feature.settings.SettingsRoute
 import app.plainpaper.placeholder.PlaceholderScreen
 import org.jetbrains.compose.resources.stringResource
 
@@ -32,8 +33,7 @@ fun AppNavHost(navController: NavHostController) {
             )
         }
         composable<Settings> {
-            // Replaced by SettingsRoute in US2 (T057).
-            PlaceholderScreen(title = "", body = "", onBack = null)
+            SettingsRoute()
         }
         composable<ScanPlaceholder> {
             PlaceholderScreen(

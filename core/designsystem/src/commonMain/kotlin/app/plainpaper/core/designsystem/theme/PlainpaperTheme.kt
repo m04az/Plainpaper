@@ -25,7 +25,8 @@ public fun PlainpaperTheme(
     val colorScheme = remember(darkTheme) { if (darkTheme) darkColors() else lightColors() }
     val extended = remember(darkTheme) { if (darkTheme) darkExtendedColors() else lightExtendedColors() }
     val family = if (useArabicTypeface) plexArabicFontFamily() else interFontFamily()
-    val typography = remember(family) { plainpaperTypography(family) }
+    val typography =
+        remember(family, useArabicTypeface) { plainpaperTypography(family, tightTracking = !useArabicTypeface) }
     val shapes = remember { PpShapes() }
     val spacing = remember { Spacing() }
 
