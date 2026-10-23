@@ -1,12 +1,12 @@
 package app.plainpaper.core.designsystem.theme
 
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.ui.unit.dp
 
 /** Corner radii from the design token sheet. Buttons, chips and the tab bar are capsules. */

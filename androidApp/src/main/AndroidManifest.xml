@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application
-        android:name=".PlainpaperApplication"
+        android:name=".android.PlainpaperApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -10,7 +10,7 @@
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
-            android:name=".MainActivity"
+            android:name=".android.MainActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|locale|layoutDirection|uiMode"
             android:exported="true"
             android:windowSoftInputMode="adjustResize">

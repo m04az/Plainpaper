@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Plainpaper</string>
+    <string name="tab_documents">Documents</string>
+    <string name="tab_folders">Folders</string>
+    <string name="tab_settings">Settings</string>
+    <string name="scan_fab_cd">Scan</string>
+    <string name="back_cd">Back</string>
+    <string name="placeholder_scan_title">Scan a page</string>
+    <string name="placeholder_scan_body">The camera scanner is coming in the next update.</string>
+    <string name="placeholder_import_title">Import photos</string>
+    <string name="placeholder_import_body">Importing photos from your gallery is coming soon.</string>
+    <string name="placeholder_folders_title">Folders</string>
+    <string name="placeholder_folders_body">Folders will arrive together with the document library.</string>
+</resources>

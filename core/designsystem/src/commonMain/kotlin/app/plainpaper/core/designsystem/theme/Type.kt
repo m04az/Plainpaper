@@ -48,98 +48,37 @@ public fun plexArabicFontFamily(): FontFamily =
 internal fun plainpaperTypography(family: FontFamily): Typography {
     val base = Typography()
     return Typography(
-        displaySmall =
-            base.displaySmall.copy(
-                fontFamily = family,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 34.sp,
-                lineHeight = 40.sp,
-                letterSpacing = (-0.8).sp,
-            ),
-        headlineMedium =
-            base.headlineMedium.copy(
-                fontFamily = family,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 28.sp,
-                lineHeight = 34.sp,
-                letterSpacing = (-0.5).sp,
-            ),
-        titleLarge =
-            base.titleLarge.copy(
-                fontFamily = family,
-                fontWeight = FontWeight.Bold,
-                fontSize = 22.sp,
-                lineHeight = 28.sp,
-                letterSpacing = (-0.3).sp,
-            ),
-        titleMedium =
-            base.titleMedium.copy(
-                fontFamily = family,
-                fontWeight = FontWeight.Bold,
-                fontSize = 17.sp,
-                lineHeight = 22.sp,
-            ),
-        titleSmall =
-            base.titleSmall.copy(
-                fontFamily = family,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 15.sp,
-                lineHeight = 20.sp,
-            ),
-        bodyLarge =
-            base.bodyLarge.copy(
-                fontFamily = family,
-                fontWeight = FontWeight.Normal,
-                fontSize = 16.sp,
-                lineHeight = 23.sp,
-            ),
-        bodyMedium =
-            base.bodyMedium.copy(
-                fontFamily = family,
-                fontWeight = FontWeight.Normal,
-                fontSize = 15.sp,
-                lineHeight = 21.sp,
-            ),
-        bodySmall =
-            base.bodySmall.copy(
-                fontFamily = family,
-                fontWeight = FontWeight.Medium,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
-            ),
-        labelLarge =
-            base.labelLarge.copy(
-                fontFamily = family,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 17.sp,
-                lineHeight = 22.sp,
-            ),
-        labelMedium =
-            base.labelMedium.copy(
-                fontFamily = family,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 14.sp,
-                lineHeight = 18.sp,
-            ),
-        labelSmall =
-            base.labelSmall.copy(
-                fontFamily = family,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 11.sp,
-                lineHeight = 14.sp,
-            ),
-    ).withDefaults(family, base)
-}
-
-private fun Typography.withDefaults(
-    family: FontFamily,
-    base: Typography,
-): Typography =
-    copy(
         displayLarge = base.displayLarge.copy(fontFamily = family),
         displayMedium = base.displayMedium.copy(fontFamily = family),
+        displaySmall = style(family, FontWeight.ExtraBold, size = 34, lineHeight = 40, letterSpacing = -0.8),
         headlineLarge = base.headlineLarge.copy(fontFamily = family),
+        headlineMedium = style(family, FontWeight.ExtraBold, size = 28, lineHeight = 34, letterSpacing = -0.5),
         headlineSmall = base.headlineSmall.copy(fontFamily = family),
+        titleLarge = style(family, FontWeight.Bold, size = 22, lineHeight = 28, letterSpacing = -0.3),
+        titleMedium = style(family, FontWeight.Bold, size = 17, lineHeight = 22),
+        titleSmall = style(family, FontWeight.SemiBold, size = 15, lineHeight = 20),
+        bodyLarge = style(family, FontWeight.Normal, size = 16, lineHeight = 23),
+        bodyMedium = style(family, FontWeight.Normal, size = 15, lineHeight = 21),
+        bodySmall = style(family, FontWeight.Medium, size = 13, lineHeight = 18),
+        labelLarge = style(family, FontWeight.SemiBold, size = 17, lineHeight = 22),
+        labelMedium = style(family, FontWeight.SemiBold, size = 14, lineHeight = 18),
+        labelSmall = style(family, FontWeight.SemiBold, size = 11, lineHeight = 14),
+    )
+}
+
+private fun style(
+    family: FontFamily,
+    weight: FontWeight,
+    size: Int,
+    lineHeight: Int,
+    letterSpacing: Double = 0.0,
+): TextStyle =
+    TextStyle(
+        fontFamily = family,
+        fontWeight = weight,
+        fontSize = size.sp,
+        lineHeight = lineHeight.sp,
+        letterSpacing = letterSpacing.sp,
     )
 
 /** Convenience aliases matching the design's names. */

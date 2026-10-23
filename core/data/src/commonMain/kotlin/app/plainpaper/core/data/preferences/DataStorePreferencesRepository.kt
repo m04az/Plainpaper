@@ -20,8 +20,7 @@ public class DataStorePreferencesRepository(
         dataStore.data
             .catch { error ->
                 if (error is IOException) emit(emptyPreferences()) else throw error
-            }
-            .map { it.toAppPreferences() }
+            }.map { it.toAppPreferences() }
 
     override suspend fun setLanguage(language: AppLanguage) {
         dataStore.edit { it[PreferencesKeys.LANGUAGE] = language.token }

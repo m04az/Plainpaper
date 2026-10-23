@@ -10,7 +10,7 @@ internal fun VersionCatalog.version(alias: String): String = findVersion(alias).
 
 /** `:core:domain` -> `app.plainpaper.core.domain` */
 internal val Project.plainpaperNamespace: String
-    get() = "app.plainpaper" + path.replace(':', '.').replace('-', '_')
+    get() = "app.plainpaper" + path.replace(':', '.').replace('-', '_').lowercase()
 
 internal val Project.isCoreModule: Boolean
     get() = path.startsWith(":core:")

@@ -23,6 +23,9 @@ kotlin {
             implementation(libs.jetbrains.navigation.compose)
             implementation(libs.kotlinx.serialization.json)
         }
+        androidMain.dependencies {
+            implementation(libs.koin.android)
+        }
         commonTest.dependencies {
             implementation(projects.core.testing)
         }

@@ -12,10 +12,11 @@ public fun resolveLayoutDirection(
     systemLanguageTag: String?,
 ): AppLayoutDirection {
     val effectiveTag = language.tag ?: systemLanguageTag
-    val primarySubtag = effectiveTag
-        ?.trim()
-        ?.split('-', '_')
-        ?.firstOrNull()
-        ?.lowercase()
+    val primarySubtag =
+        effectiveTag
+            ?.trim()
+            ?.split('-', '_')
+            ?.firstOrNull()
+            ?.lowercase()
     return if (primarySubtag == ARABIC_PRIMARY_SUBTAG) AppLayoutDirection.RTL else AppLayoutDirection.LTR
 }
