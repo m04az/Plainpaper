@@ -22,6 +22,8 @@ import kotlin.time.TimeSource
  * Android `BenchmarkTest`; results are captured manually on the owner's iPhone.
  */
 object ScanBenchmark {
+    private const val MICROS_PER_MILLI = 1000.0
+
     private class IosDispatchers : DispatcherProvider {
         override val main: CoroutineDispatcher = Dispatchers.Main
         override val io: CoroutineDispatcher = Dispatchers.IO
@@ -48,7 +50,7 @@ object ScanBenchmark {
                     }
                     val start = TimeSource.Monotonic.markNow()
                     val result = engine.analyze(photo)
-                    val analyzeMs = start.elapsedNow().inWholeMicroseconds / 1000.0
+                    val analyzeMs = start.elapsedNow().inWholeMicroseconds / MICROS_PER_MILLI
                     val entry =
                         StringBuilder(
                             "{\"photo\":\"${path.substringAfterLast(
@@ -57,7 +59,7 @@ object ScanBenchmark {
                         )
                     if (result is AnalyzeResult.Ready) {
                         val rendered = engine.render(result.analysis, RenderOptions(OutputStyle.Scan, PageSize.A4))
-                        entry.append(",\"totalMs\":${start.elapsedNow().inWholeMicroseconds / 1000.0}")
+                        entry.append(",\"totalMs\":${start.elapsedNow().inWholeMicroseconds / MICROS_PER_MILLI}")
                         entry.append(
                             ",\"outcome\":\"${result.analysis.outcome}\",\"confidence\":\"${result.analysis.confidence}\"",
                         )

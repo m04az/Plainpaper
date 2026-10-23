@@ -27,7 +27,7 @@ if [ "$LOW_END" = 1 ]; then
     "$SDK/cmdline-tools/latest/bin/sdkmanager" --install "system-images;android-30;google_apis;x86_64" >/dev/null
     echo no | "$SDK/cmdline-tools/latest/bin/avdmanager" create avd -n "$AVD_NAME" -k "system-images;android-30;google_apis;x86_64" -d pixel_3a >/dev/null
     CONFIG="$HOME/.android/avd/$AVD_NAME.avd/config.ini"
-    sed -i '' -e 's/^hw.ramSize=.*/hw.ramSize=2048/' -e 's/^hw.cpu.ncore=.*/hw.cpu.ncore=2/' "$CONFIG"
+    perl -pi -e 's/^hw.ramSize=.*/hw.ramSize=2048/; s/^hw.cpu.ncore=.*/hw.cpu.ncore=2/' "$CONFIG"
     grep -q '^hw.ramSize' "$CONFIG" || echo 'hw.ramSize=2048' >> "$CONFIG"
     grep -q '^hw.cpu.ncore' "$CONFIG" || echo 'hw.cpu.ncore=2' >> "$CONFIG"
   fi
@@ -42,20 +42,28 @@ SERIAL="${ANDROID_SERIAL:-$(adb devices | awk 'NR>1 && $2=="device" {print $1; e
 [ -n "$SERIAL" ] || { echo "no device connected"; exit 1; }
 export ANDROID_SERIAL="$SERIAL"
 
-# Photos: up to 10 from the reference set, else the synthetic set.
-mapfile -t FILES < <(ls "$PHOTOS"/*.jpg 2>/dev/null | head -10)
+# Photos: up to 10 from the reference set, else the synthetic set (bash 3 compatible: no mapfile).
+FILES=()
+for f in $(ls "$PHOTOS"/*.jpg 2>/dev/null | head -10); do FILES+=("$f"); done
 if [ ${#FILES[@]} -eq 0 ]; then
   ./gradlew :tools:scansuite:run --args="--only english-plain-r0" -q >/dev/null
-  mapfile -t FILES < <(ls build/scansuite/synthetic/photos/*.jpg | head -10)
+  for f in $(ls build/scansuite/synthetic/photos/*.jpg | head -10); do FILES+=("$f"); done
 fi
 PKG=app.plainpaper.core.scanengine.test
+# Install once through Gradle, push the photos to shared Downloads (files adb pushes into the
+# app's own folder are invisible to it under scoped storage), grant media reads, then start the
+# instrumentation directly: the Gradle connected-test task would reinstall and wipe state.
 ./gradlew :core:scanengine:installAndroidDeviceTest -q
-TARGET="/storage/emulated/0/Android/data/$PKG/files/bench"
-adb shell "rm -rf $TARGET && mkdir -p $TARGET"
-for f in "${FILES[@]}"; do adb push "$f" "$TARGET/" >/dev/null; done
+SHARED="/sdcard/Download/plainpaper-bench"
+adb shell "rm -rf $SHARED /storage/emulated/0/Android/data/$PKG/files/bench && mkdir -p $SHARED"
+for f in "${FILES[@]}"; do adb push "$f" "$SHARED/" >/dev/null; done
+SDK_INT=$(adb shell getprop ro.build.version.sdk | tr -d '\r')
+if [ "$SDK_INT" -ge 33 ]; then adb shell pm grant "$PKG" android.permission.READ_MEDIA_IMAGES; else adb shell pm grant "$PKG" android.permission.READ_EXTERNAL_STORAGE; fi
 MODEL=$(adb shell getprop ro.product.model | tr -d '\r' | tr ' ' '-')
 echo "Benchmarking ${#FILES[@]} photos x $ITERATIONS on $MODEL ($SERIAL)"
-./gradlew :core:scanengine:connectedAndroidDeviceTest -Pandroid.testInstrumentationRunnerArguments.class=app.plainpaper.core.scanengine.BenchmarkTest -Pandroid.testInstrumentationRunnerArguments.iterations="$ITERATIONS" -q || true
+adb shell am instrument -w -e class app.plainpaper.core.scanengine.BenchmarkTest -e iterations "$ITERATIONS" \
+  "$PKG/androidx.test.runner.AndroidJUnitRunner" | tail -5
+TARGET="/storage/emulated/0/Android/data/$PKG/files"
 OUT="reference-set/benchmarks/$MODEL-$(date +%Y%m%d).json"
 adb pull "$TARGET/bench.json" "$OUT" >/dev/null && echo "Saved $OUT"
 python3 - "$OUT" <<'PY'

@@ -1,0 +1,410 @@
+{
+  "device": "Google sdk_gphone16k_arm64",
+  "androidSdk": 37,
+  "build": "CP41.260828.004.A7 dev-keys",
+  "capability": "Simplified",
+  "totalMemoryBytes": 4159471616,
+  "iterations": 2,
+  "runs": [
+    {
+      "photo": "synthetic-arabic-plain-dark-r0.jpg",
+      "iteration": 0,
+      "analyzeMs": 742.482876,
+      "renderMs": 194.874875,
+      "totalMs": 937.483209,
+      "outcome": "Success",
+      "confidence": "High",
+      "peakNativeBytes": 37064550,
+      "steps": [
+        "Decode:Applied:60190",
+        "Detect:Applied:56712",
+        "Deskew:Skipped(reason=NotNeeded):333529",
+        "Perspective:Applied:88249",
+        "Orient:Skipped(reason=NotNeeded):97985",
+        "Flatten:Skipped(reason=Capability):0",
+        "Illumination:Applied:68346"
+      ],
+      "nativeHeapDeltaBytes": 8782672
+    },
+    {
+      "photo": "synthetic-arabic-plain-r0.jpg",
+      "iteration": 0,
+      "analyzeMs": 450.79125,
+      "renderMs": 94.998,
+      "totalMs": 545.885958,
+      "outcome": "Success",
+      "confidence": "High",
+      "peakNativeBytes": 35962518,
+      "steps": [
+        "Decode:Applied:51294",
+        "Detect:Applied:30341",
+        "Deskew:Skipped(reason=NotNeeded):166890",
+        "Perspective:Applied:67773",
+        "Orient:Skipped(reason=NotNeeded):82979",
+        "Flatten:Skipped(reason=Capability):0",
+        "Illumination:Applied:38796"
+      ],
+      "nativeHeapDeltaBytes": 144
+    },
+    {
+      "photo": "synthetic-arabic-plain-r180.jpg",
+      "iteration": 0,
+      "analyzeMs": 473.061125,
+      "renderMs": 111.613834,
+      "totalMs": 584.738209,
+      "outcome": "Success",
+      "confidence": "High",
+      "peakNativeBytes": 37849425,
+      "steps": [
+        "Decode:Applied:27243",
+        "Detect:Applied:21496",
+        "Deskew:Skipped(reason=NotNeeded):158656",
+        "Perspective:Applied:87525",
+        "Orient:Applied:111444",
+        "Flatten:Skipped(reason=Capability):0",
+        "Illumination:Applied:57081"
+      ],
+      "nativeHeapDeltaBytes": -64
+    },
+    {
+      "photo": "synthetic-arabic-plain-r270.jpg",
+      "iteration": 0,
+      "analyzeMs": 445.649542,
+      "renderMs": 113.071709,
+      "totalMs": 558.77925,
+      "outcome": "Success",
+      "confidence": "High",
+      "peakNativeBytes": 35216226,
+      "steps": [
+        "Decode:Applied:10430",
+        "Detect:Applied:21942",
+        "Deskew:Skipped(reason=NotNeeded):166038",
+        "Perspective:Applied:95507",
+        "Orient:Applied:80562",
+        "Flatten:Skipped(reason=Capability):0",
+        "Illumination:Applied:55869"
+      ],
+      "nativeHeapDeltaBytes": -192
+    },
+    {
+      "photo": "synthetic-arabic-plain-r90.jpg",
+      "iteration": 0,
+      "analyzeMs": 546.332042,
+      "renderMs": 136.034083,
+      "totalMs": 682.421751,
+      "outcome": "Success",
+      "confidence": "High",
+      "peakNativeBytes": 36334560,
+      "steps": [
+        "Decode:Applied:45534",
+        "Detect:Applied:27768",
+        "Deskew:Skipped(reason=NotNeeded):173886",
+        "Perspective:Applied:112322",
+        "Orient:Applied:119760",
+        "Flatten:Skipped(reason=Capability):0",
+        "Illumination:Applied:54615"
+      ],
+      "nativeHeapDeltaBytes": 96
+    },
+    {
+      "photo": "synthetic-arabic-shadow-curled-r0.jpg",
+      "iteration": 0,
+      "analyzeMs": 553.241625,
+      "renderMs": 122.014626,
+      "totalMs": 675.318583,
+      "outcome": "Success",
+      "confidence": "Low",
+      "peakNativeBytes": 38705616,
+      "steps": [
+        "Decode:Applied:32275",
+        "Detect:Applied:32770",
+        "Deskew:Skipped(reason=NotNeeded):197697",
+        "Perspective:Applied:73248",
+        "Orient:Skipped(reason=NotNeeded):129315",
+        "Flatten:Skipped(reason=Capability):0",
+        "Illumination:Applied:74483"
+      ],
+      "nativeHeapDeltaBytes": -112
+    },
+    {
+      "photo": "synthetic-arabic-shadow-r0.jpg",
+      "iteration": 0,
+      "analyzeMs": 446.642083,
+      "renderMs": 109.508833,
+      "totalMs": 556.210125,
+      "outcome": "Success",
+      "confidence": "High",
+      "peakNativeBytes": 36145704,
+      "steps": [
+        "Decode:Applied:31149",
+        "Detect:Applied:24174",
+        "Deskew:Skipped(reason=NotNeeded):144186",
+        "Perspective:Applied:77353",
+        "Orient:Skipped(reason=NotNeeded):93431",
+        "Flatten:Skipped(reason=Capability):0",
+        "Illumination:Applied:66598"
+      ],
+      "nativeHeapDeltaBytes": 96
+    },
+    {
+      "photo": "synthetic-arabic-shadow-r180.jpg",
+      "iteration": 0,
+      "analyzeMs": 431.73675,
+      "renderMs": 110.759667,
+      "totalMs": 542.55125,
+      "outcome": "Success",
+      "confidence": "High",
+      "peakNativeBytes": 36057756,
+      "steps": [
+        "Decode:Applied:24357",
+        "Detect:Applied:31721",
+        "Deskew:Skipped(reason=NotNeeded):144699",
+        "Perspective:Applied:77516",
+        "Orient:Applied:89967",
+        "Flatten:Skipped(reason=Capability):0",
+        "Illumination:Applied:51716"
+      ],
+      "nativeHeapDeltaBytes": 0
+    },
+    {
+      "photo": "synthetic-arabic-shadow-r270.jpg",
+      "iteration": 0,
+      "analyzeMs": 524.548,
+      "renderMs": 111.434375,
+      "totalMs": 636.042708,
+      "outcome": "Success",
+      "confidence": "High",
+      "peakNativeBytes": 37933782,
+      "steps": [
+        "Decode:Applied:27784",
+        "Detect:Applied:28298",
+        "Deskew:Skipped(reason=NotNeeded):170251",
+        "Perspective:Applied:110145",
+        "Orient:Applied:106497",
+        "Flatten:Skipped(reason=Capability):0",
+        "Illumination:Applied:69194"
+      ],
+      "nativeHeapDeltaBytes": 0
+    },
+    {
+      "photo": "synthetic-arabic-shadow-r90.jpg",
+      "iteration": 0,
+      "analyzeMs": 479.639334,
+      "renderMs": 103.474625,
+      "totalMs": 583.178959,
+      "outcome": "Success",
+      "confidence": "High",
+      "peakNativeBytes": 37309860,
+      "steps": [
+        "Decode:Applied:27547",
+        "Detect:Applied:24491",
+        "Deskew:Skipped(reason=NotNeeded):158704",
+        "Perspective:Applied:92270",
+        "Orient:Applied:101860",
+        "Flatten:Skipped(reason=Capability):0",
+        "Illumination:Applied:66041"
+      ],
+      "nativeHeapDeltaBytes": 0
+    },
+    {
+      "photo": "synthetic-arabic-plain-dark-r0.jpg",
+      "iteration": 1,
+      "analyzeMs": 520.608042,
+      "renderMs": 120.882709,
+      "totalMs": 641.545667,
+      "outcome": "Success",
+      "confidence": "High",
+      "peakNativeBytes": 37064550,
+      "steps": [
+        "Decode:Applied:26905",
+        "Detect:Applied:31593",
+        "Deskew:Skipped(reason=NotNeeded):170113",
+        "Perspective:Applied:103359",
+        "Orient:Skipped(reason=NotNeeded):108961",
+        "Flatten:Skipped(reason=Capability):0",
+        "Illumination:Applied:65870"
+      ],
+      "nativeHeapDeltaBytes": 0
+    },
+    {
+      "photo": "synthetic-arabic-plain-r0.jpg",
+      "iteration": 1,
+      "analyzeMs": 445.777834,
+      "renderMs": 109.156,
+      "totalMs": 555.00725,
+      "outcome": "Success",
+      "confidence": "High",
+      "peakNativeBytes": 35962518,
+      "steps": [
+        "Decode:Applied:30249",
+        "Detect:Applied:30572",
+        "Deskew:Skipped(reason=NotNeeded):151780",
+        "Perspective:Applied:80688",
+        "Orient:Skipped(reason=NotNeeded):91371",
+        "Flatten:Skipped(reason=Capability):0",
+        "Illumination:Applied:47525"
+      ],
+      "nativeHeapDeltaBytes": 0
+    },
+    {
+      "photo": "synthetic-arabic-plain-r180.jpg",
+      "iteration": 1,
+      "analyzeMs": 448.362417,
+      "renderMs": 119.547458,
+      "totalMs": 567.991959,
+      "outcome": "Success",
+      "confidence": "High",
+      "peakNativeBytes": 37849425,
+      "steps": [
+        "Decode:Applied:27032",
+        "Detect:Applied:28463",
+        "Deskew:Skipped(reason=NotNeeded):151979",
+        "Perspective:Applied:70977",
+        "Orient:Applied:91474",
+        "Flatten:Skipped(reason=Capability):0",
+        "Illumination:Applied:70664"
+      ],
+      "nativeHeapDeltaBytes": 0
+    },
+    {
+      "photo": "synthetic-arabic-plain-r270.jpg",
+      "iteration": 1,
+      "analyzeMs": 445.451375,
+      "renderMs": 123.905792,
+      "totalMs": 569.422417,
+      "outcome": "Success",
+      "confidence": "High",
+      "peakNativeBytes": 35216226,
+      "steps": [
+        "Decode:Applied:29644",
+        "Detect:Applied:30734",
+        "Deskew:Skipped(reason=NotNeeded):145258",
+        "Perspective:Applied:92842",
+        "Orient:Applied:81050",
+        "Flatten:Skipped(reason=Capability):0",
+        "Illumination:Applied:55983"
+      ],
+      "nativeHeapDeltaBytes": -96
+    },
+    {
+      "photo": "synthetic-arabic-plain-r90.jpg",
+      "iteration": 1,
+      "analyzeMs": 453.039375,
+      "renderMs": 96.126334,
+      "totalMs": 549.223917,
+      "outcome": "Success",
+      "confidence": "High",
+      "peakNativeBytes": 36334560,
+      "steps": [
+        "Decode:Applied:26640",
+        "Detect:Applied:28099",
+        "Deskew:Skipped(reason=NotNeeded):154359",
+        "Perspective:Applied:96647",
+        "Orient:Applied:87092",
+        "Flatten:Skipped(reason=Capability):0",
+        "Illumination:Applied:52494"
+      ],
+      "nativeHeapDeltaBytes": 96
+    },
+    {
+      "photo": "synthetic-arabic-shadow-curled-r0.jpg",
+      "iteration": 1,
+      "analyzeMs": 476.620584,
+      "renderMs": 108.255792,
+      "totalMs": 584.937584,
+      "outcome": "Success",
+      "confidence": "Low",
+      "peakNativeBytes": 38705616,
+      "steps": [
+        "Decode:Applied:26649",
+        "Detect:Applied:17833",
+        "Deskew:Skipped(reason=NotNeeded):152409",
+        "Perspective:Applied:80030",
+        "Orient:Skipped(reason=NotNeeded):120636",
+        "Flatten:Skipped(reason=Capability):0",
+        "Illumination:Applied:69760"
+      ],
+      "nativeHeapDeltaBytes": -112
+    },
+    {
+      "photo": "synthetic-arabic-shadow-r0.jpg",
+      "iteration": 1,
+      "analyzeMs": 474.241458,
+      "renderMs": 106.871,
+      "totalMs": 581.167083,
+      "outcome": "Success",
+      "confidence": "High",
+      "peakNativeBytes": 36145704,
+      "steps": [
+        "Decode:Applied:28691",
+        "Detect:Applied:29498",
+        "Deskew:Skipped(reason=NotNeeded):149736",
+        "Perspective:Applied:81328",
+        "Orient:Skipped(reason=NotNeeded):105954",
+        "Flatten:Skipped(reason=Capability):0",
+        "Illumination:Applied:68036"
+      ],
+      "nativeHeapDeltaBytes": 0
+    },
+    {
+      "photo": "synthetic-arabic-shadow-r180.jpg",
+      "iteration": 1,
+      "analyzeMs": 387.547125,
+      "renderMs": 109.259875,
+      "totalMs": 496.865875,
+      "outcome": "Success",
+      "confidence": "High",
+      "peakNativeBytes": 36057756,
+      "steps": [
+        "Decode:Applied:18026",
+        "Detect:Applied:26725",
+        "Deskew:Skipped(reason=NotNeeded):113713",
+        "Perspective:Applied:80928",
+        "Orient:Applied:85958",
+        "Flatten:Skipped(reason=Capability):0",
+        "Illumination:Applied:54617"
+      ],
+      "nativeHeapDeltaBytes": 0
+    },
+    {
+      "photo": "synthetic-arabic-shadow-r270.jpg",
+      "iteration": 1,
+      "analyzeMs": 530.551125,
+      "renderMs": 120.75625,
+      "totalMs": 651.357709,
+      "outcome": "Success",
+      "confidence": "High",
+      "peakNativeBytes": 37933782,
+      "steps": [
+        "Decode:Applied:24722",
+        "Detect:Applied:28763",
+        "Deskew:Skipped(reason=NotNeeded):182518",
+        "Perspective:Applied:110317",
+        "Orient:Applied:106970",
+        "Flatten:Skipped(reason=Capability):0",
+        "Illumination:Applied:69382"
+      ],
+      "nativeHeapDeltaBytes": 0
+    },
+    {
+      "photo": "synthetic-arabic-shadow-r90.jpg",
+      "iteration": 1,
+      "analyzeMs": 481.032,
+      "renderMs": 134.738292,
+      "totalMs": 615.828584,
+      "outcome": "Success",
+      "confidence": "High",
+      "peakNativeBytes": 37309860,
+      "steps": [
+        "Decode:Applied:27787",
+        "Detect:Applied:23683",
+        "Deskew:Skipped(reason=NotNeeded):163909",
+        "Perspective:Applied:83526",
+        "Orient:Applied:104371",
+        "Flatten:Skipped(reason=Capability):0",
+        "Illumination:Applied:67781"
+      ],
+      "nativeHeapDeltaBytes": 0
+    }
+  ]
+}

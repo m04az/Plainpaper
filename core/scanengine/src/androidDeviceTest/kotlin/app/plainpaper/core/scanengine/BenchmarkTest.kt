@@ -3,6 +3,7 @@ package app.plainpaper.core.scanengine
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Debug
+import android.os.Environment
 import android.os.SystemClock
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -23,10 +24,11 @@ import org.junit.runner.RunWith
 import java.io.File
 
 /**
- * Device benchmark (research R16, SC-005/SC-006): processes every photo in the target app's
- * external files directory `bench/` (pushed by scripts/bench-android.sh), `pp.bench.iterations`
- * times, in the Scan style at A4, and writes `bench/bench.json` with per-run timings and the
- * native heap delta measured one second after each run. Fails on any non-success outcome.
+ * Device benchmark (research R16, SC-005/SC-006): processes every photo in the shared
+ * `Download/plainpaper-bench/` folder (pushed by scripts/bench-android.sh, which also grants the
+ * media-read permission), `iterations` times, in the Scan style at A4, and writes `bench.json`
+ * into the app's external files directory with per-run timings and the native heap delta
+ * measured one second after each run. Fails on any non-success outcome.
  */
 @RunWith(AndroidJUnit4::class)
 class BenchmarkTest {
@@ -42,7 +44,10 @@ class BenchmarkTest {
             val instrumentation = InstrumentationRegistry.getInstrumentation()
             val arguments = InstrumentationRegistry.getArguments()
             val iterations = arguments.getString("iterations")?.toIntOrNull() ?: 2
-            val dir = File(instrumentation.targetContext.getExternalFilesDir(null), "bench")
+            val dir =
+                File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "plainpaper-bench")
+            val outputDir =
+                requireNotNull(instrumentation.targetContext.getExternalFilesDir(null)) { "external files dir" }
             val photos =
                 dir
                     .listFiles { f ->
@@ -105,7 +110,7 @@ class BenchmarkTest {
                     .put("totalMemoryBytes", details.totalMemoryBytes)
                     .put("iterations", iterations)
                     .put("runs", runs)
-            File(dir, "bench.json").writeText(report.toString(2))
+            File(outputDir, "bench.json").writeText(report.toString(2))
             assertEquals("failed runs", 0, failures)
         }
 }
