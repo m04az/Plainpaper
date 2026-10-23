@@ -1,0 +1,7 @@
+Plainpaper turns photos of paper into documents that look like they came from a flatbed scanner.
+Every step runs on the phone itself: nothing is uploaded, no account is needed, and there are no watermarks.
+The engine finds the edges of the page, straightens it into a rectangle, removes shadows and colour casts, and renders the text crisp and dark on pure white paper.
+Receipts, contracts, identity cards and handwritten notes all follow the same path, in Arabic, English or French.
+Quality is measured, not guessed: a fixed set of reference photos is processed on every change and compared against thresholds.
+When a page is curled, the text lines are straightened before the final rendering so that each baseline stays horizontal.
+The output is produced at three hundred dots per inch on an A4 or Letter sized page, ready to share as a PDF.

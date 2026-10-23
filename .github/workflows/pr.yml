@@ -37,6 +37,10 @@ jobs:
         run: ./gradlew spotlessCheck detekt --no-daemon
       - name: No hard-coded user-visible strings
         run: scripts/check-hardcoded-strings.sh
+      - name: Native sources are clang-format clean
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq clang-format
+          scripts/check-native-format.sh
       - name: Upload detekt reports
         if: always()
         uses: actions/upload-artifact@v7
@@ -89,6 +93,15 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - name: Cache OpenCV downloads
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/plainpaper/downloads
+          key: plainpaper-downloads-${{ hashFiles('gradle/libs.versions.toml') }}
+      - name: Install NDK and CMake for the scan engine
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;30.0.16248370" "cmake;3.22.1" > /dev/null
       - name: Assemble debug APK
         run: ./gradlew :androidApp:assembleDebug
       - uses: actions/upload-artifact@v7
@@ -120,6 +133,11 @@ jobs:
           path: ~/.konan
           key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
           restore-keys: konan-${{ runner.os }}-
+      - name: Cache OpenCV downloads
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/plainpaper/downloads
+          key: plainpaper-downloads-${{ hashFiles('gradle/libs.versions.toml') }}
       - name: iOS simulator unit tests
         run: ./gradlew iosSimulatorArm64Test --continue
       - name: Test report
@@ -155,13 +173,85 @@ jobs:
           path: ~/.konan
           key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
           restore-keys: konan-${{ runner.os }}-
+      - name: Cache OpenCV downloads
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/plainpaper/downloads
+          key: plainpaper-downloads-${{ hashFiles('gradle/libs.versions.toml') }}
       - name: Warm up Kotlin/Native and Gradle caches
         run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
-      - name: Build iOS app (simulator)
+      - name: Build iOS app and benchmark test bundle (simulator)
         # The "Compile Kotlin Framework" run-script phase in the Xcode project runs
         # ./gradlew :composeApp:embedAndSignAppleFrameworkForXcode, which places ComposeApp.framework
-        # under composeApp/build/xcode-frameworks/<CONFIGURATION>/<SDK_NAME>.
+        # under composeApp/build/xcode-frameworks/<CONFIGURATION>/<SDK_NAME>. build-for-testing also
+        # compiles the ScanBenchmarkTests target (run manually on a device, research R16).
         run: |
           xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-            ARCHS=arm64 CODE_SIGNING_ALLOWED=NO build
+            ARCHS=arm64 CODE_SIGNING_ALLOWED=NO build-for-testing
+
+  scan-quality:
+    name: scan-quality
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            engine:
+              - 'core/scanengine/**'
+              - 'core/scanengine-android/**'
+              - 'core/domain/**'
+              - 'core/testing/**'
+              - 'tools/scansuite/**'
+              - 'reference-set/**'
+              - 'scripts/build-opencv-host.sh'
+              - 'build-logic/**'
+              - 'gradle/libs.versions.toml'
+              - '.github/workflows/pr.yml'
+      - name: Install Tesseract (ara, eng, fra) and Ninja
+        if: steps.changes.outputs.engine == 'true'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq tesseract-ocr tesseract-ocr-ara tesseract-ocr-fra ninja-build
+      - name: Cache host OpenCV
+        if: steps.changes.outputs.engine == 'true'
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/plainpaper/opencv-4.13.0-linux-x86_64
+          key: opencv-host-4.13.0-${{ hashFiles('scripts/build-opencv-host.sh') }}
+      - name: Build host OpenCV (cache miss only)
+        if: steps.changes.outputs.engine == 'true'
+        run: scripts/build-opencv-host.sh
+      - uses: actions/setup-java@v6
+        if: steps.changes.outputs.engine == 'true'
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6
+        if: steps.changes.outputs.engine == 'true'
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - name: Reference quality suite (gate)
+        if: steps.changes.outputs.engine == 'true'
+        env:
+          PP_REQUIRE_OCR: "1"
+        run: ./gradlew :tools:scansuite:test
+      - name: Quality report
+        if: always() && steps.changes.outputs.engine == 'true'
+        run: |
+          if [ -f build/scansuite/report.md ]; then cat build/scansuite/report.md >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Upload quality report
+        if: always() && steps.changes.outputs.engine == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: scan-quality-report
+          path: |
+            build/scansuite/report.md
+            build/scansuite/report.json
+            build/scansuite/outputs/*.png
+          if-no-files-found: ignore
+      - name: Skipped
+        if: steps.changes.outputs.engine != 'true'
+        run: echo "No scan-engine changes; quality suite skipped" >> "$GITHUB_STEP_SUMMARY"

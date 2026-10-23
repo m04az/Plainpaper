@@ -15,6 +15,7 @@ kotlin {
         commonMain.dependencies {
             implementation(projects.core.domain)
             implementation(projects.core.data)
+            implementation(projects.core.scanengine)
             implementation(projects.core.designsystem)
             implementation(projects.feature.home)
             implementation(projects.feature.settings)
