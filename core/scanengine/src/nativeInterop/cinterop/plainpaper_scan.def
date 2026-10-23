@@ -1,0 +1,4 @@
+headers = plainpaper_scan.h
+headerFilter = plainpaper_scan.h
+package = app.plainpaper.scanengine.cinterop
+linkerOpts = -lc++
