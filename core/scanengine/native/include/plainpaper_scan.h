@@ -1,6 +1,7 @@
 /*
- * Plainpaper scan engine: C façade over the OpenCV pipeline (specs/002-scan-engine/contracts/c-api.md).
- * Consumed by the JNI bridge (Android, host JVM) and by Kotlin/Native cinterop (iOS).
+ * Plainpaper scan engine: C façade over the OpenCV pipeline
+ * (specs/002-scan-engine/contracts/c-api.md). Consumed by the JNI bridge (Android, host JVM) and by
+ * Kotlin/Native cinterop (iOS).
  */
 #ifndef PLAINPAPER_SCAN_H
 #define PLAINPAPER_SCAN_H
@@ -71,7 +72,11 @@ typedef enum {
 
 enum { PP_FLAG_INVERTED_DOCUMENT = 1, PP_FLAG_SPECULAR_HIGHLIGHT = 2 };
 
-typedef enum { PP_ORIENT_HIGH = 0, PP_ORIENT_LOW = 1, PP_ORIENT_NONE = 2 } pp_orientation_confidence;
+typedef enum {
+    PP_ORIENT_HIGH = 0,
+    PP_ORIENT_LOW = 1,
+    PP_ORIENT_NONE = 2
+} pp_orientation_confidence;
 
 typedef enum { PP_FALLBACK_NONE = 0, PP_FALLBACK_INVERTED = 1 } pp_fallback_reason;
 
@@ -147,7 +152,8 @@ PP_EXPORT pp_status pp_render(pp_session* session, pp_style style, pp_fit fit, i
 PP_EXPORT void pp_output_free(pp_output_image* image);
 PP_EXPORT void pp_session_destroy(pp_session* session);
 
-/* Last error detail for PP_ERR_INTERNAL / PP_ERR_INVALID_INPUT (thread-local, ASCII, may be empty). */
+/* Last error detail for PP_ERR_INTERNAL / PP_ERR_INVALID_INPUT (thread-local, ASCII, may be empty).
+ */
 PP_EXPORT const char* pp_last_error(void);
 
 #ifdef __cplusplus
