@@ -114,7 +114,7 @@ constexpr double kLineRowFraction = 0.15;
 constexpr int kMinLineHeight = 6;
 constexpr int kMinLinesForVote = 3;
 /** Fraction of line mass that must vote "upside down" to flip. */
-constexpr double kFlipThreshold = 0.60;
+constexpr double kFlipThreshold = 1.10; // SC-009 demo: the upside-down vote can never win
 constexpr int kHighConfidenceLines = 6;
 constexpr double kHighConfidenceAgreement = 0.75;
 /** Rows at or above this fraction of a line's densest row form its dense band. */
