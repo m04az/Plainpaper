@@ -233,7 +233,7 @@
 - [X] T093 [P] Add `scripts/check-native-format.sh` to the `static-analysis` CI job and run `clang-format -i` over `core/scanengine/native/`
 - [X] T094 [P] Review Kover: `./gradlew koverXmlReport koverVerify` ≥ 80% with `:core:scanengine` included; add tests for any uncovered decision code
 - [X] T095 [P] Add `reference-set/benchmarks/README.md` and a `specs/002-scan-engine/results.md` summarising final metrics, device timings and competitor comparison (numbers only, from the generated reports)
-- [ ] T096 Run the full quickstart.md checklist (sections 1–6), fix anything that fails, mark PR ready for review, ensure all six required checks are green, merge PR into `main` (squash disabled; merge commit as in 001); update memory `plainpaper-progress`
+- [X] T096 Run the full quickstart.md checklist (sections 1–6), fix anything that fails, mark PR ready for review, ensure all six required checks are green, merge PR into `main` (squash disabled; merge commit as in 001); update memory `plainpaper-progress`
 
 ---
 
