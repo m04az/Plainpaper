@@ -34,6 +34,9 @@ Validation (suite fails fast with a message naming the entry):
   edge (150 DPI exports).
 - Minimum coverage for the gate to be meaningful (warning, not failure, until the set is
   complete): ≥ 3 photos per category listed in FR-015.
+- The synthetic manifest (`build/scansuite/synthetic/manifest.json`, generated, same schema,
+  every entry tagged `synthetic`) is always loaded in addition to `reference-set/manifest.json`;
+  its thresholds (`synthetic*` keys in thresholds.json) always apply.
 
 Transcript format: UTF-8 text, one physical text line per line, in reading order; the
 scorer normalises NFC, strips Arabic diacritics (U+064B–U+0652, U+0670), collapses
@@ -51,7 +54,9 @@ whitespace and compares characters (Levenshtein).
   "orientationAccuracyMin": 0.95,                                          // FR-007
   "competitorMatchOrBeatRate": 0.60,    "competitorWorstRelative": -0.10,  // SC-008
   "cancelLatencyMaxMillis": 200,        "cancelTrials": 50,                // SC-007
-  "hostMedianMillisInfoOnly": 2000                                         // informational
+  "hostMedianMillisInfoOnly": 2000,                                        // informational
+  "syntheticCornerErrorMax": 0.01,      "syntheticCornerWithinRate": 1.00,  // exact ground truth
+  "syntheticOrientationAccuracyMin": 1.00, "syntheticLegibilityRelativeMin": 0.95
 }
 ```
 

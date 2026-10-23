@@ -120,6 +120,9 @@ re-implementation of the pipeline (two pipelines to keep in sync, defeats the pu
    the convex hull of the bright connected region (`GrabCut`-free). Confidence: **high**
    when the best quad has edge support ≥ 0.8 on all four sides and area ≥ 30%; **low**
    when a quad was found below that; **not found** otherwise → full frame rectangle.
+   Page-fills-frame rule: when no quad passes but a bright, low-texture region (paper
+   statistics: luminance > 0.6, local std-dev < 8) covers ≥ 95% of the frame, the corners are
+   the full frame with confidence **low** and source *Detected*, not *NotFound*.
    User-supplied corners bypass detection.
 3. **Perspective correction**: order corners, estimate the physical aspect ratio of the
    quadrilateral (Zhang-style from the vanishing points; fallback to the ratio of the
@@ -332,6 +335,23 @@ reference-set/
   (`fetch-depth: 1`) keep checkout time bounded.
 - Privacy: only the owner's documents, sensitive fields physically covered before
   photographing, metadata stripped on ingest, reviewed in the pull request like code.
+
+## R13b. Synthetic reference set (deterministic gate from day one)
+
+**Decision**: `:tools:scansuite` generates, at test time, a synthetic set under
+`build/scansuite/synthetic/` from a fixed seed: pages rendered with `java.awt` using the
+repository fonts (Inter, IBM Plex Sans Arabic from `core/designsystem/src/commonMain/composeResources/font/`)
+with English, French and Arabic paragraphs (fixed text resources, so transcripts are
+exact), placed on a textured "desk" background, warped by known homographies (random
+corner jitter 5-20% of the frame), multiplied by shadow gradients, rotated by 0/90/180/270,
+with Gaussian noise and JPEG q80 round-trip. The generator writes photos, expected corners
+(from the homography), transcripts, clean references (the un-warped render) and a manifest
+with the same schema as the real set (`category = synthetic` plus the matching real
+categories). ~24 pages, generated in < 10 s, never committed.
+
+**Rationale**: the gate must be meaningful before the owner's photos exist and must stay
+deterministic; synthetic pages give exact ground truth for corners, rotation and text.
+They complement, never replace, the real set (FR-015).
 
 ## R14. Legibility and other metrics on the host
 

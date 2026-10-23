@@ -36,6 +36,10 @@ classifyCapability(totalMemoryBytes: Long, is64Bit: Boolean, isLowRamDevice: Boo
 
 ## `:core:scanengine` models
 
+Spec entity mapping: **ScanRequest** (spec) = `ScanPhoto` + `AnalyzeOptions` + the calling
+coroutine (its cancellation is the "cancellation handle"); **ScanResult** = `ScanAnalysis`
++ `ScanOutput` + `ScanReport`.
+
 ### ScanPhoto (expect class, platform-backed)
 
 | Field | Type | Constraint |

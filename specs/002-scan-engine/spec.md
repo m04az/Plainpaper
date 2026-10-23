@@ -173,7 +173,8 @@ competitor outputs.
 - The photo contains two pages (an open book): the engine picks the larger page-like
   quadrilateral and reports low confidence so the user can adjust.
 - The page fills the entire photo (edges outside the frame): detection returns the full frame
-  and the result is the cleaned photo at the chosen page size.
+  with confidence "low" (a page was seen, its edges were not), and the result is the cleaned
+  photo at the chosen page size.
 - The page is a long receipt whose aspect ratio is far from A4: with the default page size the
   content is placed on the page with white margins; with the "natural" page size option the
   output keeps the receipt's proportions (Feature 7 depends on this).
@@ -239,7 +240,8 @@ competitor outputs.
   IDs and cards, receipts, curled pages, folded pages, dark rooms, hard shadows, low-contrast
   backgrounds, Arabic text, English text, French text, mixed Arabic/English, stamps and
   signatures, photos with no page. Each photo MUST have an expected corner rectangle and,
-  where applicable, a ground-truth text transcription for legibility scoring. Identity
+  where applicable, a ground-truth text transcription for legibility scoring together with a
+  clean reference image of the same page (flatbed scan or flat, evenly lit photo). Identity
   documents in the set MUST be the owner's own with sensitive fields physically covered
   before photographing; no photo may contain readable personal data of anyone else.
 - **FR-016**: An automated quality suite MUST run the engine on the whole reference set and
@@ -299,6 +301,8 @@ competitor outputs.
   are never more than 10% worse on any photo.
 - **SC-009**: The quality suite runs in the pull-request pipeline and fails a pull request that
   misses a threshold, demonstrated once with a deliberate regression.
+- **SC-010**: Upright orientation is correct on at least 95% of reference photos that contain
+  text (including the deliberately rotated subset), and photos without text are never rotated.
 
 ## Assumptions
 
@@ -331,5 +335,13 @@ competitor outputs.
   and by the Color document colour-retention check (stamp pixels keep their hue).
 - The engine does not store any input or output image itself; callers own persistence
   (Feature 6).
+- HEIC input is decoded by the platform: always on iOS, on Android only from Android 9
+  (API 28) on devices with HEVC support; on Android 8.0/8.1 a HEIC file is reported as an
+  unsupported format rather than processed.
+- A deterministic synthetic reference set (rendered Arabic/Latin/French text pages with known
+  corner positions, applied perspective, shadows, rotations and noise) complements the real
+  photo set so the quality gate is meaningful from the first pull request. Real-photo
+  thresholds apply per category once that category has at least three photos; synthetic
+  thresholds always apply.
 - Page size defaults by region come from the Settings default (Feature 10 adds the user-facing
   option); this feature only consumes an explicit page size.
