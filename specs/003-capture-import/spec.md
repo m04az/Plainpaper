@@ -73,8 +73,7 @@ counter reads 1, and Done opens the review hand-off showing a clean page.
 
 ### User Story 2 - Import photos from the gallery (Priority: P2)
 
-A person taps "Import photos" on Home (or the import action on the camera screen). The system
-photo picker opens and they select several photos at once. The app shows an import screen
+A person taps "Import photos" on Home. The system photo picker opens and they select several photos at once. The app shows an import screen
 titled "From Photos" with a heading such as "Converting 12 photos", a progress bar, a grid of
 tiles that turn into clean-page thumbnails one by one with a green tick, an estimate of the
 time left, a reassurance that photos never leave the phone, and a Cancel action. When all
@@ -216,7 +215,7 @@ permission in system settings and confirm the camera works on return.
   auto-capture does not fire, the hint asks to move back or tap the shutter, and a captured
   page is marked for attention in review.
 - Two pages in view (open book): the outline follows the larger page with low confidence, so
-  auto-capture waits; the hint suggests scanning one page at a time.
+  auto-capture waits and the hint asks the person to adjust the framing or tap the shutter.
 - Engine reports "too dark" or fails on a captured photo: the page keeps the original photo,
   is marked for attention, and the session continues; nothing crashes.
 - Storage nearly full: capture stops with a clear message before any photo is lost; pages

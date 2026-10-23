@@ -37,7 +37,7 @@
 - [ ] T005 [P] Add `<uses-permission android:name="android.permission.CAMERA"/>`, `<uses-feature android:name="android.hardware.camera.any" android:required="false"/>` and the photo-picker backport `<service android:name="com.google.android.gms.metadata.ModuleDependencies" …>` meta-data (`photopicker_activity:0:required`) to `androidApp/src/main/AndroidManifest.xml` (research R6)
 - [ ] T006 [P] Add `NSCameraUsageDescription` to `iosApp/iosApp/Info.plist` with localized values in `iosApp/iosApp/en.lproj/InfoPlist.strings` and `ar.lproj/InfoPlist.strings` (register in `project.pbxproj`); text: "Plainpaper needs the camera to scan pages. Photos stay on this phone."
 - [ ] T007 [P] Update `build-logic/convention/src/main/kotlin/KoverConventionPlugin.kt`: include `:core:capture` and `:feature:capture` in the merged report; exclude platform actuals (`*.camera.CameraX*`, `*.camera.Av*`, `*Preview*`, `*Picker*`, `*ImageFiles*`, `*Permission*Android*`, `*Screen*`, `*Module*`); keep minBound 80
-- [ ] T008 [P] Update `scripts/check-hardcoded-strings.sh` scope (if path-filtered) so `feature/capture` and `core/capture` are scanned; add `core/capture/**` and `feature/capture/**` to the `scan-quality` paths filter in `.github/workflows/pr.yml` only for the engine files (`core/scanengine/**` already covers `pp_detect`)
+- [ ] T008 [P] Update `scripts/check-hardcoded-strings.sh` scope (if path-filtered) so `feature/capture` and `core/capture` are scanned; in `.github/workflows/pr.yml` make `build-android` also assemble the device-test APKs of `:core:capture` and `:feature:capture` (confirm task names with `./gradlew :core:capture:tasks --all`); `scan-quality` keeps its `core/scanengine/**` filter (covers `pp_detect`)
 
 **Checkpoint**: `./gradlew spotlessCheck detekt :core:capture:tasks :feature:capture:tasks` passes with the empty modules.
 
@@ -49,7 +49,7 @@
 
 ### Domain (tests first)
 
-- [ ] T009 [P] Write `core/domain/src/commonTest/kotlin/app/plainpaper/core/domain/model/capture/CaptureSessionTest.kt` (page positions equal indices; `withPage` appends; `PageState` transitions `Pending→Processing→Ready|NeedsAttention|Failed`; `PageTag` equality for `IdFront(cardId)`)
+- [ ] T009 [P] Write `core/domain/src/commonTest/kotlin/app/plainpaper/core/domain/model/capture/CaptureSessionTest.kt` (page positions equal indices; `withPage` appends; `PageState` transitions `Pending→Processing→Ready|NeedsAttention|Failed`; `PageTag` equality for `IdFront(cardId)`) and `core/domain/src/commonTest/.../usecase/capture/CaptureUseCasesTest.kt` (Observe/Start/AddCapturedPage/Finish/Discard/Recover delegate to a fake repository with the right arguments and results)
 - [ ] T010 [P] Write `core/domain/src/commonTest/kotlin/app/plainpaper/core/domain/usecase/capture/ImportLimitTest.kt` (free: 10 → `Proceed`, 11 → `ExceedsFreeLimit(limit 10, picked 11)`; Pro: 250 → `Proceed`; 0 → `Proceed(empty)`)
 - [ ] T011 [P] Write `core/domain/src/commonTest/kotlin/app/plainpaper/core/domain/usecase/capture/ResolveDefaultPageSizeTest.kt` (`Document` + region "US" → Letter, "EG" → A4, null → A4; `Receipt`/`IdCard` → Natural regardless of region)
 - [ ] T012 [P] Create `core/domain/src/commonMain/kotlin/app/plainpaper/core/domain/model/capture/` : `CaptureSession.kt`, `CapturedPage.kt`, `PageState.kt`, `CaptureMode.kt` (+ `PageTag`), `SessionSource.kt`, `SessionStatus.kt`, `CaptureSettings.kt`, `CameraPermissionState.kt` and `core/domain/.../model/ProStatus.kt` exactly as data-model.md (explicit API)
@@ -95,7 +95,7 @@
 
 ### Tests for User Story 1
 
-- [ ] T033 [P] [US1] Write `feature/capture/src/commonTest/kotlin/app/plainpaper/feature/capture/camera/AutoCaptureGateTest.kt` (scripted `DetectionSample`s: steady high-confidence page for 700 ms → `Capture` exactly once; drift 2 % resets progress; fill 0.15 → no capture; low confidence → `LowConfidence`, no capture; luma 30 → `TooDark`; after `Capture` stays `Cooldown` until drift > 10 % or page lost + found; 1000 ms window on Simplified; Auto off → never `Capture`)
+- [ ] T033 [P] [US1] Write `feature/capture/src/commonTest/kotlin/app/plainpaper/feature/capture/camera/AutoCaptureGateTest.kt` (scripted `DetectionSample`s: steady high-confidence page for 700 ms → `Capture` exactly once; drift 2 % resets progress; fill 0.15 → no capture; low confidence → `LowConfidence`, no capture; luma 30 → `TooDark`; after `Capture` stays `Cooldown` until drift > 10 % or page lost + found; 1000 ms window on Simplified; Auto off → never `Capture`; no page for 3 s with Auto on → `NoPage(prolonged = true)` so the hint becomes `MoveCloser`)
 - [ ] T034 [P] [US1] Write `feature/capture/src/commonTest/kotlin/app/plainpaper/feature/capture/camera/CameraViewModelTest.kt` with Turbine (permission granted → camera started with the session directory; frames → `outline` in view coordinates + `hint`; gate `Capture` → `CameraController.capture` → page added `Pending` → processor enqueued → `pageCount` 1 + thumbnail when `Ready`; shutter action captures regardless of gate; flash/auto toggles persisted through `CaptureSettingsRepository`; `Done` → effect `NavigateToHandoff(sessionId)` and session `HandedOff`; capture failure → page `Failed` and a hint; `storageFull` when `freeBytes < 50 MB`)
 - [ ] T035 [P] [US1] Write `feature/capture/src/commonTest/kotlin/app/plainpaper/feature/capture/handoff/HandoffViewModelTest.kt` (lists pages in order with states; updates as pages become `Ready`; `processingRemaining` count)
 
@@ -127,7 +127,7 @@
 
 ### Implementation for User Story 2
 
-- [ ] T046 [P] [US2] Create `feature/capture/.../import/ImportUiState.kt`, `ImportAction.kt`, `ImportEffect.kt`, `ImportEstimate.kt`, `ImportViewModel.kt` to satisfy T044–T045 (copies originals via `ImageFiles.copyOriginal` into the session, enqueues pages with tag `Document`, observes the session for tile states)
+- [ ] T046 [P] [US2] Create `feature/capture/.../import/ImportUiState.kt`, `ImportAction.kt`, `ImportEffect.kt`, `ImportEstimate.kt`, `ImportViewModel.kt` to satisfy T044–T045 (copies ALL originals via `ImageFiles.copyOriginal` into the session before any conversion starts, enqueues pages with tag `Document`, observes the session for tile states)
 - [ ] T047 [P] [US2] Implement `core/capture/src/androidMain/.../picker/AndroidPhotoPicker.kt` (`rememberLauncherForActivityResult(PickMultipleVisualMedia(maxItems))`, `ImageOnly`, suspend bridge through a `CompletableDeferred`) and `core/capture/src/iosMain/.../picker/PhPhotoPicker.kt` (`PHPickerViewController` presented from the root view controller, `selectionLimit`, `loadFileRepresentation` copies into a temp dir) plus `ImageFiles.copyOriginal` actuals (Android `ContentResolver.openInputStream`, iOS file move)
 - [ ] T048 [US2] Create `feature/capture/.../import/ImportScreen.kt` (contracts/ui.md: title "From Photos", heading/sub, progress bar with range info, 4-column `PpProgressTile` grid, privacy card, limit sheet, cancel-choice sheet, "Review N pages") and the `ImportRoute` composable (launches the picker on entry)
 - [ ] T049 [US2] Add the `ProPlaceholder` route screen in `composeApp` ("Plainpaper Pro is coming" + body, back) and strings (EN/AR); wire `SeePro`
@@ -208,6 +208,7 @@
 - [ ] T069 [P] Update `CLAUDE.md` (module map: `:core:capture`, `:feature:capture`; commands: camera smoke script, device tests; rule: camera code only in `:core:capture`) and `README.md`
 - [ ] T070 [P] Review Kover: `./gradlew koverXmlReport koverVerify` ≥ 80 % with the new modules; add tests for uncovered decisions
 - [ ] T071 [P] Detekt/Spotless clean; `scripts/check-hardcoded-strings.sh` clean; remove the obsolete placeholder routes/strings; confirm no new permission beyond CAMERA in the merged manifest (`./gradlew :androidApp:processDebugManifest` + inspect)
+- [ ] T073 [P] Write `feature/capture/src/androidDeviceTest/kotlin/app/plainpaper/feature/capture/CaptureSoakDeviceTest.kt` (real repository + processor + engine with bundled photos and a fake camera: 50 sessions × 5 pages, 20 imports × 10 photos, 10 simulated background/foreground cycles via `PageProcessor.resume()`; asserts zero `Failed`, zero lost pages, no crash) and run it on the low-end AVD (SC-008); record in `results.md`
 - [ ] T072 Run the full quickstart.md checklist (sections 1–6), fix anything that fails, mark PR #3 ready for review, ensure all six required checks are green, merge into `main` (merge commit); update memory `plainpaper-progress`
 
 ---

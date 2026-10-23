@@ -18,7 +18,7 @@ title, body, primary "Allow camera" / "Open settings", secondary "Import photos 
 Hints (string keys): `camera_hint_hold_steady` ("Hold steady — capturing…"),
 `camera_hint_tap_shutter`, `camera_hint_move_closer` ("Move closer or tap the shutter"),
 `camera_hint_too_dark` ("Too dark — turn on the flash or add light"),
-`camera_hint_one_page`, `camera_hint_id_front` ("Front side of the card"),
+`camera_hint_adjust` ("Adjust the framing or tap the shutter"), `camera_hint_id_front` ("Front side of the card"),
 `camera_hint_id_back` ("Back side of the card"), `camera_hint_receipt` ("Fit the whole receipt").
 
 Discard confirmation: "Discard %1$d pages?" / "Keep scanning" / "Discard".

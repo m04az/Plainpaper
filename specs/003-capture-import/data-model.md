@@ -59,7 +59,9 @@ Persisted in the Preferences DataStore (keys `capture.flash`, `capture.auto`, `c
 
 `items: List<ImportItem(uri, state ∈ {Queued, Converting, Done(pageId), Skipped(reason)})>`,
 `doneCount`, `skippedCount`, `estimatedSecondsLeft`, `cancelled`. The time estimate is the
-moving average of the last three conversions × remaining items, rounded up, minimum 1.
+moving average of the last three conversions × remaining items, rounded up, minimum 1. All
+picked originals are copied into the session before conversion starts, so after process death
+every picked photo is a `Pending` page and nothing is lost.
 
 ### CameraPermissionState (enum)
 
@@ -83,9 +85,9 @@ moving average of the last three conversions × remaining items, rounded up, min
 - `val state: StateFlow<CameraState>` — `Idle`, `Starting`, `Running(hasFlash)`, `Error(reason)`.
 - `val frames: Flow<PreviewFrame>` — analysis frames (640 px long edge, RGBA or BGRA);
   conflated; emitted only while `Running`.
-- `suspend fun start()`, `fun stop()`.
-- `suspend fun capture(flash: Boolean): CaptureResult` — `Ready(originalPath, width, height)`
-  or `Failed(reason)`; writes the JPEG straight into the session folder path given at start.
+- `suspend fun start(outputDirectory: String)`, `fun stop()`; captures are written into `outputDirectory`.
+- `suspend fun capture(): CaptureResult` — `Ready(originalPath, width, height)` or
+  `Failed(reason)`; flash follows `setFlash`.
 - `fun setFlash(enabled: Boolean)`.
 
 ### PreviewFrame
@@ -132,7 +134,7 @@ in a background task with expiration → cancels `block`.
 
 `permission: CameraPermissionState`, `camera: CameraState`, `mode`, `flash`, `autoCapture`,
 `outline: Quad?` (in preview-view coordinates), `gate: GateState`, `hint: HintKind`
-(`HoldSteady`, `TapShutter`, `MoveCloser`, `TooDark`, `OnePageAtATime`, `FrontOfCard`,
+(`HoldSteady`, `TapShutter`, `MoveCloser`, `TooDark`, `AdjustFraming`, `FrontOfCard`,
 `BackOfCard`, `FitReceipt`), `pageCount`, `latestThumbnail: ImageBitmap?`,
 `latestPageState`, `showDiscardConfirm`, `storageFull`, `capturing` (flash animation).
 
