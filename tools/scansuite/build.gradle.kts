@@ -48,6 +48,9 @@ tasks.withType<JavaExec>().configureEach {
 
 tasks.test {
     dependsOn(hostNativeLibrary)
+    // The gate must re-run whenever the native core or the reference set changes.
+    inputs.file(hostLibraryPath()).withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir(rootProject.layout.projectDirectory.dir("reference-set")).withPathSensitivity(PathSensitivity.RELATIVE)
     useJUnitPlatform()
     workingDir = rootDir
     systemProperty("pp.native.path", hostLibraryPath())
