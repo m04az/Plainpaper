@@ -67,6 +67,8 @@ cv::Mat estimateBackground(const cv::Mat& pageBgr, int workingLongEdge);
 void normalizeIllumination(const cv::Mat& page, const cv::Mat& backgroundSmall, cv::Mat& out,
                            volatile int32_t* cancel);
 bool hasSpecularHighlight(const cv::Mat& workingBgr);
+/** Dark paper with light text: the Scan style would binarise it into noise (research R9). */
+bool isInvertedDocument(const cv::Mat& workingBgr, const cv::Mat& normalizedPreviewGray);
 // render.cpp
 pp_status renderPage(pp_session& session, pp_style style, pp_fit fit, int outWidth, int outHeight,
                      volatile int32_t* cancel, pp_output_image* out);

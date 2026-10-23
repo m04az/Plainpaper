@@ -102,6 +102,21 @@ constexpr double kWhitePoint = 262.0;
 /** Specular highlight: more than this fraction of working pixels above this luminance. */
 constexpr double kClippedLuminance = 253.0;
 constexpr double kClippedFraction = 0.03;
+/** Inverted document: median luminance below this (0..255) with light strokes present. */
+constexpr int kInvertedMedianLuminance = 90;
+constexpr int kInvertedStrokeContrast = 60;
+constexpr double kInvertedMinStrokeFraction = 0.005;
+
+// ---- Grayscale / Color document / Original (research R9) ----
+/** Tone curve exponent applied to normalised luminance (above 1 darkens mid-tones and ink). */
+constexpr double kToneGamma = 1.1;
+/** Color document: pixels with chroma below this and luminance above this fraction are paper. */
+constexpr int kPaperChroma = 12;
+constexpr double kPaperLuminanceFraction = 0.85;
+constexpr double kSaturationBoost = 1.15;
+/** Original: brightness lift and white-balance strength (0 = none, 1 = full grey-world). */
+constexpr double kOriginalBrightness = 1.08;
+constexpr double kOriginalWhiteBalance = 0.5;
 
 } // namespace pp::params
 

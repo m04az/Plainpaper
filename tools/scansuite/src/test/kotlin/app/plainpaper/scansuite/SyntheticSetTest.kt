@@ -18,7 +18,7 @@ class SyntheticSetTest {
         val first = SyntheticSetGenerator(root, a).generate()
         val second = SyntheticSetGenerator(root, b).generate()
         assertEquals(first, second)
-        assertEquals(24, first.photos.size)
+        assertEquals(26, first.photos.size)
         for (photo in first.photos) {
             assertContentEquals(File(a, photo.file).readBytes(), File(b, photo.file).readBytes(), photo.id)
             assertTrue(Category.Synthetic in photo.tags)
@@ -37,7 +37,8 @@ class SyntheticSetTest {
             first.photos.map { it.language }.toSet(),
         )
         assertEquals(setOf(0, 90, 180, 270), first.photos.map { it.expectedRotation }.toSet())
-        assertEquals(12, first.photos.count { Category.HardShadow in it.tags })
+        assertEquals(13, first.photos.count { Category.HardShadow in it.tags })
+        assertEquals(2, first.photos.count { Category.StampSignature in it.tags })
     }
 
     @Test

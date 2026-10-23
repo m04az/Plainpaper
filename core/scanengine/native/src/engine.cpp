@@ -179,6 +179,9 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
         normalizeIllumination(preview, previewBackground, previewNormalized, cancel);
         cv::Mat previewGray;
         cv::cvtColor(previewNormalized, previewGray, cv::COLOR_BGR2GRAY);
+        if (isInvertedDocument(ctx.working, previewGray)) {
+            ctx.flags |= PP_FLAG_INVERTED_DOCUMENT;
+        }
         geometry.deskewDeg = estimateDeskewDegrees(previewGray);
         if (std::abs(geometry.deskewDeg) < 0.3) {
             geometry.deskewDeg = 0.0;
@@ -222,6 +225,8 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
         session->backgroundSmall = estimateBackground(session->page, options->working_long_edge);
         checkCancel(cancel);
     }
+
+    session->inverted = (ctx.flags & PP_FLAG_INVERTED_DOCUMENT) != 0;
 
     // Report.
     pp_analysis_info& info = session->info;

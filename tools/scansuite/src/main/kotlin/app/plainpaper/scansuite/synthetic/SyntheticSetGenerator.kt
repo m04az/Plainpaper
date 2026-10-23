@@ -29,9 +29,12 @@ class SyntheticSetGenerator(
         val language: Language,
         val shadow: Boolean,
         val rotation: Int,
+        val stamp: Boolean = false,
     ) {
         val id: String
-            get() = "synthetic-${language.name.lowercase()}-${if (shadow) "shadow" else "plain"}-r$rotation"
+            get() =
+                "synthetic-${language.name.lowercase()}-${if (shadow) "shadow" else "plain"}" +
+                    (if (stamp) "-stamp" else "") + "-r$rotation"
     }
 
     fun variants(): List<Variant> =
@@ -41,6 +44,9 @@ class SyntheticSetGenerator(
                     for (rotation in listOf(0, 90, 180, 270)) add(Variant(language, shadow, rotation))
                 }
             }
+            // Colour content for the Color document style: a red stamp and a blue signature.
+            add(Variant(Language.English, shadow = false, rotation = 0, stamp = true))
+            add(Variant(Language.Arabic, shadow = true, rotation = 0, stamp = true))
         }
 
     fun generate(): Manifest {
@@ -49,7 +55,7 @@ class SyntheticSetGenerator(
         val photos =
             variants().mapIndexed { index, variant ->
                 val random = Random(seed + index)
-                val page = renderPage(variant.language)
+                val page = renderPage(variant.language, variant.stamp)
                 val photo = composePhoto(page.image, variant, random)
                 val photoFile = "photos/${variant.id}.jpg"
                 writeJpeg(photo.image, File(outputDir, photoFile))
@@ -72,6 +78,7 @@ class SyntheticSetGenerator(
                             )
                             if (variant.shadow) add(Category.HardShadow)
                             if (variant.rotation != 0) add(Category.Rotated)
+                            if (variant.stamp) add(Category.StampSignature)
                         },
                     language = variant.language,
                     expectedCorners = photo.corners.map { listOf(round1(it.first), round1(it.second)) },
@@ -118,8 +125,11 @@ class SyntheticSetGenerator(
             .readText()
     }
 
-    fun renderPage(language: Language): RenderedPage {
-        val image = BufferedImage(PAGE_WIDTH, PAGE_HEIGHT, BufferedImage.TYPE_BYTE_GRAY)
+    fun renderPage(
+        language: Language,
+        stamp: Boolean = false,
+    ): RenderedPage {
+        val image = BufferedImage(PAGE_WIDTH, PAGE_HEIGHT, BufferedImage.TYPE_INT_RGB)
         val g = image.createGraphics()
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
         g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON)
@@ -160,6 +170,7 @@ class SyntheticSetGenerator(
                 y += LINE_HEIGHT
             }
         }
+        if (stamp) StampArt.draw(g)
         g.dispose()
         return RenderedPage(image, drawn)
     }
@@ -198,7 +209,8 @@ class SyntheticSetGenerator(
                 Pair(0.0, page.height.toDouble()),
             )
         val inverse = Homography.from(src, dst).inverse()
-        val pageGray = (page.raster.dataBuffer as java.awt.image.DataBufferByte).data
+        val pagePixels = IntArray(page.width * page.height)
+        page.getRGB(0, 0, page.width, page.height, pagePixels, 0, page.width)
         val canvas = BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
         val row = IntArray(w)
         val noise = Random(random.nextLong())
@@ -213,10 +225,10 @@ class SyntheticSetGenerator(
                 var g: Double
                 var b: Double
                 if (insidePage(u, v, page.width, page.height)) {
-                    val value = bilinear(pageGray, page.width, page.height, u, v)
-                    r = value * PAPER_R
-                    g = value * PAPER_G
-                    b = value * PAPER_B
+                    val rgbValue = bilinearRgb(pagePixels, page.width, page.height, u, v)
+                    r = rgbValue[0] * PAPER_R
+                    g = rgbValue[1] * PAPER_G
+                    b = rgbValue[2] * PAPER_B
                 } else {
                     val texture = 1.0 + (noise.nextDouble() - 0.5) * 0.12
                     r = DESK_R * texture
@@ -248,27 +260,33 @@ class SyntheticSetGenerator(
         height: Int,
     ): Boolean = u >= 0 && v >= 0 && u < width && v < height
 
-    private fun bilinear(
-        data: ByteArray,
+    /** Bilinear sample of an RGB page as three 0..1 channel values (relative to the page's white). */
+    private fun bilinearRgb(
+        pixels: IntArray,
         width: Int,
         height: Int,
         u: Double,
         v: Double,
-    ): Double {
+    ): DoubleArray {
         val x0 = u.toInt().coerceIn(0, width - 1)
         val y0 = v.toInt().coerceIn(0, height - 1)
         val x1 = (x0 + 1).coerceAtMost(width - 1)
         val y1 = (y0 + 1).coerceAtMost(height - 1)
         val fx = (u - x0).coerceIn(0.0, 1.0)
         val fy = (v - y0).coerceIn(0.0, 1.0)
+        val out = DoubleArray(3)
+        for (c in 0 until 3) {
+            val shift = 16 - 8 * c
 
-        fun at(
-            x: Int,
-            y: Int,
-        ) = (data[y * width + x].toInt() and 0xFF) / 255.0
-        val top = at(x0, y0) * (1 - fx) + at(x1, y0) * fx
-        val bottom = at(x0, y1) * (1 - fx) + at(x1, y1) * fx
-        return top * (1 - fy) + bottom * fy
+            fun at(
+                x: Int,
+                y: Int,
+            ) = ((pixels[y * width + x] shr shift) and 0xFF) / 255.0
+            val top = at(x0, y0) * (1 - fx) + at(x1, y0) * fx
+            val bottom = at(x0, y1) * (1 - fx) + at(x1, y1) * fx
+            out[c] = top * (1 - fy) + bottom * fy
+        }
+        return out
     }
 
     private fun rgb(
@@ -351,7 +369,7 @@ class SyntheticSetGenerator(
     private fun round1(value: Double): Double = (value * 10).roundToInt() / 10.0
 
     companion object {
-        const val VERSION = 2
+        const val VERSION = 3
         const val PAGE_WIDTH = 1240 // A4 at 150 DPI
         const val PAGE_HEIGHT = 1754
         const val CANVAS_WIDTH = 1500
@@ -370,5 +388,8 @@ class SyntheticSetGenerator(
         private const val PENUMBRA_PX = 24.0
         private const val SHADOW_DEPTH = 0.55
         private const val JPEG_QUALITY = 0.8f
+        const val STAMP_CENTER_X = StampArt.CENTER_X
+        const val STAMP_CENTER_Y = StampArt.CENTER_Y
+        const val STAMP_RADIUS = StampArt.RADIUS
     }
 }

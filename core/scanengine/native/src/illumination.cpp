@@ -74,3 +74,28 @@ bool hasSpecularHighlight(const cv::Mat& workingBgr) {
 }
 
 } // namespace pp
+
+namespace pp {
+
+bool isInvertedDocument(const cv::Mat& workingBgr, const cv::Mat& /*normalizedPreviewGray*/) {
+    // The raw working image (not the normalised one, which forces paper to white): a page whose
+    // median luminance is dark overall is inverted or unusable as black-on-white.
+    cv::Mat gray;
+    cv::cvtColor(workingBgr, gray, cv::COLOR_BGR2GRAY);
+    cv::Mat small;
+    cv::resize(gray, small, cv::Size(), 0.25, 0.25, cv::INTER_AREA);
+    std::vector<uint8_t> values(small.begin<uint8_t>(), small.end<uint8_t>());
+    std::nth_element(values.begin(), values.begin() + values.size() / 2, values.end());
+    const int median = values[values.size() / 2];
+    if (median >= params::kInvertedMedianLuminance) {
+        return false;
+    }
+    // Light strokes on the dark page: a visible share of pixels is much brighter than the median.
+    cv::Mat bright;
+    cv::threshold(small, bright, std::min(254, median + params::kInvertedStrokeContrast), 255,
+                  cv::THRESH_BINARY);
+    const double brightFraction = static_cast<double>(cv::countNonZero(bright)) / small.total();
+    return brightFraction > params::kInvertedMinStrokeFraction && brightFraction < 0.5;
+}
+
+} // namespace pp

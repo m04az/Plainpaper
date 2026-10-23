@@ -10,6 +10,7 @@ import app.plainpaper.core.scanengine.bridge.NativeStatus
 import app.plainpaper.core.scanengine.decision.ExecutionPlan
 import app.plainpaper.core.scanengine.decision.PageFraming
 import app.plainpaper.core.scanengine.decision.RetryPolicy
+import app.plainpaper.core.scanengine.decision.StyleFallback
 import app.plainpaper.core.scanengine.decision.UserCornersValidation
 import app.plainpaper.core.scanengine.decision.WorkingResolution
 import app.plainpaper.core.scanengine.model.AnalysisFlag
@@ -123,8 +124,9 @@ public class DefaultScanEngine(
         withContext(dispatchers.default) {
             check(!analysis.isClosed) { "ScanAnalysis is closed" }
             val size = PageFraming.outputSize(options.pageSize, analysis.detectedAspect, analysis.isLandscape)
+            val style = StyleFallback.resolve(options.style, analysis.flags).style
             withCancelFlag { flag ->
-                when (val native = analysis.session.render(options.style, options.fit, size.width, size.height, flag)) {
+                when (val native = analysis.session.render(style, options.fit, size.width, size.height, flag)) {
                     is NativeRenderResult.Ready -> RenderResult.Ready(native.output)
                     is NativeRenderResult.Failure -> RenderResult.Failed(native.status.toOutcome(native.detail))
                 }

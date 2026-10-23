@@ -100,10 +100,66 @@ cv::Mat renderScan(const cv::Mat& normalizedBgr, volatile int32_t* cancel) {
     return out;
 }
 
+cv::Mat toneCurve(const cv::Mat& gray) {
+    cv::Mat lut(1, 256, CV_8U);
+    for (int i = 0; i < 256; ++i) {
+        lut.at<uint8_t>(i) =
+            cv::saturate_cast<uint8_t>(255.0 * std::pow(i / 255.0, params::kToneGamma));
+    }
+    cv::Mat out;
+    cv::LUT(gray, lut, out);
+    return out;
+}
+
 cv::Mat renderGrayscale(const cv::Mat& normalizedBgr) {
     cv::Mat gray;
     cv::cvtColor(normalizedBgr, gray, cv::COLOR_BGR2GRAY);
-    return gray;
+    return toneCurve(gray);
+}
+
+/** White paper; stamps, signatures and logos keep their hue with a little extra saturation. */
+cv::Mat renderColorDocument(const cv::Mat& normalizedBgr, volatile int32_t* cancel) {
+    cv::Mat hsv;
+    cv::cvtColor(normalizedBgr, hsv, cv::COLOR_BGR2HSV);
+    checkCancel(cancel);
+    const int paperValue = static_cast<int>(params::kPaperLuminanceFraction * 255.0);
+    for (int y = 0; y < hsv.rows; ++y) {
+        cv::Vec3b* row = hsv.ptr<cv::Vec3b>(y);
+        const cv::Vec3b* src = normalizedBgr.ptr<cv::Vec3b>(y);
+        for (int x = 0; x < hsv.cols; ++x) {
+            const int chroma = std::max({src[x][0], src[x][1], src[x][2]}) -
+                               std::min({src[x][0], src[x][1], src[x][2]});
+            if (chroma < params::kPaperChroma && row[x][2] >= paperValue) {
+                row[x][1] = 0;
+                row[x][2] = 255;
+            } else {
+                row[x][1] = cv::saturate_cast<uint8_t>(row[x][1] * params::kSaturationBoost);
+                row[x][2] = cv::saturate_cast<uint8_t>(
+                    255.0 * std::pow(row[x][2] / 255.0, params::kToneGamma));
+            }
+        }
+    }
+    cv::Mat bgr, rgba;
+    cv::cvtColor(hsv, bgr, cv::COLOR_HSV2BGR);
+    cv::cvtColor(bgr, rgba, cv::COLOR_BGR2RGBA);
+    return rgba;
+}
+
+/** Straightened photo with a brightness lift and a half-strength grey-world white balance. */
+cv::Mat renderOriginal(const pp_session& session) {
+    cv::Scalar mean = cv::mean(session.backgroundSmall);
+    const double target = (mean[0] + mean[1] + mean[2]) / 3.0;
+    cv::Scalar gain;
+    for (int c = 0; c < 3; ++c) {
+        const double full = mean[c] > 1e-3 ? target / mean[c] : 1.0;
+        gain[c] =
+            (1.0 + params::kOriginalWhiteBalance * (full - 1.0)) * params::kOriginalBrightness;
+    }
+    cv::Mat lifted;
+    cv::multiply(session.page, gain, lifted);
+    cv::Mat rgba;
+    cv::cvtColor(lifted, rgba, cv::COLOR_BGR2RGBA);
+    return rgba;
 }
 
 } // namespace
@@ -114,13 +170,17 @@ pp_status renderPage(pp_session& session, pp_style style, pp_fit fit, int outWid
     cv::Mat styled;
     pp_style styleUsed = style;
     pp_fallback_reason fallback = PP_FALLBACK_NONE;
+    if (style == PP_STYLE_SCAN && session.inverted) {
+        styleUsed = PP_STYLE_GRAYSCALE;
+        fallback = PP_FALLBACK_INVERTED;
+    }
     {
         StepTimer timer(timings, PP_STEP_RENDER);
         cv::Mat normalized;
-        if (style != PP_STYLE_ORIGINAL) {
+        if (styleUsed != PP_STYLE_ORIGINAL) {
             normalizeIllumination(session.page, session.backgroundSmall, normalized, cancel);
         }
-        switch (style) {
+        switch (styleUsed) {
         case PP_STYLE_SCAN:
             styled = renderScan(normalized, cancel);
             break;
@@ -128,10 +188,10 @@ pp_status renderPage(pp_session& session, pp_style style, pp_fit fit, int outWid
             styled = renderGrayscale(normalized);
             break;
         case PP_STYLE_COLOR_DOCUMENT:
-            cv::cvtColor(normalized, styled, cv::COLOR_BGR2RGBA);
+            styled = renderColorDocument(normalized, cancel);
             break;
         case PP_STYLE_ORIGINAL:
-            cv::cvtColor(session.page, styled, cv::COLOR_BGR2RGBA);
+            styled = renderOriginal(session);
             break;
         }
         checkCancel(cancel);
