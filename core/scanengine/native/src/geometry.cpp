@@ -43,8 +43,9 @@ double length(const cv::Point2f& a, const cv::Point2f& b) {
 
 } // namespace
 
-double estimateAspect(const Quad& quad, int /*imageWidth*/, int /*imageHeight*/) {
-    // Phase 2: ratio of averaged side lengths. The vanishing-point estimate lands with US1.
+namespace {
+
+double sideRatio(const Quad& quad) {
     const double top = length(quad[0], quad[1]);
     const double bottom = length(quad[3], quad[2]);
     const double left = length(quad[0], quad[3]);
@@ -54,11 +55,67 @@ double estimateAspect(const Quad& quad, int /*imageWidth*/, int /*imageHeight*/)
     if (height <= 1.0) {
         return 1.0;
     }
-    return std::clamp(width / height, 0.1, 10.0);
+    return width / height;
 }
 
-Geometry planGeometry(const AnalyzeContext& ctx, const Quad& quad, int pageLongEdge) {
+} // namespace
+
+/**
+ * Physical aspect ratio (width / height) of the page from its projected corners, following
+ * Zhang & He ("Whiteboard scanning and image enhancement"): the focal length is recovered from
+ * the two vanishing directions when the perspective is strong enough; otherwise the averaged
+ * side lengths are used (frontal shots make the estimate ill-conditioned).
+ */
+double estimateAspect(const Quad& quad, int imageWidth, int imageHeight) {
+    const double fallback = std::clamp(sideRatio(quad), 0.1, 10.0);
+    const double u0 = imageWidth / 2.0;
+    const double v0 = imageHeight / 2.0;
+    // m1 = TL, m2 = TR, m3 = BL, m4 = BR as homogeneous vectors around the principal point.
+    const cv::Vec3d m1(quad[0].x - u0, quad[0].y - v0, 1.0);
+    const cv::Vec3d m2(quad[1].x - u0, quad[1].y - v0, 1.0);
+    const cv::Vec3d m3(quad[3].x - u0, quad[3].y - v0, 1.0);
+    const cv::Vec3d m4(quad[2].x - u0, quad[2].y - v0, 1.0);
+    const double k2 =
+        ((m1 - m4).cross(m3)).dot(m2.cross(m3)) / (((m2 - m4).cross(m3)).dot(m2.cross(m3)));
+    const double k3 =
+        ((m1 - m4).cross(m2)).dot(m3.cross(m2)) / (((m3 - m4).cross(m2)).dot(m3.cross(m2)));
+    if (!std::isfinite(k2) || !std::isfinite(k3)) {
+        return fallback;
+    }
+    const cv::Vec3d n2 = k2 * m2 - m1;
+    const cv::Vec3d n3 = k3 * m3 - m1;
+    // Near-frontal: the perspective carries no focal information; trust the side lengths.
+    if (std::abs(k2 - 1.0) < 1e-3 || std::abs(k3 - 1.0) < 1e-3 || std::abs(n2[2]) < 1e-6 ||
+        std::abs(n3[2]) < 1e-6) {
+        return fallback;
+    }
+    const double f2 = -(n2[0] * n3[0] + n2[1] * n3[1]) / (n2[2] * n3[2]);
+    if (!(f2 > 0.0)) {
+        return fallback;
+    }
+    const double ratio = std::sqrt((n2[0] * n2[0] + n2[1] * n2[1]) / f2 + n2[2] * n2[2]) /
+                         std::sqrt((n3[0] * n3[0] + n3[1] * n3[1]) / f2 + n3[2] * n3[2]);
+    if (!std::isfinite(ratio) || ratio <= 0.0) {
+        return fallback;
+    }
+    // Guard against wild focal estimates on nearly-rectangular quads: stay within 25% of the
+    // side-length ratio, which is accurate when the perspective is weak.
+    const double clamped = std::clamp(ratio, fallback * 0.75, fallback * 1.25);
+    return std::clamp(clamped, 0.1, 10.0);
+}
+
+Geometry planGeometry(const AnalyzeContext& ctx, const Quad& source, int pageLongEdge) {
     Geometry geometry;
+    // Shrink slightly towards the centre: a corner a pixel outside the page would otherwise
+    // drag desk pixels onto the page border.
+    cv::Point2f centre(0.f, 0.f);
+    for (const auto& p : source) {
+        centre += p * 0.25f;
+    }
+    Quad quad;
+    for (int i = 0; i < 4; ++i) {
+        quad[i] = source[i] + (centre - source[i]) * static_cast<float>(params::kQuadInset);
+    }
     geometry.quad = quad;
     geometry.aspect = estimateAspect(quad, ctx.photo->width, ctx.photo->height);
     // Do not upscale beyond the source resolution of the quad.

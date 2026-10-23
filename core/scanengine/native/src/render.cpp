@@ -1,14 +1,15 @@
 #include "cancel.hpp"
 #include "errors.hpp"
+#include "params.hpp"
 #include "stages.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <opencv2/imgproc.hpp>
 
-// Style rendering and page framing (research R8, R9). Phase 2 skeleton: every style returns the
-// illumination-normalised page fitted into the output frame (grey for 1-channel styles).
+// Style rendering and page framing (research R8, R9).
 namespace pp {
 
 namespace {
@@ -51,20 +52,80 @@ void exportImage(const cv::Mat& image, pp_output_image* out) {
     out->stride_bytes = static_cast<int32_t>(stride);
 }
 
+/**
+ * Sauvola threshold on the normalised luminance with an "ink floor": flat regions (local
+ * std-dev below kInkFloorStdDev) are paper whatever their mean, so blank areas stay clean.
+ * Returns an 8-bit mask where ink = 255.
+ */
+cv::Mat sauvolaInk(const cv::Mat& gray, volatile int32_t* cancel) {
+    const int window = std::max(
+        15, static_cast<int>(params::kSauvolaWindow * gray.cols / params::kSauvolaReferenceWidth));
+    const int w = (window % 2 == 0) ? window + 1 : window;
+    cv::Mat mean, sq, meanF, sqF;
+    cv::boxFilter(gray, mean, CV_32F, cv::Size(w, w), cv::Point(-1, -1), true, cv::BORDER_REFLECT);
+    checkCancel(cancel);
+    cv::Mat grayF;
+    gray.convertTo(grayF, CV_32F);
+    cv::boxFilter(grayF.mul(grayF), sq, CV_32F, cv::Size(w, w), cv::Point(-1, -1), true,
+                  cv::BORDER_REFLECT);
+    checkCancel(cancel);
+    cv::Mat variance = sq - mean.mul(mean);
+    cv::Mat stddev;
+    cv::sqrt(cv::max(variance, 0.0f), stddev);
+    // T = m * (1 + k * (s / R - 1))
+    cv::Mat threshold =
+        mean.mul(1.0f + static_cast<float>(params::kSauvolaK) *
+                            (stddev / static_cast<float>(params::kSauvolaR) - 1.0f));
+    cv::Mat ink = (grayF < threshold) & (stddev > static_cast<float>(params::kInkFloorStdDev));
+    // Also require a minimum absolute darkness so JPEG ringing on white paper never becomes ink.
+    cv::Mat darkEnough = grayF < static_cast<float>(params::kInkMaxLuminance);
+    cv::bitwise_and(ink, darkEnough, ink);
+    return ink;
+}
+
+cv::Mat renderScan(const cv::Mat& normalizedBgr, volatile int32_t* cancel) {
+    cv::Mat gray;
+    cv::cvtColor(normalizedBgr, gray, cv::COLOR_BGR2GRAY);
+    cv::Mat ink = sauvolaInk(gray, cancel);
+    cv::medianBlur(ink, ink, 3);
+    checkCancel(cancel);
+    // Anti-aliased composite: soften the mask edge so strokes stay crisp but not jagged.
+    cv::Mat alpha;
+    ink.convertTo(alpha, CV_32F, 1.0 / 255.0);
+    cv::GaussianBlur(alpha, alpha, cv::Size(0, 0), params::kInkEdgeSigma);
+    cv::Mat out;
+    cv::Mat white = cv::Mat::ones(alpha.size(), CV_32F) * 255.0f;
+    cv::Mat composite = white.mul(1.0f - alpha);
+    composite.convertTo(out, CV_8U);
+    return out;
+}
+
+cv::Mat renderGrayscale(const cv::Mat& normalizedBgr) {
+    cv::Mat gray;
+    cv::cvtColor(normalizedBgr, gray, cv::COLOR_BGR2GRAY);
+    return gray;
+}
+
 } // namespace
 
 pp_status renderPage(pp_session& session, pp_style style, pp_fit fit, int outWidth, int outHeight,
                      volatile int32_t* cancel, pp_output_image* out) {
     Timings timings;
     cv::Mat styled;
+    pp_style styleUsed = style;
+    pp_fallback_reason fallback = PP_FALLBACK_NONE;
     {
         StepTimer timer(timings, PP_STEP_RENDER);
         cv::Mat normalized;
-        normalizeIllumination(session.page, session.backgroundSmall, normalized, cancel);
+        if (style != PP_STYLE_ORIGINAL) {
+            normalizeIllumination(session.page, session.backgroundSmall, normalized, cancel);
+        }
         switch (style) {
         case PP_STYLE_SCAN:
+            styled = renderScan(normalized, cancel);
+            break;
         case PP_STYLE_GRAYSCALE:
-            cv::cvtColor(normalized, styled, cv::COLOR_BGR2GRAY);
+            styled = renderGrayscale(normalized);
             break;
         case PP_STYLE_COLOR_DOCUMENT:
             cv::cvtColor(normalized, styled, cv::COLOR_BGR2RGBA);
@@ -82,8 +143,8 @@ pp_status renderPage(pp_session& session, pp_style style, pp_fit fit, int outWid
         checkCancel(cancel);
     }
     exportImage(framed, out);
-    out->style_used = style;
-    out->fallback_reason = PP_FALLBACK_NONE;
+    out->style_used = styleUsed;
+    out->fallback_reason = fallback;
     out->steps[0] = timings.steps[0];
     out->steps[1] = timings.steps[1];
     return PP_OK;
