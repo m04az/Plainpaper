@@ -16,6 +16,15 @@ scanner. This feature delivers the engine, its quality reference set and its mea
 harness. It has no screens of its own; the camera (Feature 3) and the review screen
 (Feature 4) will call it. Everything runs on the device and nothing leaves it.
 
+## Clarifications
+
+### Session 2026-10-23
+
+- Q: Where will the reference photos come from, given that the set must include identity documents and other personal paperwork? → A: The project owner photographs their own documents with their phone (own ID with sensitive fields physically covered before photographing, receipts, printed Arabic/English/French pages, curled and folded pages, dark rooms); the set lives in the repository.
+- Q: Which competitor apps are compared, and how are their outputs captured? → A: Adobe Scan, Microsoft Lens and CamScanner. Each reference photo is imported from the gallery into each app (never re-photographed), processed with the app's default document mode, exported at its best quality, stored next to the reference photo, captured once and dated.
+- Q: Which physical reference devices verify the timing targets? → A: Mid-range = the owner's physical Android phone (6 GB class) and iPhone; low-end = an Android emulator constrained to 2 GB of memory and 2 cores until a physical low-end phone is available. Every benchmark result records the device name and build.
+- Q: Is machine-learning page flattening in scope for this feature? → A: No. The engine flattens single-axis curl using classical text-line analysis on capable devices only; learned dewarping of folded or heavily warped pages is deferred to a later feature, and folded pages are perspective-corrected only with flattening reported as skipped.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - A photo becomes a clean scanned page (Priority: P1)
@@ -171,6 +180,9 @@ competitor outputs.
 - The document is dark paper with light text (an inverted design): the Scan style must not
   invert it into unreadable noise; the engine falls back to Grayscale behaviour for that page
   and reports it.
+- A folded page with a visible crease: the page is perspective-corrected, the crease line
+  may remain, flattening is reported as skipped, and text on both sides of the fold stays
+  legible.
 - Extremely small text (6 pt) on a 12-megapixel photo: remains legible at 300 DPI.
 - Photo taken with flash producing a specular highlight: the highlight area is treated as
   paper white and text inside it is recovered where any contrast remains.
@@ -191,8 +203,10 @@ competitor outputs.
 - **FR-003**: The engine MUST correct perspective so the output page is a rectangle whose
   aspect ratio matches the chosen page size, and MUST accept user-supplied corners in place of
   detection.
-- **FR-004**: On devices that meet the capability threshold the engine MUST flatten curled or
-  folded pages so that text baselines are straight; on other devices it MUST skip this step and
+- **FR-004**: On devices that meet the capability threshold the engine MUST flatten
+  single-axis curled pages (classical text-line analysis, no learned model) so that text
+  baselines are straight; folded or heavily warped pages are perspective-corrected only and
+  flattening is reported as skipped. On other devices the engine MUST skip flattening and
   report it as skipped.
 - **FR-005**: The engine MUST remove shadows and uneven lighting so paper luminance is uniform
   across the page.
@@ -225,15 +239,17 @@ competitor outputs.
   IDs and cards, receipts, curled pages, folded pages, dark rooms, hard shadows, low-contrast
   backgrounds, Arabic text, English text, French text, mixed Arabic/English, stamps and
   signatures, photos with no page. Each photo MUST have an expected corner rectangle and,
-  where applicable, a ground-truth text transcription for legibility scoring.
+  where applicable, a ground-truth text transcription for legibility scoring. Identity
+  documents in the set MUST be the owner's own with sensitive fields physically covered
+  before photographing; no photo may contain readable personal data of anyone else.
 - **FR-016**: An automated quality suite MUST run the engine on the whole reference set and
   compute per-photo metrics: corner detection error, paper whiteness, text contrast,
   legibility (text recognition accuracy against the transcription), straightness of text
   lines, and processing time. Aggregate thresholds MUST be defined and the suite MUST fail
   when any threshold is missed.
-- **FR-017**: For each reference photo that has a stored competitor output, the suite MUST
-  compute the same metrics on the competitor output and report per-photo and overall
-  "matches or beats" results.
+- **FR-017**: For each reference photo that has a stored competitor output (Adobe Scan,
+  Microsoft Lens, CamScanner), the suite MUST compute the same metrics on the competitor
+  output and report per-photo and overall "matches or beats" results.
 - **FR-018**: The quality suite MUST run on every pull request that touches the engine, and a
   pull request that lowers an aggregate metric below its threshold MUST NOT be mergeable.
 - **FR-019**: The engine MUST expose its capability decision (full or simplified pipeline) and
@@ -289,19 +305,25 @@ competitor outputs.
 - The engine is delivered as a shared capability with no user interface; the camera (Feature
   3) and review (Feature 4) screens integrate it. A developer-only test entry (reference
   suite and a benchmark) is enough to validate it.
-- Reference devices: mid-range = a 2022–2023 phone with 6 GB of memory and an upper-mid
-  processor; low-end = a 2019–2021 phone with 2–3 GB of memory. Exact models are chosen in
-  the plan and recorded with the benchmark results. On CI the suite runs on an emulator or
-  simulator for correctness, while timing targets are validated on physical devices.
-- The reference set is provided by the project owner from real-world photos they have the
-  right to use; identity documents in the set are the owner's own or samples that contain no
-  real personal data. The set lives in the repository (or in a versioned archive the suite
-  downloads at build time if it grows beyond a few hundred megabytes).
-- Competitor outputs are produced manually, once, by scanning each reference photo with the
-  chosen competitor apps and exporting at the same page size; they are stored alongside the
-  reference photo and never updated automatically.
+- Reference devices: mid-range = the owner's physical Android phone (6 GB class) and
+  iPhone; low-end = an Android emulator constrained to 2 GB of memory and 2 cores until a
+  physical low-end phone is available. Every benchmark result records the device name and
+  build. On CI the suite runs on an emulator or simulator for correctness only; timing
+  targets are validated on the reference devices.
+- The reference set is photographed by the project owner from their own documents with
+  their phone, so it is real, legally clean and matches the target audience's conditions.
+  Identity documents are the owner's own with sensitive fields physically covered before
+  photographing. The set lives in the repository (moved to a versioned archive the suite
+  downloads at build time only if it grows beyond a few hundred megabytes).
+- Competitor outputs come from Adobe Scan, Microsoft Lens and CamScanner. Each reference
+  photo is imported from the gallery into each app (never re-photographed), processed with
+  the app's default document mode and exported at its best quality. Outputs are captured
+  once, dated, stored alongside the reference photo and never updated automatically.
 - Capability threshold default: a device is "capable" of page flattening when it reports at
   least 4 GB of memory and a 64-bit processor; otherwise it uses the simplified pipeline.
+- Page flattening in this feature is classical (text-line based) and handles single-axis
+  curl only. Learned dewarping for folded or heavily warped pages is out of scope and
+  deferred to a later feature.
 - "Legibility" is measured with the on-device text recognition capability planned for
   Feature 8 where available, and with a desktop text recogniser in the quality suite; the
   metric compares recognised text to the stored transcription.

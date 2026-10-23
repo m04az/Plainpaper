@@ -31,7 +31,10 @@
 
 ## Notes
 
-- Validation pass 1 (2026-10-23): all items pass. Open decisions that materially affect
+- Validation pass 1 (2026-10-23): all items pass.
+- Validation pass 2 (2026-10-23, after /speckit-clarify): all 16 items still pass; the four open
+  decisions below are now recorded under `## Clarifications` and folded into FR-004, FR-015,
+  FR-017, Edge Cases and Assumptions. Open decisions that materially affect
   scope are recorded as Assumptions and will be confirmed in `/speckit-clarify`: who supplies
   the reference photos (privacy of ID photos), which competitor apps and how their outputs are
   captured, and the exact reference devices.
