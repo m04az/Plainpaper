@@ -35,6 +35,7 @@ import app.plainpaper.scanengine.cinterop.pp_session_destroy
 import app.plainpaper.scanengine.cinterop.pp_session_info
 import cnames.structs.pp_engine
 import cnames.structs.pp_session
+import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.CPointerVar
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -70,7 +71,7 @@ import platform.Foundation.create
 private const val STEP_STATUS_FAILED = 6
 
 /** Kotlin/Native cinterop transport over the C API (research R3). */
-@OptIn(ExperimentalForeignApi::class)
+@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 internal class CinteropNativeBridge : NativeBridge {
     private val engine: CPointer<pp_engine> by lazy { requireNotNull(pp_engine_create()) { "pp_engine_create" } }
 
@@ -173,8 +174,8 @@ internal class CinteropNativeBridge : NativeBridge {
                             ),
                         ],
                     detectedAspect = info.detected_aspect,
-                    invertedDocument = info.flags and PP_FLAG_INVERTED_DOCUMENT.toUInt() != 0u,
-                    specularHighlight = info.flags and PP_FLAG_SPECULAR_HIGHLIGHT.toUInt() != 0u,
+                    invertedDocument = info.flags and PP_FLAG_INVERTED_DOCUMENT != 0u,
+                    specularHighlight = info.flags and PP_FLAG_SPECULAR_HIGHLIGHT != 0u,
                     steps = steps,
                     peakBytes = info.peak_bytes,
                 )
@@ -249,7 +250,7 @@ internal class CinteropNativeBridge : NativeBridge {
         channels: Int,
         strideBytes: Int,
     ): CGImageRef? {
-        val cfData = CFBridgingRetain(data) as CFDataRef?
+        val cfData: CFDataRef? = CFBridgingRetain(data)?.reinterpret()
         val provider = CGDataProviderCreateWithCFData(cfData)
         val colorSpace = if (channels == 1) CGColorSpaceCreateDeviceGray() else CGColorSpaceCreateDeviceRGB()
         val bitmapInfo =

@@ -4,6 +4,7 @@ package app.plainpaper.core.scanengine
 
 import app.plainpaper.core.domain.coroutines.DispatcherProvider
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.reinterpret
 import kotlinx.coroutines.withContext
 import platform.CoreFoundation.CFDictionaryRef
 import platform.CoreFoundation.CFRelease
@@ -37,7 +38,7 @@ public class IosPhotoDecoder(
             if (!NSFileManager.defaultManager.fileExistsAtPath(path)) {
                 return@withContext DecodeResult.Failed(DecodeFailure.NotFound)
             }
-            val url = CFBridgingRetain(NSURL.fileURLWithPath(path)) as CFURLRef?
+            val url: CFURLRef? = CFBridgingRetain(NSURL.fileURLWithPath(path))?.reinterpret()
             val source = CGImageSourceCreateWithURL(url, null)
             if (url != null) CFRelease(url)
             if (source == null) return@withContext DecodeResult.Failed(DecodeFailure.UnsupportedFormat)
@@ -49,7 +50,7 @@ public class IosPhotoDecoder(
                     CFBridgingRelease(kCGImageSourceCreateThumbnailWithTransform) to true,
                     CFBridgingRelease(kCGImageSourceThumbnailMaxPixelSize) to NSNumber(int = maxEdge),
                 )
-            val cfOptions = CFBridgingRetain(options) as CFDictionaryRef?
+            val cfOptions: CFDictionaryRef? = CFBridgingRetain(options)?.reinterpret()
             val image = CGImageSourceCreateThumbnailAtIndex(source, 0u, cfOptions)
             if (cfOptions != null) CFRelease(cfOptions)
             CFRelease(source)
