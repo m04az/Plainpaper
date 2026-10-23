@@ -1,3 +1,4 @@
+#include "cancel.hpp"
 #include "debug.hpp"
 #include "params.hpp"
 #include "stages.hpp"
@@ -518,15 +519,19 @@ DetectResult detectPage(AnalyzeContext& ctx) {
     cv::Mat gray;
     cv::cvtColor(ctx.working, gray, cv::COLOR_BGR2GRAY);
     const double frameArea = static_cast<double>(gray.rows) * gray.cols;
+    checkCancel(ctx.cancel);
     cv::Mat edges = edgeMap(gray);
     debugDump("working", ctx.working);
     debugDump("edges-primary", edges);
+    checkCancel(ctx.cancel);
 
     Candidate best;
     bool found = fromContours(edges, edges, frameArea, cv::RETR_LIST, best);
     bool lowConfidenceOnly = false;
+    checkCancel(ctx.cancel);
     if (!found) {
         found = houghCandidate(edges, frameArea, kHoughStrict, best);
+        checkCancel(ctx.cancel);
     }
     if (found) {
         debugLog("primary quad: area support score", best.areaFraction, best.minSupport,
@@ -536,6 +541,7 @@ DetectResult detectPage(AnalyzeContext& ctx) {
     if (!found) {
         // Low-contrast pass (paper on a pale desk): smoothed, low-threshold edges in Lab.
         cv::Mat faint = lowContrastEdgeMap(ctx.working);
+        checkCancel(ctx.cancel);
         debugDump("edges-faint", faint);
         Candidate faintCandidate;
         const bool faintFound =
@@ -553,6 +559,7 @@ DetectResult detectPage(AnalyzeContext& ctx) {
         }
     }
 
+    checkCancel(ctx.cancel);
     if (!found) {
         // Bright-region hull: the largest Otsu-bright blob, for pages whose outline is broken.
         // It must be clearly brighter than its surroundings, or it is just noise split in two.

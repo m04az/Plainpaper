@@ -3,6 +3,7 @@
 #include "stages.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <opencv2/imgproc.hpp>
 
 // Illumination normalisation (research R5 step 7): the paper level is estimated per channel by a
@@ -20,9 +21,11 @@ int oddKernel(double size) {
 
 } // namespace
 
-cv::Mat estimateBackground(const cv::Mat& pageBgr, int workingLongEdge) {
-    const double scale =
-        std::min(1.0, static_cast<double>(workingLongEdge) / std::max(pageBgr.cols, pageBgr.rows));
+cv::Mat estimateBackground(const cv::Mat& pageBgr, int /*workingLongEdge*/) {
+    // The paper level is low-frequency: estimating it at kBackgroundLongEdge keeps the
+    // morphology cheap (the kernels shrink with the image) and the result is upsampled later.
+    const double scale = std::min(1.0, static_cast<double>(params::kBackgroundLongEdge) /
+                                           std::max(pageBgr.cols, pageBgr.rows));
     cv::Mat small;
     if (scale < 1.0) {
         cv::resize(pageBgr, small, cv::Size(), scale, scale, cv::INTER_AREA);
@@ -54,15 +57,33 @@ cv::Mat estimateBackground(const cv::Mat& pageBgr, int workingLongEdge) {
 
 void normalizeIllumination(const cv::Mat& page, const cv::Mat& backgroundSmall, cv::Mat& out,
                            volatile int32_t* cancel) {
-    cv::Mat background;
-    cv::resize(backgroundSmall, background, page.size(), 0, 0, cv::INTER_LINEAR);
-    checkCancel(cancel);
-    cv::Mat pageF;
-    page.convertTo(pageF, CV_32FC3);
-    cv::Mat reflectance;
-    cv::divide(pageF, background, reflectance, params::kWhitePoint);
-    checkCancel(cancel);
-    reflectance.convertTo(out, CV_8UC3);
+    // Banded: the float temporaries cover kNormalizeBandRows rows at a time instead of the whole
+    // page (a full-page float copy would be three times the page size, three times over).
+    out.create(page.size(), CV_8UC3);
+    const double scaleX = static_cast<double>(backgroundSmall.cols) / page.cols;
+    const double scaleY = static_cast<double>(backgroundSmall.rows) / page.rows;
+    for (int y0 = 0; y0 < page.rows; y0 += params::kNormalizeBandRows) {
+        checkCancel(cancel);
+        const int y1 = std::min(page.rows, y0 + params::kNormalizeBandRows);
+        // Background rows for this band, upsampled with a one-row overlap for the interpolation.
+        const int by0 = std::max(0, static_cast<int>(y0 * scaleY) - 1);
+        const int by1 =
+            std::min(backgroundSmall.rows, static_cast<int>(std::ceil(y1 * scaleY)) + 1);
+        cv::Mat background;
+        cv::resize(backgroundSmall.rowRange(by0, by1), background,
+                   cv::Size(page.cols, static_cast<int>(std::lround((by1 - by0) / scaleY))), 0, 0,
+                   cv::INTER_LINEAR);
+        const int offset = y0 - static_cast<int>(std::lround(by0 / scaleY));
+        cv::Mat bandBackground = background.rowRange(
+            std::clamp(offset, 0, std::max(0, background.rows - (y1 - y0))),
+            std::clamp(offset, 0, std::max(0, background.rows - (y1 - y0))) + (y1 - y0));
+        cv::Mat bandF;
+        page.rowRange(y0, y1).convertTo(bandF, CV_32FC3);
+        cv::Mat reflectance;
+        cv::divide(bandF, bandBackground, reflectance, params::kWhitePoint);
+        reflectance.convertTo(out.rowRange(y0, y1), CV_8UC3);
+    }
+    (void)scaleX;
 }
 
 bool hasSpecularHighlight(const cv::Mat& workingBgr) {

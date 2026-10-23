@@ -1,6 +1,7 @@
 #include "cancel.hpp"
 #include "debug.hpp"
 #include "errors.hpp"
+#include "memory.hpp"
 #include "params.hpp"
 #include "session.hpp"
 #include "stages.hpp"
@@ -101,7 +102,6 @@ void prepareWorking(AnalyzeContext& ctx) {
         workingRgba = ctx.photoView;
     }
     cv::cvtColor(workingRgba, ctx.working, cv::COLOR_RGBA2BGR);
-    ctx.memory.hold(ctx.working);
     checkCancel(ctx.cancel);
 }
 
@@ -134,6 +134,8 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
                       pp_session** outSession) {
     validateInput(photo, options);
     configureThreads(options->capability);
+    CountingAllocator::install();
+    CountingAllocator::instance().resetPeak();
 
     AnalyzeContext ctx;
     ctx.photo = photo;
@@ -151,6 +153,7 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
     DetectResult detected;
     {
         StepTimer timer(ctx.timings, PP_STEP_DETECT);
+        maybeFailAllocation(PP_STEP_DETECT);
         if (options->user_corners != nullptr) {
             for (int i = 0; i < 4; ++i) {
                 detected.quad[i] =
@@ -166,6 +169,9 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
         checkCancel(cancel);
     }
 
+    debugLog("mem after decode+detect: live MB / peak MB",
+             CountingAllocator::instance().liveBytes() / 1e6,
+             CountingAllocator::instance().peakBytes() / 1e6, 0);
     // 2. Geometry plan (aspect, page size) + deskew/orientation decided on a preview.
     const int pageLongEdge =
         ctx.fullCapability ? params::kPageLongEdgeFull : params::kPageLongEdgeSimplified;
@@ -192,7 +198,7 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
         if (geometry.rotation == 90) {
             cv::rotate(previewGray, axisGray, cv::ROTATE_90_CLOCKWISE);
         }
-        geometry.deskewDeg = estimateDeskewDegrees(axisGray);
+        geometry.deskewDeg = estimateDeskewDegrees(axisGray, cancel);
         debugLog("deskew: preview degrees", geometry.deskewDeg, geometry.rotation, 0);
         if (std::abs(geometry.deskewDeg) < 0.3) {
             geometry.deskewDeg = 0.0;
@@ -201,16 +207,21 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
         checkCancel(cancel);
     }
 
+    debugLog("mem after deskew/axis: live MB / peak MB",
+             CountingAllocator::instance().liveBytes() / 1e6,
+             CountingAllocator::instance().peakBytes() / 1e6, 0);
     // 3. Full-resolution warp (banded, cancellable), then rotation to upright.
     auto session = std::make_unique<pp_session>();
     {
         StepTimer timer(ctx.timings, PP_STEP_PERSPECTIVE);
+        maybeFailAllocation(PP_STEP_PERSPECTIVE);
         session->page = warpPage(ctx, geometry);
-        ctx.memory.hold(session->page);
         applyRotation(session->page, geometry.rotation);
         checkCancel(cancel);
     }
 
+    debugLog("mem after warp: live MB / peak MB", CountingAllocator::instance().liveBytes() / 1e6,
+             CountingAllocator::instance().peakBytes() / 1e6, 0);
     // 4. Up/down vote on the crisp page (working resolution, illumination-normalised, strips
     //    tolerate curl); a flip rotates the page before flattening.
     {
@@ -226,7 +237,7 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
         cv::cvtColor(normalized, gray, cv::COLOR_BGR2GRAY);
         pp_orientation_confidence orientationConfidence = PP_ORIENT_NONE;
         const bool upsideDown =
-            estimateUpsideDown(gray, orientationConfidence, params::kOrientStrips);
+            estimateUpsideDown(gray, orientationConfidence, params::kOrientStrips, cancel);
         debugLog("orient: upside-down / confidence", upsideDown ? 1 : 0, orientationConfidence, 0);
         geometry.orientationConfidence = orientationConfidence;
         if (upsideDown) {
@@ -239,6 +250,8 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
         checkCancel(cancel);
     }
 
+    debugLog("mem after orient: live MB / peak MB", CountingAllocator::instance().liveBytes() / 1e6,
+             CountingAllocator::instance().peakBytes() / 1e6, 0);
     // 5. Flattening (Full capability only). Bowed lines fool the pre-warp tilt estimate, so a
     //    flattened page gets a second, residual deskew.
     {
@@ -257,7 +270,7 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
                 cv::resize(session->page, small, cv::Size(), scale, scale, cv::INTER_AREA);
                 cv::Mat smallGray;
                 cv::cvtColor(small, smallGray, cv::COLOR_BGR2GRAY);
-                const double residual = estimateDeskewDegrees(smallGray);
+                const double residual = estimateDeskewDegrees(smallGray, cancel);
                 debugLog("flatten: residual deskew degrees", residual, 0, 0);
                 if (std::abs(residual) >= 0.3) {
                     cv::Mat rotation = cv::getRotationMatrix2D(
@@ -274,7 +287,8 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
                                       normalizedSmall, cancel);
                 cv::cvtColor(normalizedSmall, smallGray, cv::COLOR_BGR2GRAY);
                 pp_orientation_confidence revoteConfidence = PP_ORIENT_NONE;
-                const bool stillUpsideDown = estimateUpsideDown(smallGray, revoteConfidence, 1);
+                const bool stillUpsideDown =
+                    estimateUpsideDown(smallGray, revoteConfidence, 1, cancel);
                 debugLog("flatten: re-vote upside-down / confidence", stillUpsideDown ? 1 : 0,
                          revoteConfidence, 0);
                 if (stillUpsideDown && revoteConfidence == PP_ORIENT_HIGH) {
@@ -287,6 +301,9 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
         checkCancel(cancel);
     }
 
+    debugLog("mem after flatten: live MB / peak MB",
+             CountingAllocator::instance().liveBytes() / 1e6,
+             CountingAllocator::instance().peakBytes() / 1e6, 0);
     // 6. Illumination estimate (applied at render time so Original keeps the raw page).
     {
         StepTimer timer(ctx.timings, PP_STEP_ILLUMINATION);
@@ -294,6 +311,9 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
         checkCancel(cancel);
     }
 
+    debugLog("mem after background: live MB / peak MB",
+             CountingAllocator::instance().liveBytes() / 1e6,
+             CountingAllocator::instance().peakBytes() / 1e6, 0);
     session->inverted = (ctx.flags & PP_FLAG_INVERTED_DOCUMENT) != 0;
 
     // Report.
@@ -312,7 +332,11 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
     info.flags = ctx.flags;
     info.step_count = ctx.timings.count;
     std::memcpy(info.steps, ctx.timings.steps, sizeof(info.steps));
-    info.peak_bytes = ctx.memory.peak();
+    info.peak_bytes = CountingAllocator::instance().peakBytes();
+    for (int i = 0; i < info.step_count; ++i) {
+        debugLog("step / status / ms", info.steps[i].step, info.steps[i].status,
+                 info.steps[i].micros / 1000.0);
+    }
     session->timings = ctx.timings;
 
     *outSession = session.release();

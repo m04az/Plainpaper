@@ -94,6 +94,10 @@ public object JniScanBridge {
 
     @JvmStatic
     public external fun nativeLastError(): String
+
+    /** Host builds only (tests): the native stage with this index throws std::bad_alloc; -1 disables. */
+    @JvmStatic
+    public external fun nativeDebugFailAllocationAtStage(stage: Int)
 }
 
 /** Loads `libplainpaper_scan` once; Android uses `System.loadLibrary`, the host a path property. */

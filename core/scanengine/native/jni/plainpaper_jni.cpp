@@ -5,6 +5,10 @@
  */
 #include "plainpaper_scan.h"
 
+#if defined(PP_HOST)
+#include "memory.hpp"
+#endif
+
 #include <atomic>
 #include <cstdint>
 #include <cstring>
@@ -267,6 +271,13 @@ jstring nativeLastError(JNIEnv* env, jclass) {
     return env->NewStringUTF(pp_last_error());
 }
 
+#if defined(PP_HOST)
+/** Test hook: the stage with this index throws std::bad_alloc (-1 disables). Host builds only. */
+void nativeDebugFailAllocationAtStage(JNIEnv*, jclass, jint stage) {
+    pp::setFailAllocationAtStage(stage);
+}
+#endif
+
 /** JNINativeMethod carries non-const char pointers; the literals are never written. */
 JNINativeMethod method(const char* name, const char* signature, void* function) {
     return JNINativeMethod{const_cast<char*>(name), const_cast<char*>(signature), function};
@@ -290,6 +301,10 @@ const JNINativeMethod kMethods[] = {
     method("nativeRenderToBytes", "(JIIIIJ[J)[B", reinterpret_cast<void*>(nativeRenderToBytes)),
     method("nativeSessionDestroy", "(J)V", reinterpret_cast<void*>(nativeSessionDestroy)),
     method("nativeLastError", "()Ljava/lang/String;", reinterpret_cast<void*>(nativeLastError)),
+#if defined(PP_HOST)
+    method("nativeDebugFailAllocationAtStage", "(I)V",
+           reinterpret_cast<void*>(nativeDebugFailAllocationAtStage)),
+#endif
 };
 
 } // namespace

@@ -135,13 +135,17 @@ constexpr int kOrientStrips = 3;
 namespace pp::params {
 
 // ---- illumination (research R5 step 7) ----
-/** Closing kernel as a fraction of the working page width (must exceed text stroke/line size). */
-constexpr double kBackgroundClosingFraction = 1.0 / 25.0;
+/** Long edge at which the paper level is estimated. */
+constexpr int kBackgroundLongEdge = 500;
+/** Closing kernel as a fraction of the background image width (must exceed text line height). */
+constexpr double kBackgroundClosingFraction = 1.0 / 20.0;
 constexpr double kBackgroundMedianFraction = 1.0 / 40.0;
 /** Final smoothing of the background estimate (px at working resolution). */
 constexpr double kBackgroundBlurSigma = 1.5;
 /** Background floor relative to the page's paper level (limits brightening of dark regions). */
 constexpr double kBackgroundFloor = 0.45;
+/** Rows per band for the illumination division (bounds the float temporaries). */
+constexpr int kNormalizeBandRows = 256;
 /** Reflectance scale: paper maps to this value (slightly above 255 so paper clips to white). */
 constexpr double kWhitePoint = 262.0;
 /** Specular highlight: more than this fraction of working pixels above this luminance. */
@@ -173,6 +177,8 @@ constexpr int kSauvolaWindow = 31;
 constexpr double kSauvolaReferenceWidth = 2000.0;
 constexpr double kSauvolaK = 0.2;
 constexpr double kSauvolaR = 128.0;
+/** Rows per band for the Sauvola threshold (bounds the float temporaries). */
+constexpr int kSauvolaBandRows = 256;
 /** Regions with local std-dev below this are blank paper, whatever their mean. */
 constexpr double kInkFloorStdDev = 4.0;
 /** Pixels brighter than this (0..255) are never ink. */

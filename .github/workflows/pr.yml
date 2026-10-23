@@ -180,14 +180,15 @@ jobs:
           key: plainpaper-downloads-${{ hashFiles('gradle/libs.versions.toml') }}
       - name: Warm up Kotlin/Native and Gradle caches
         run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
-      - name: Build iOS app (simulator)
+      - name: Build iOS app and benchmark test bundle (simulator)
         # The "Compile Kotlin Framework" run-script phase in the Xcode project runs
         # ./gradlew :composeApp:embedAndSignAppleFrameworkForXcode, which places ComposeApp.framework
-        # under composeApp/build/xcode-frameworks/<CONFIGURATION>/<SDK_NAME>.
+        # under composeApp/build/xcode-frameworks/<CONFIGURATION>/<SDK_NAME>. build-for-testing also
+        # compiles the ScanBenchmarkTests target (run manually on a device, research R16).
         run: |
           xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-            ARCHS=arm64 CODE_SIGNING_ALLOWED=NO build
+            ARCHS=arm64 CODE_SIGNING_ALLOWED=NO build-for-testing
 
   scan-quality:
     name: scan-quality

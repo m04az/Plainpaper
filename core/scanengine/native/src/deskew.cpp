@@ -1,3 +1,4 @@
+#include "cancel.hpp"
 #include "params.hpp"
 #include "stages.hpp"
 
@@ -53,7 +54,7 @@ double profileVariance(const cv::Mat& ink, double degrees) {
 
 } // namespace
 
-double estimateDeskewDegrees(const cv::Mat& grayFull) {
+double estimateDeskewDegrees(const cv::Mat& grayFull, volatile int32_t* cancel) {
     // Central crop: page borders, desk slivers and bowed edges would otherwise dominate the
     // projection profile; the tilt of the text block is what matters.
     const int marginX = static_cast<int>(grayFull.cols * params::kDeskewSideMargin);
@@ -68,6 +69,7 @@ double estimateDeskewDegrees(const cv::Mat& grayFull) {
     double bestVar = -1.0;
     for (double a = -params::kMaxDeskewDegrees; a <= params::kMaxDeskewDegrees + 1e-9;
          a += params::kDeskewCoarseStep) {
+        checkCancel(cancel);
         const double v = profileVariance(ink, a);
         if (v > bestVar) {
             bestVar = v;

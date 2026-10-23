@@ -1,5 +1,7 @@
 #include "cancel.hpp"
+#include "debug.hpp"
 #include "errors.hpp"
+#include "memory.hpp"
 #include "params.hpp"
 #include "stages.hpp"
 
@@ -62,25 +64,31 @@ cv::Mat sauvolaInk(const cv::Mat& gray, volatile int32_t* cancel) {
     const int window = std::max(
         15, static_cast<int>(params::kSauvolaWindow * gray.cols / params::kSauvolaReferenceWidth));
     const int w = (window % 2 == 0) ? window + 1 : window;
-    cv::Mat mean, sq, meanF, sqF;
-    cv::boxFilter(gray, mean, CV_32F, cv::Size(w, w), cv::Point(-1, -1), true, cv::BORDER_REFLECT);
-    checkCancel(cancel);
-    cv::Mat grayF;
-    gray.convertTo(grayF, CV_32F);
-    cv::boxFilter(grayF.mul(grayF), sq, CV_32F, cv::Size(w, w), cv::Point(-1, -1), true,
-                  cv::BORDER_REFLECT);
-    checkCancel(cancel);
-    cv::Mat variance = sq - mean.mul(mean);
-    cv::Mat stddev;
-    cv::sqrt(cv::max(variance, 0.0f), stddev);
-    // T = m * (1 + k * (s / R - 1))
-    cv::Mat threshold =
-        mean.mul(1.0f + static_cast<float>(params::kSauvolaK) *
-                            (stddev / static_cast<float>(params::kSauvolaR) - 1.0f));
-    cv::Mat ink = (grayF < threshold) & (stddev > static_cast<float>(params::kInkFloorStdDev));
-    // Also require a minimum absolute darkness so JPEG ringing on white paper never becomes ink.
-    cv::Mat darkEnough = grayF < static_cast<float>(params::kInkMaxLuminance);
-    cv::bitwise_and(ink, darkEnough, ink);
+    const int halo = w; // rows of context above/below each band so the box filters are exact
+    cv::Mat ink(gray.size(), CV_8U);
+    const float k = static_cast<float>(params::kSauvolaK);
+    const float r = static_cast<float>(params::kSauvolaR);
+    const float floorStd = static_cast<float>(params::kInkFloorStdDev);
+    const float maxInk = static_cast<float>(params::kInkMaxLuminance);
+    for (int y0 = 0; y0 < gray.rows; y0 += params::kSauvolaBandRows) {
+        checkCancel(cancel);
+        const int y1 = std::min(gray.rows, y0 + params::kSauvolaBandRows);
+        const int top = std::max(0, y0 - halo);
+        const int bottom = std::min(gray.rows, y1 + halo);
+        cv::Mat bandF;
+        gray.rowRange(top, bottom).convertTo(bandF, CV_32F);
+        cv::Mat mean, sq;
+        cv::boxFilter(bandF, mean, CV_32F, cv::Size(w, w), cv::Point(-1, -1), true,
+                      cv::BORDER_REFLECT);
+        cv::boxFilter(bandF.mul(bandF), sq, CV_32F, cv::Size(w, w), cv::Point(-1, -1), true,
+                      cv::BORDER_REFLECT);
+        cv::Mat stddev;
+        cv::sqrt(cv::max(sq - mean.mul(mean), 0.0f), stddev);
+        // T = m * (1 + k * (s / R - 1)); flat regions and bright pixels are never ink.
+        cv::Mat threshold = mean.mul(1.0f + k * (stddev / r - 1.0f));
+        cv::Mat bandInk = (bandF < threshold) & (stddev > floorStd) & (bandF < maxInk);
+        bandInk.rowRange(y0 - top, y1 - top).copyTo(ink.rowRange(y0, y1));
+    }
     return ink;
 }
 
@@ -232,6 +240,8 @@ pp_status renderPage(pp_session& session, pp_style style, pp_fit fit, int outWid
         }
         checkCancel(cancel);
     }
+    debugLog("mem after style: live MB / peak MB", CountingAllocator::instance().liveBytes() / 1e6,
+             CountingAllocator::instance().peakBytes() / 1e6, 0);
     cv::Mat framed;
     {
         StepTimer timer(timings, PP_STEP_RESAMPLE);
@@ -239,6 +249,8 @@ pp_status renderPage(pp_session& session, pp_style style, pp_fit fit, int outWid
         checkCancel(cancel);
     }
     exportImage(framed, out);
+    debugLog("render: style ms / resample ms", timings.steps[0].micros / 1000.0,
+             timings.steps[1].micros / 1000.0, styleUsed);
     out->style_used = styleUsed;
     out->fallback_reason = fallback;
     out->steps[0] = timings.steps[0];

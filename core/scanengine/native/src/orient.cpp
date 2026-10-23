@@ -1,3 +1,4 @@
+#include "cancel.hpp"
 #include "debug.hpp"
 #include "params.hpp"
 #include "stages.hpp"
@@ -211,7 +212,8 @@ int estimateAxisRotation(const cv::Mat& gray) {
     return colVar > params::kAxisRatio * rowVar ? 90 : 0;
 }
 
-bool estimateUpsideDown(const cv::Mat& gray, pp_orientation_confidence& confidence, int strips) {
+bool estimateUpsideDown(const cv::Mat& gray, pp_orientation_confidence& confidence, int strips,
+                        volatile int32_t* cancel) {
     confidence = PP_ORIENT_NONE;
     cv::Mat ink = inkMaskFor(gray);
     if (cv::countNonZero(ink) < params::kMinInkFraction * ink.total()) {
@@ -223,6 +225,7 @@ bool estimateUpsideDown(const cv::Mat& gray, pp_orientation_confidence& confiden
     double totalMass = 0;
     int lineCount = 0;
     for (int k = 0; k < strips; ++k) {
+        checkCancel(cancel);
         const int x0 = ink.cols * k / strips;
         const int x1 = ink.cols * (k + 1) / strips;
         cv::Mat strip = ink.colRange(x0, x1);

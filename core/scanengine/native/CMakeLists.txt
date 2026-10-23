@@ -21,6 +21,7 @@ include(FindPlainpaperOpenCV)
 set(PP_CORE_SOURCES
     src/debug.cpp
     src/engine.cpp
+    src/memory.cpp
     src/detect.cpp
     src/geometry.cpp
     src/deskew.cpp

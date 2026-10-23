@@ -33,7 +33,7 @@ class StepTimer {
         auto micros = std::chrono::duration_cast<std::chrono::microseconds>(
                           std::chrono::steady_clock::now() - start_)
                           .count();
-        timings_.record(step_, status_, status_ == PP_STEP_APPLIED ? micros : 0);
+        timings_.record(step_, status_, micros);
     }
 
     StepTimer(const StepTimer&) = delete;

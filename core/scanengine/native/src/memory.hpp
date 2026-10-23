@@ -1,37 +1,46 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <opencv2/core.hpp>
 
 namespace pp {
 
 /**
- * Approximate high-water mark of image memory held by a stage (FR-019 diagnostics). Stages
- * declare the large buffers they keep alive; it is not a malloc hook.
+ * Counts the bytes OpenCV allocates for cv::Mat buffers (FR-019 diagnostics, research R11).
+ * Installed as the default allocator; the counters are process-wide and reset per analysis,
+ * which is exact when one scan runs at a time (the engine's intended use).
  */
-class MemoryTracker {
+class CountingAllocator : public cv::MatAllocator {
   public:
-    void hold(const cv::Mat& mat) {
-        live_ += bytesOf(mat);
-        if (live_ > peak_) {
-            peak_ = live_;
-        }
-    }
+    static CountingAllocator& instance();
 
-    void release(const cv::Mat& mat) {
-        auto bytes = bytesOf(mat);
-        live_ = bytes > live_ ? 0 : live_ - bytes;
-    }
+    /** Installs the allocator once (idempotent). */
+    static void install();
 
-    int64_t peak() const { return peak_; }
+    void resetPeak();
+    int64_t peakBytes() const { return peak_.load(); }
+    int64_t liveBytes() const { return live_.load(); }
 
-    static int64_t bytesOf(const cv::Mat& mat) {
-        return static_cast<int64_t>(mat.total()) * static_cast<int64_t>(mat.elemSize());
-    }
+    cv::UMatData* allocate(int dims, const int* sizes, int type, void* data, size_t* step,
+                           cv::AccessFlag flags, cv::UMatUsageFlags usageFlags) const override;
+    bool allocate(cv::UMatData* data, cv::AccessFlag accessflags,
+                  cv::UMatUsageFlags usageFlags) const override;
+    void deallocate(cv::UMatData* data) const override;
 
   private:
-    int64_t live_ = 0;
-    int64_t peak_ = 0;
+    CountingAllocator();
+    void add(int64_t bytes) const;
+
+    cv::MatAllocator* delegate_;
+    mutable std::atomic<int64_t> live_{0};
+    mutable std::atomic<int64_t> peak_{0};
+    mutable std::atomic<int64_t> allocations_{0};
+    mutable std::atomic<int64_t> frees_{0};
 };
+
+/** Test hook (host builds): makes the stage with this index throw std::bad_alloc; -1 disables. */
+void setFailAllocationAtStage(int stage);
+void maybeFailAllocation(int stage);
 
 } // namespace pp

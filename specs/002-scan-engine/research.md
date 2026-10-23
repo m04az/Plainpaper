@@ -294,6 +294,11 @@ is the platform's own low-end flag. Both are cheap and need no permissions.
   with `workingLongEdge / 2` and the Simplified pipeline.
 - Sessions (analysis results) are explicit `Closeable` handles so the review screen can
   release the native page as soon as the user leaves.
+- Measured (2026-10-23, host build, synthetic 3 MP photos, OpenCV buffers counted by a
+  `cv::MatAllocator` wrapper): peak 83-96 MB on Full before the illumination division and the
+  Sauvola threshold were banded, 55 MB after; the paper-level estimate now runs at a 500 px
+  long edge (242 ms → 9 ms per call). Cancellation latency p100 was 9 ms over 50 random
+  cut-offs once detection, deskew and orientation checked the flag between their passes.
 
 ## R12. Photo decoding per platform
 

@@ -30,3 +30,12 @@ are in `.specify/memory/constitution.md`; agent guidance in `CLAUDE.md`.
 
 `build-logic/` (Gradle conventions) · `androidApp/` · `iosApp/` · `composeApp/` (shared app) ·
 `core/{domain,data,designsystem,testing}` · `feature/{home,settings}` · `specs/` · `.github/workflows/`
+
+## Scan engine (feature 002)
+
+A shared C++ pipeline (OpenCV 4.13) turns a photo into a flatbed-quality page: page detection
+(with low-contrast and Hough fallbacks), perspective correction, deskew, upright orientation for
+Arabic and Latin text without OCR, curl flattening on capable devices, illumination
+normalisation and four output styles at 300 DPI. It runs on Android (JNI), iOS (cinterop) and
+the host JVM, where `tools/scansuite` gates every pull request against a synthetic reference
+set and the real photos in `reference-set/`. See `specs/002-scan-engine/`.

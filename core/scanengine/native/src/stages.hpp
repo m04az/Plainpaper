@@ -25,7 +25,6 @@ struct AnalyzeContext {
     /** working pixels per photo pixel. */
     double workingScale = 1.0;
     Timings timings;
-    MemoryTracker memory;
     uint32_t flags = 0;
     bool fullCapability = true;
 };
@@ -55,14 +54,15 @@ Geometry planGeometry(const AnalyzeContext& ctx, const Quad& quad, int pageLongE
 cv::Mat warpPage(const AnalyzeContext& ctx, const Geometry& geometry);
 cv::Mat warpPreview(const AnalyzeContext& ctx, const Geometry& geometry, int longEdge);
 // deskew.cpp
-double estimateDeskewDegrees(const cv::Mat& gray);
+double estimateDeskewDegrees(const cv::Mat& gray, volatile int32_t* cancel);
 // orient.cpp
 /** 0 or 90: whether text lines run horizontally or vertically in `gray`. */
 int estimateAxisRotation(const cv::Mat& gray);
 /** True when the (axis-corrected) page reads upside down; `confidence` reports the vote strength.
  */
 /* `strips` > 1 votes per vertical strip (tolerates curled lines); 1 uses the whole width. */
-bool estimateUpsideDown(const cv::Mat& gray, pp_orientation_confidence& confidence, int strips);
+bool estimateUpsideDown(const cv::Mat& gray, pp_orientation_confidence& confidence, int strips,
+                        volatile int32_t* cancel);
 void applyRotation(cv::Mat& image, int rotation);
 Quad rotateQuadOrder(const Quad& quad, int rotation);
 // flatten.cpp
