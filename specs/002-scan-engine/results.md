@@ -30,8 +30,16 @@ from informational to enforced once a category has three photos.
 
 ## Device benchmarks
 
-Pending: `reference-set/benchmarks/` (see its README). The emulator smoke test
-(`SmokeDeviceTest`) passes on the API 37 arm64 emulator.
+Reference devices pending (see `reference-set/benchmarks/README.md`). Harness check on the
+development emulator (`sdk_gphone16k_arm64`, API 37, 4 GB class → Simplified pipeline, 3 MP
+synthetic photos): 20 consecutive runs, median 582 ms, p95 682 ms, native heap delta ≤ 8.8 MB one
+second after each run, zero failures (`reference-set/benchmarks/sdk_gphone16k_arm64-20261023.json`).
+The emulator smoke test (`SmokeDeviceTest`) passes on the same image.
+
+## Coverage
+
+Kover merged line coverage with `:core:scanengine` included: 88.6 % (gate ≥ 80 %, `koverVerify`
+passes).
 
 ## Competitor comparison
 

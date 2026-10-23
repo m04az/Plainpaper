@@ -197,7 +197,7 @@
 - [X] T080 [US4] Implement the native allocator high-water mark (`peak_bytes`) via a `cv::MatAllocator` wrapper or `mallinfo`-free counting in `engine.cpp`; verify `OutOfMemory` mapping by injecting `std::bad_alloc` behind a test hook (`PP_TEST_FAIL_ALLOC_AT_STAGE` env var in host builds only)
 - [X] T081 [US4] Create `scripts/bench-android.sh` (pushes `reference-set/photos` subset of 10 via `adb push` to the app's external files dir, runs `./gradlew :core:scanengine:connectedAndroidDeviceTest --tests '*BenchmarkTest*'` (confirm the exact task name from `./gradlew :core:scanengine:tasks --all` and record it in the script), pulls `bench.json` into `reference-set/benchmarks/<model>-<date>.json`; `--low-end` creates/starts an AVD `plainpaper-lowend` with 2048 MB RAM, 2 cores, API 30 x86_64)
 - [ ] T082 [US4] Run the benchmark on the owner's Android phone and on the low-end emulator; if medians exceed 2.0 s / 6.0 s, profile with the per-step timings and optimise the dominant stages (typical levers: working-edge, `INTER_LINEAR` for the analysis warp, integral-image Sauvola, single-channel paths on Simplified) until SC-005 holds; commit the JSON files
-- [ ] T083 [US4] Add `iosApp/iosAppTests/ScanBenchmarkTests.swift` + test target in `iosApp/iosApp.xcodeproj/project.pbxproj` (bundles the same 10 photos, calls the engine through the ComposeApp framework, prints JSON); CI `build-ios` builds the test target (`build-for-testing`) but does not run it; note in `reference-set/benchmarks/README.md` that the iPhone numbers are captured manually
+- [X] T083 [US4] Add `iosApp/iosAppTests/ScanBenchmarkTests.swift` + test target in `iosApp/iosApp.xcodeproj/project.pbxproj` (bundles the same 10 photos, calls the engine through the ComposeApp framework, prints JSON); CI `build-ios` builds the test target (`build-for-testing`) but does not run it; note in `reference-set/benchmarks/README.md` that the iPhone numbers are captured manually
 - [ ] T084 [US4] Run SC-006 soak: 200 consecutive runs on the low-end emulator via `BenchmarkTest` with `-Dpp.bench.iterations=200`; zero crashes/unhandled failures; record in `reference-set/benchmarks/`
 
 **Checkpoint**: timing, cancellation and memory numbers are on record and gated where measurable on the host.
@@ -231,8 +231,8 @@
 
 - [X] T092 [P] Update `CLAUDE.md` (module map: `:core:scanengine`, `:core:scanengine-android`, `:tools:scansuite`; commands for the suite, native builds, benchmarks; prerequisites) and `README.md`
 - [X] T093 [P] Add `scripts/check-native-format.sh` to the `static-analysis` CI job and run `clang-format -i` over `core/scanengine/native/`
-- [ ] T094 [P] Review Kover: `./gradlew koverXmlReport koverVerify` ≥ 80% with `:core:scanengine` included; add tests for any uncovered decision code
-- [ ] T095 [P] Add `reference-set/benchmarks/README.md` and a `specs/002-scan-engine/results.md` summarising final metrics, device timings and competitor comparison (numbers only, from the generated reports)
+- [X] T094 [P] Review Kover: `./gradlew koverXmlReport koverVerify` ≥ 80% with `:core:scanengine` included; add tests for any uncovered decision code
+- [X] T095 [P] Add `reference-set/benchmarks/README.md` and a `specs/002-scan-engine/results.md` summarising final metrics, device timings and competitor comparison (numbers only, from the generated reports)
 - [ ] T096 Run the full quickstart.md checklist (sections 1–6), fix anything that fails, mark PR ready for review, ensure all six required checks are green, merge PR into `main` (squash disabled; merge commit as in 001); update memory `plainpaper-progress`
 
 ---
