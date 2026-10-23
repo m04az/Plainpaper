@@ -14,7 +14,7 @@ class KoverConventionPlugin : Plugin<Project> {
         with(target) {
             pluginManager.apply("org.jetbrains.kotlinx.kover")
 
-            val measured = listOf(":core:domain", ":feature:home", ":feature:settings")
+            val measured = listOf(":core:domain", ":core:scanengine", ":feature:home", ":feature:settings")
             measured.forEach { path ->
                 project(path).pluginManager.apply("org.jetbrains.kotlinx.kover")
             }
@@ -41,6 +41,16 @@ class KoverConventionPlugin : Plugin<Project> {
                                 "*Res",
                                 "*Res\$*",
                                 "*\$\$serializer",
+                                // Scan engine: platform bridges, decoders and native wrappers are
+                                // exercised by the reference suite and on devices, not by line coverage.
+                                "*.scanengine.bridge.*",
+                                "*PhotoDecoder*",
+                                "*CapabilityProvider*",
+                                "*Jni*",
+                                "*Cinterop*",
+                                "*ScanPhoto*",
+                                "*ScanOutput*",
+                                "*NativeLoader*",
                             )
                             androidGeneratedClasses()
                         }

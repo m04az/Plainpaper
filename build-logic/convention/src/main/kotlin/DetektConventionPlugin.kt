@@ -21,9 +21,14 @@ class DetektConventionPlugin : Plugin<Project> {
                             "src/commonMain/kotlin",
                             "src/androidMain/kotlin",
                             "src/iosMain/kotlin",
+                            "src/jvmMain/kotlin",
+                            "src/jvmCommonMain/kotlin",
                             "src/commonTest/kotlin",
+                            "src/jvmTest/kotlin",
+                            "src/androidDeviceTest/kotlin",
                             "src/main/kotlin",
                             "src/main/java",
+                            "src/test/kotlin",
                         ),
                     )
                 }
