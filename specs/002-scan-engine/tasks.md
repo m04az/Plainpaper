@@ -86,7 +86,7 @@
 - [X] T038 [P] Create `core/scanengine/src/nativeInterop/cinterop/plainpaper_scan.def` (`headers = plainpaper_scan.h`, `headerFilter = plainpaper_scan.h`, `package = app.plainpaper.scanengine.cinterop`, `staticLibraries = libplainpaper_scan.a`, `libraryPaths.ios_arm64 = <build dir>/native/ios-arm64`, `libraryPaths.ios_simulator_arm64 = <build dir>/native/ios-simulator-arm64`, `linkerOpts = -lc++`) and `core/scanengine/src/iosMain/kotlin/app/plainpaper/core/scanengine/` : `CinteropNativeBridge.kt` (pinned `ByteArray`/`CGDataProvider` pixels, `memScoped` structs, `AtomicInt`-backed cancel flag), `ScanPhoto.ios.kt` / `ScanOutput.ios.kt` (`CGImage` with `CGDataProviderCreateWithData` release callback calling `pp_output_free`), `IosPhotoDecoder.kt` (`CGImageSourceCreateThumbnailAtIndex` + `kCGImageSourceCreateThumbnailWithTransform`, max pixel size for 12 MP), `IosCapabilityProvider.kt` (`NSProcessInfo.processInfo.physicalMemory`, low-RAM < 3 GiB), `ScanEngineModule.ios.kt`
 - [X] T039 Wire `scanEngineModule` + platform module into `composeApp/src/commonMain/kotlin/app/plainpaper/di/AppModules.kt` and the Android/iOS platform module lists; update `iosApp/iosApp.xcodeproj/project.pbxproj` to link `$(SRCROOT)/../core/scanengine/build/opencv/ios/opencv2.xcframework`, add `OTHER_LDFLAGS = -lc++`, and frameworks `Accelerate CoreImage CoreMedia CoreVideo AVFoundation`; ensure the "Compile Kotlin Framework" phase runs `:core:scanengine:downloadOpencvIosXcframework` first
 - [X] T040 Build Android: `./gradlew :androidApp:assembleDebug` succeeds for three ABIs; `unzip -l` the APK shows `lib/<abi>/libplainpaper_scan.so`; `objdump -p` (or `llvm-readelf -l`) shows LOAD align 0x4000; commit `scanengine: android native packaging`
-- [ ] T041 Push and verify CI iOS jobs (test-ios, build-ios) pass with the cinterop + xcframework link; if `staticLibraries` fails to link, apply the research R3 fallback (C++ core as an Xcode static-library target) and record the outcome in research.md R3
+- [X] T041 Push and verify CI iOS jobs (test-ios, build-ios) pass with the cinterop + xcframework link; if `staticLibraries` fails to link, apply the research R3 fallback (C++ core as an Xcode static-library target) and record the outcome in research.md R3
 
 ### Reference set and suite runner
 
@@ -114,21 +114,21 @@
 
 ### Tests for User Story 1
 
-- [ ] T051 [P] [US1] Write `core/scanengine/src/commonTest/kotlin/app/plainpaper/core/scanengine/decision/OrientationVoteTest.kt` (K8: ≥ 60% weight and ≥ 3 lines flips; fewer lines keeps with `OrientationConfidence.None`; axis ratio < 1.3 keeps portrait decision)
-- [ ] T052 [P] [US1] Write `tools/scansuite/src/test/kotlin/app/plainpaper/scansuite/OutputSizeTest.kt` (every rendered output has exactly `PageSize.outputPixels` dimensions for A4, Letter, Natural; 1 channel for Scan)
+- [X] T051 [P] [US1] Write `core/scanengine/src/commonTest/kotlin/app/plainpaper/core/scanengine/decision/OrientationVoteTest.kt` (K8: ≥ 60% weight and ≥ 3 lines flips; fewer lines keeps with `OrientationConfidence.None`; axis ratio < 1.3 keeps portrait decision)
+- [X] T052 [P] [US1] Write `tools/scansuite/src/test/kotlin/app/plainpaper/scansuite/OutputSizeTest.kt` (every rendered output has exactly `PageSize.outputPixels` dimensions for A4, Letter, Natural; 1 channel for Scan)
 - [ ] T053 [US1] Extend `reference-set/` with the owner's photos for categories `english`, `arabic`, `french`, `mixed-script`, `hard-shadow`, `rotated` (90/180/270 cases via `--rotate`), `pencil`, `stamp-signature`, `page-fills-frame`, each with corners annotated; add transcripts + clean references for ≥ 6 pages (2 per language); commit per batch
 
 ### Implementation for User Story 1
 
-- [ ] T054 [P] [US1] Create `core/scanengine/src/commonMain/kotlin/app/plainpaper/core/scanengine/decision/OrientationVote.kt` (pure Kotlin mirror of the native vote used for reporting and tests) to satisfy T051
-- [ ] T055 [US1] Implement `core/scanengine/native/src/detect.cpp` (research R5 step 2: smoothing, auto-Canny + adaptive-threshold edge map, contours → convex quads ≥ 20% area scored by area × edge support × rectangularity, Hough-pair and bright-hull fallbacks, confidence High/Low/NotFound, page-fills-frame rule → full frame with Low/Detected, NotFound full-frame fallback, user-corner bypass)
-- [ ] T056 [US1] Implement `core/scanengine/native/src/geometry.cpp` (corner ordering TL/TR/BR/BL, physical aspect estimate from vanishing points with side-length fallback, `warpPerspective` from the full-resolution photo in 8 horizontal bands with cancel checks, `INTER_CUBIC`/`INTER_AREA` selection)
-- [ ] T057 [US1] Implement `core/scanengine/native/src/deskew.cpp` (projection-profile variance over −5…+5° in 0.25° steps on the working grayscale; rotate when |angle| ≥ 0.3°)
-- [ ] T058 [US1] Implement `core/scanengine/native/src/orient.cpp` (research R6: axis choice by profile variance ratio ≥ 1.3, line segmentation, per-line ink-mass centre vote weighted by line length, flip at ≥ 60% with ≥ 3 lines, `orientation_confidence`, apply 0/90/180/270 rotation to the page and remap corners)
-- [ ] T059 [US1] Implement `core/scanengine/native/src/illumination.cpp` (morphological closing with ellipse ≈ page width / 25 + median blur background per channel, divide normalisation, white point at the 97th percentile, specular-highlight flag when > 2% of pixels are clipped in the input)
-- [ ] T060 [US1] Implement `core/scanengine/native/src/render.cpp` for the Scan style and page framing (research R8/R9: Sauvola window 31, k = 0.2, R = 128, ink floor on local std-dev < 4, 3×3 median, anti-aliased composite; centred on white margins for A4/Letter, Natural sizing; `INTER_AREA` resample to output size; 1-channel output) and wire `pp_render` with `PP_STEP_RENDER`/`PP_STEP_RESAMPLE` timings
-- [ ] T061 [US1] Tune on the synthetic + reference sets until `:tools:scansuite:test` passes SC-001, SC-002, SC-010 (orientation ≥ 95%, synthetic 100%) and OutputSizeTest; record parameter values as named constants in `core/scanengine/native/src/params.hpp` with a comment per constant; commit `native: detection, geometry, orientation, illumination, scan style`
-- [ ] T062 [US1] Verify on the Android emulator (API 36) via a temporary `androidDeviceTest` that decodes one bundled photo and asserts a `Ready` result with `Confidence.High` (keep this test as `SmokeDeviceTest`); push and confirm CI green including `scan-quality`
+- [X] T054 [P] [US1] Create `core/scanengine/src/commonMain/kotlin/app/plainpaper/core/scanengine/decision/OrientationVote.kt` (pure Kotlin mirror of the native vote used for reporting and tests) to satisfy T051
+- [X] T055 [US1] Implement `core/scanengine/native/src/detect.cpp` (research R5 step 2: smoothing, auto-Canny + adaptive-threshold edge map, contours → convex quads ≥ 20% area scored by area × edge support × rectangularity, Hough-pair and bright-hull fallbacks, confidence High/Low/NotFound, page-fills-frame rule → full frame with Low/Detected, NotFound full-frame fallback, user-corner bypass)
+- [X] T056 [US1] Implement `core/scanengine/native/src/geometry.cpp` (corner ordering TL/TR/BR/BL, physical aspect estimate from vanishing points with side-length fallback, `warpPerspective` from the full-resolution photo in 8 horizontal bands with cancel checks, `INTER_CUBIC`/`INTER_AREA` selection)
+- [X] T057 [US1] Implement `core/scanengine/native/src/deskew.cpp` (projection-profile variance over −5…+5° in 0.25° steps on the working grayscale; rotate when |angle| ≥ 0.3°)
+- [X] T058 [US1] Implement `core/scanengine/native/src/orient.cpp` (research R6: axis choice by profile variance ratio ≥ 1.3, line segmentation, per-line ink-mass centre vote weighted by line length, flip at ≥ 60% with ≥ 3 lines, `orientation_confidence`, apply 0/90/180/270 rotation to the page and remap corners)
+- [X] T059 [US1] Implement `core/scanengine/native/src/illumination.cpp` (morphological closing with ellipse ≈ page width / 25 + median blur background per channel, divide normalisation, white point at the 97th percentile, specular-highlight flag when > 2% of pixels are clipped in the input)
+- [X] T060 [US1] Implement `core/scanengine/native/src/render.cpp` for the Scan style and page framing (research R8/R9: Sauvola window 31, k = 0.2, R = 128, ink floor on local std-dev < 4, 3×3 median, anti-aliased composite; centred on white margins for A4/Letter, Natural sizing; `INTER_AREA` resample to output size; 1-channel output) and wire `pp_render` with `PP_STEP_RENDER`/`PP_STEP_RESAMPLE` timings
+- [X] T061 [US1] Tune on the synthetic + reference sets until `:tools:scansuite:test` passes SC-001, SC-002, SC-010 (orientation ≥ 95%, synthetic 100%) and OutputSizeTest; record parameter values as named constants in `core/scanengine/native/src/params.hpp` with a comment per constant; commit `native: detection, geometry, orientation, illumination, scan style`
+- [X] T062 [US1] Verify on the Android emulator (API 36) via a temporary `androidDeviceTest` that decodes one bundled photo and asserts a `Ready` result with `Confidence.High` (keep this test as `SmokeDeviceTest`); push and confirm CI green including `scan-quality`
 
 **Checkpoint**: US1 delivers flatbed-looking Scan pages at true size, verified by metrics.
 
@@ -142,15 +142,15 @@
 
 ### Tests for User Story 2
 
-- [ ] T063 [P] [US2] Write `tools/scansuite/src/test/kotlin/app/plainpaper/scansuite/StylesTest.kt` (all four styles share dimensions and page boundary; Grayscale has 1 channel with > 16 distinct levels on an ID photo; Color document keeps the hue of stamp pixels within ±15° of the input stamp hue and paper ≥ 0.97 white; Original keeps the background within 15% of the input luminance)
-- [ ] T064 [P] [US2] Write `core/scanengine/src/commonTest/kotlin/app/plainpaper/core/scanengine/decision/StyleFallbackTest.kt` (inverted-document flag with Scan requested → `styleUsed = Grayscale`, `fallbackReason = InvertedDocument`; other styles unchanged)
+- [X] T063 [P] [US2] Write `tools/scansuite/src/test/kotlin/app/plainpaper/scansuite/StylesTest.kt` (all four styles share dimensions and page boundary; Grayscale has 1 channel with > 16 distinct levels on an ID photo; Color document keeps the hue of stamp pixels within ±15° of the input stamp hue and paper ≥ 0.97 white; Original keeps the background within 15% of the input luminance)
+- [X] T064 [P] [US2] Write `core/scanengine/src/commonTest/kotlin/app/plainpaper/core/scanengine/decision/StyleFallbackTest.kt` (inverted-document flag with Scan requested → `styleUsed = Grayscale`, `fallbackReason = InvertedDocument`; other styles unchanged)
 - [ ] T065 [US2] Add `stamp-signature`, `id-card` (owner's own, fields covered) and an `inverted` reference photo to `reference-set/` with annotations
 
 ### Implementation for User Story 2
 
-- [ ] T066 [P] [US2] Create `core/scanengine/src/commonMain/kotlin/app/plainpaper/core/scanengine/decision/StyleFallback.kt` to satisfy T064 and apply it in `DefaultScanEngine.render`
-- [ ] T067 [US2] Extend `core/scanengine/native/src/render.cpp` with Grayscale (tone curve, gamma 0.9), Color document (chroma < 12 & luminance > 0.85 white point → white, saturation ×1.15, luminance from the Grayscale curve), Original (1.08× lift, 0.5-strength grey-world white balance), inverted-document detection (median L < 90 and ink detection fails) with `fallback_reason = 1`; 4-channel RGBA output for Color/Original
-- [ ] T068 [US2] Make `pp_render` reuse the session's normalised page and corners (no re-detection) and add a suite assertion that rendering twice yields identical `corners`/dimensions; tune until `StylesTest` passes; commit `native: grayscale, color document, original styles`
+- [X] T066 [P] [US2] Create `core/scanengine/src/commonMain/kotlin/app/plainpaper/core/scanengine/decision/StyleFallback.kt` to satisfy T064 and apply it in `DefaultScanEngine.render`
+- [X] T067 [US2] Extend `core/scanengine/native/src/render.cpp` with Grayscale (tone curve, gamma 0.9), Color document (chroma < 12 & luminance > 0.85 white point → white, saturation ×1.15, luminance from the Grayscale curve), Original (1.08× lift, 0.5-strength grey-world white balance), inverted-document detection (median L < 90 and ink detection fails) with `fallback_reason = 1`; 4-channel RGBA output for Color/Original
+- [X] T068 [US2] Make `pp_render` reuse the session's normalised page and corners (no re-detection) and add a suite assertion that rendering twice yields identical `corners`/dimensions; tune until `StylesTest` passes; commit `native: grayscale, color document, original styles`
 
 **Checkpoint**: four styles from one analysis.
 
@@ -164,16 +164,16 @@
 
 ### Tests for User Story 3
 
-- [ ] T069 [P] [US3] Write `tools/scansuite/src/test/kotlin/app/plainpaper/scansuite/HardCasesTest.kt` (no-page → `NotFound` + full-frame corners; low-contrast → corners within threshold or `Low`; dark-room → `TooDark` outcome or whiteness threshold met; curled on Full → straightness ≤ 0.5°; curled on Simplified → `Flatten` = `Skipped(Capability)`; folded → `Skipped(InsufficientLines|NoImprovement)` and legible; open-book → `Low` confidence; user corners override detection and set `CornerSource.User`)
+- [X] T069 [P] [US3] Write `tools/scansuite/src/test/kotlin/app/plainpaper/scansuite/HardCasesTest.kt` (no-page → `NotFound` + full-frame corners; low-contrast → corners within threshold or `Low`; dark-room → `TooDark` outcome or whiteness threshold met; curled on Full → straightness ≤ 0.5°; curled on Simplified → `Flatten` = `Skipped(Capability)`; folded → `Skipped(InsufficientLines|NoImprovement)` and legible; open-book → `Low` confidence; user corners override detection and set `CornerSource.User`)
 - [X] T070 [P] [US3] Write `core/scanengine/src/commonTest/kotlin/app/plainpaper/core/scanengine/decision/UserCornersValidationTest.kt` (non-convex, outside bounds beyond 2%, area < 5% → `InvalidInput("corners")`; valid → passed through unchanged)
 - [ ] T071 [US3] Add reference photos for `curled`, `folded`, `dark-room`, `low-contrast-background`, `no-page` (≥ 3), `open-book`, `flash-highlight`, `receipt` with annotations and transcripts where text exists
 
 ### Implementation for User Story 3
 
 - [X] T072 [P] [US3] Create `core/scanengine/src/commonMain/kotlin/app/plainpaper/core/scanengine/decision/UserCornersValidation.kt` to satisfy T070 and call it in `DefaultScanEngine.analyze` before any native call
-- [ ] T073 [US3] Implement `core/scanengine/native/src/flatten.cpp` (research R7: text-line extraction by wide closing + components, quadratic fit of ≥ 6 consistent lines, displacement field, `cv::remap`, accept only on ≥ 50% curvature reduction, skip reasons) and gate it on `capability == FULL && allow_flatten`
-- [ ] T074 [US3] Implement too-dark detection in `engine.cpp` (median luminance < 0.12 after contrast stretch → continue the pipeline, return `PP_ERR_TOO_DARK` with a session), open-book handling in `detect.cpp` (two large quads → larger one, confidence Low), specular handling in `illumination.cpp` (clipped regions treated as paper white), full-frame fallback cleanup path
-- [ ] T075 [US3] Tune on the hard subsets until `HardCasesTest` passes without regressing US1/US2 thresholds; commit `native: flattening and hard-photo fallbacks`
+- [X] T073 [US3] Implement `core/scanengine/native/src/flatten.cpp` (research R7: text-line extraction by wide closing + components, quadratic fit of ≥ 6 consistent lines, displacement field, `cv::remap`, accept only on ≥ 50% curvature reduction, skip reasons) and gate it on `capability == FULL && allow_flatten`
+- [X] T074 [US3] Implement too-dark detection in `engine.cpp` (median luminance < 0.12 after contrast stretch → continue the pipeline, return `PP_ERR_TOO_DARK` with a session), open-book handling in `detect.cpp` (two large quads → larger one, confidence Low), specular handling in `illumination.cpp` (clipped regions treated as paper white), full-frame fallback cleanup path
+- [X] T075 [US3] Tune on the hard subsets until `HardCasesTest` passes without regressing US1/US2 thresholds; commit `native: flattening and hard-photo fallbacks`
 
 **Checkpoint**: every reference photo returns a usable result with honest confidence.
 
