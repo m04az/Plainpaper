@@ -96,7 +96,16 @@ fun SettingsScreen(
         }
     }
 
-    when (state.openSheet) {
+    SettingsSheets(state = state, onAction = onAction)
+}
+
+@Composable
+private fun SettingsSheets(
+    state: SettingsUiState,
+    onAction: (SettingsAction) -> Unit,
+) {
+    val sheet = state.openSheet ?: return
+    when (sheet) {
         SettingsSheet.LANGUAGE -> {
             PickerSheet(
                 title = stringResource(Res.string.sheet_language_title),
@@ -115,10 +124,6 @@ fun SettingsScreen(
                 onSelect = { onAction(SettingsAction.ThemeSelected(it)) },
                 onDismiss = { onAction(SettingsAction.SheetDismissed) },
             )
-        }
-
-        null -> {
-            Unit
         }
     }
 }

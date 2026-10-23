@@ -1,3 +1,3 @@
 package app.plainpaper.core.data
 
-actual fun tempDirectoryPath(): String = System.getProperty("java.io.tmpdir")
+actual fun tempDirectoryPath(): String = requireNotNull(System.getProperty("java.io.tmpdir"))

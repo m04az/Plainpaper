@@ -27,7 +27,11 @@ class KoverConventionPlugin : Plugin<Project> {
                 reports {
                     filters {
                         excludes {
+                            // UI is verified on device, not by line coverage.
+                            annotatedBy("androidx.compose.runtime.Composable")
                             classes(
+                                "*Sheet*",
+                                "*PickerOption*",
                                 "*Screen*",
                                 "*Route*",
                                 "*Preview*",
