@@ -47,6 +47,40 @@ constexpr double kHighConfidenceArea = 0.30;
 constexpr double kPaperLuminance = 0.60;
 constexpr double kPaperVariance = 64.0;
 constexpr double kFillsFrameFraction = 0.95;
+/** Low-contrast pass: smoothing sigma (px) and fixed Canny thresholds on Lab channels. */
+constexpr double kLowContrastSigma = 1.5;
+/** Median kernel (px at working resolution, odd) that removes text before the faint edge pass. */
+constexpr int kTextMedianKernel = 31;
+/** Oblique long edges (shadow boundaries) are erased before quads are formed. */
+constexpr double kObliqueMinLengthFraction = 0.15;
+constexpr int kObliqueEraseThickness = 11;
+constexpr double kLowContrastCannyLow = 3.0;
+constexpr double kLowContrastCannyHigh = 9.0;
+/** Minimum inside-minus-outside luminance (0..255) for a faint quad / bright hull to count. */
+constexpr double kLowContrastMinContrast = 6.0;
+constexpr double kHullMinContrast = 20.0;
+/** Otsu between-class/total variance needed before its boundary is used as an edge source. */
+constexpr double kOtsuMinSeparability = 0.75;
+/** Every side of an accepted quad needs at least this edge support, and the four-side mean this
+ * much. */
+constexpr double kMinAcceptSupport = 0.1;
+constexpr double kMinAcceptMeanSupport = 0.5;
+/** Hough fallback (straight page sides from fragmented edges). */
+constexpr int kHoughThreshold = 50;
+constexpr double kHoughMinLengthFraction = 0.08;
+constexpr double kHoughMaxGap = 25.0;
+constexpr double kHoughAxisTolerance = 20.0;    // degrees from horizontal / vertical
+constexpr double kHoughClusterTolerance = 0.03; // of the frame height / width
+constexpr double kHoughSideFraction = 0.30;     // total segment length per side, of the dimension
+constexpr double kHoughMinExtent = 0.40;
+/** Relaxed Hough settings for the faint (low-contrast) pass. */
+constexpr int kHoughRelaxedThreshold = 25;
+constexpr double kHoughRelaxedMinLengthFraction = 0.04;
+constexpr double kHoughRelaxedMaxGap = 60.0;
+constexpr double kHoughRelaxedSideFraction =
+    0.15; // page must span this fraction between opposite sides
+/** The faint pass also checks inside/outside contrast, so a weaker edge support suffices. */
+constexpr double kHoughRelaxedMinMeanSupport = 0.35;
 
 } // namespace pp::params
 
@@ -60,6 +94,10 @@ constexpr double kInkOffset = 15.0;
 /** Minimum ink coverage for text-based decisions. */
 constexpr double kMinInkFraction = 0.002;
 constexpr double kMaxDeskewDegrees = 5.0;
+/** Fractions of each page edge ignored by the tilt estimate: wide at the sides, where a curled
+    page bows its lines the most, so the central text decides the tilt. */
+constexpr double kDeskewMargin = 0.08;
+constexpr double kDeskewSideMargin = 0.25;
 constexpr double kDeskewCoarseStep = 0.5;
 constexpr double kDeskewFineStep = 0.1;
 
@@ -72,7 +110,7 @@ namespace pp::params {
  * vertical. */
 constexpr double kAxisRatio = 1.3;
 /** Rows above this fraction of the profile maximum belong to a text line. */
-constexpr double kLineRowFraction = 0.10;
+constexpr double kLineRowFraction = 0.15;
 constexpr int kMinLineHeight = 6;
 constexpr int kMinLinesForVote = 3;
 /** Fraction of line mass that must vote "upside down" to flip. */
@@ -84,6 +122,13 @@ constexpr double kBandFraction = 0.40;
 /** Band centre below this fraction of the line box (from the top) reads as upright. */
 constexpr double kBandLowerPosition = 0.60;
 constexpr double kPositionCueWeight = 0.5;
+/** Vote weight cap as a multiple of the median line mass; solid bars (mean fill above this
+    fraction of the profile maximum) and lines inside the outer margin are ignored. */
+constexpr double kLineMassCap = 2.0;
+constexpr double kSolidBarFill = 0.6;
+constexpr double kOrientMargin = 0.04;
+/** Vertical strips for the up/down vote (curl-tolerant line segmentation). */
+constexpr int kOrientStrips = 3;
 
 } // namespace pp::params
 
@@ -132,7 +177,31 @@ constexpr double kSauvolaR = 128.0;
 constexpr double kInkFloorStdDev = 4.0;
 /** Pixels brighter than this (0..255) are never ink. */
 constexpr double kInkMaxLuminance = 200.0;
+/** Border slivers: ink components touching the border, spanning this fraction of the page and at
+    least this fraction of the long edge thick, are desk, not content. */
+constexpr double kSliverMinExtent = 0.20;
+constexpr double kSliverMinThickness = 0.006;
 /** Gaussian sigma (px) that softens the binary ink edge. */
 constexpr double kInkEdgeSigma = 0.7;
+
+} // namespace pp::params
+
+namespace pp::params {
+
+// ---- flattening (research R7) ----
+/** Working long edge for line fitting. */
+constexpr int kFlattenWidth = 1000;
+/** Horizontal closing kernel = page width / divisor (joins words into lines). */
+constexpr int kLineCloseDivisor = 25;
+/** A text line must span this fraction of the page width. */
+constexpr double kMinLineWidthFraction = 0.30;
+constexpr int kLineSamples = 32;
+constexpr int kMinCurlLines = 6;
+/** Fraction of curved lines that must share the curl direction. */
+constexpr double kCurlAgreement = 0.80;
+/** Curvature term (px at working resolution) below which a line counts as straight. */
+constexpr double kMinCurvaturePx = 1.5;
+/** Flattening is kept only if the mean curvature drops to this fraction or less. */
+constexpr double kCurlImprovement = 0.5;
 
 } // namespace pp::params

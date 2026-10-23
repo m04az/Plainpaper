@@ -57,7 +57,12 @@ cv::Mat warpPreview(const AnalyzeContext& ctx, const Geometry& geometry, int lon
 // deskew.cpp
 double estimateDeskewDegrees(const cv::Mat& gray);
 // orient.cpp
-int estimateOrientation(const cv::Mat& grayUpright, pp_orientation_confidence& confidence);
+/** 0 or 90: whether text lines run horizontally or vertically in `gray`. */
+int estimateAxisRotation(const cv::Mat& gray);
+/** True when the (axis-corrected) page reads upside down; `confidence` reports the vote strength.
+ */
+/* `strips` > 1 votes per vertical strip (tolerates curled lines); 1 uses the whole width. */
+bool estimateUpsideDown(const cv::Mat& gray, pp_orientation_confidence& confidence, int strips);
 void applyRotation(cv::Mat& image, int rotation);
 Quad rotateQuadOrder(const Quad& quad, int rotation);
 // flatten.cpp

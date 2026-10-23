@@ -19,6 +19,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(FindPlainpaperOpenCV)
 
 set(PP_CORE_SOURCES
+    src/debug.cpp
     src/engine.cpp
     src/detect.cpp
     src/geometry.cpp

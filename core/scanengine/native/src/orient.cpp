@@ -1,3 +1,4 @@
+#include "debug.hpp"
 #include "params.hpp"
 #include "stages.hpp"
 
@@ -59,6 +60,25 @@ double rowProfileVariance(const cv::Mat& ink, std::vector<double>* profileOut) {
     return mean > 0 ? variance / (mean * mean) : 0.0;
 }
 
+/** Number of columns with any ink in rows [rowStart, rowEnd). */
+double columnsWithInk(const cv::Mat& ink, int rowStart, int rowEnd) {
+    if (rowEnd <= rowStart) {
+        return 0.0;
+    }
+    cv::Mat band = ink.rowRange(std::max(0, rowStart), std::min(ink.rows, rowEnd));
+    cv::Mat columns;
+    cv::reduce(band, columns, 0, cv::REDUCE_MAX);
+    return cv::countNonZero(columns);
+}
+
+double profileMax(const std::vector<double>& profile) {
+    double maxValue = 0;
+    for (double v : profile) {
+        maxValue = std::max(maxValue, v);
+    }
+    return maxValue;
+}
+
 std::vector<Line> segmentLines(const std::vector<double>& profile) {
     std::vector<Line> lines;
     double maxValue = 0;
@@ -92,12 +112,30 @@ std::vector<Line> segmentLines(const std::vector<double>& profile) {
  * weaker cue is the band's position inside the line box (lower half when upright), used only
  * when it is clearly off-centre. Returns the fraction of line mass voting "upside down".
  */
-double upsideDownWeight(const std::vector<double>& profile, const std::vector<Line>& lines,
-                        double& totalMass) {
+double upsideDownWeight(const cv::Mat& ink, const std::vector<double>& profile,
+                        const std::vector<Line>& lines, double& totalMass) {
     double flipped = 0;
     totalMass = 0;
+    // Weights are capped at twice the median line mass so one solid bar (a desk sliver, a
+    // table rule, a photo) cannot outvote the text; such bars are also skipped outright.
+    std::vector<double> masses;
+    for (const Line& line : lines) {
+        masses.push_back(line.mass);
+    }
+    std::nth_element(masses.begin(), masses.begin() + masses.size() / 2, masses.end());
+    const double medianMass = masses.empty() ? 0.0 : masses[masses.size() / 2];
+    const double massCap = params::kLineMassCap * medianMass;
+    const int rows = static_cast<int>(profile.size());
     for (size_t i = 0; i < lines.size(); ++i) {
         const Line& line = lines[i];
+        const int lineHeight = line.bottom - line.top;
+        const double meanFill = line.mass / std::max(1, lineHeight);
+        const bool solidBar = meanFill > params::kSolidBarFill * profileMax(profile);
+        const bool inMargin = line.top < params::kOrientMargin * rows ||
+                              line.bottom > (1.0 - params::kOrientMargin) * rows;
+        if (solidBar || inMargin) {
+            continue;
+        }
         const int height = line.bottom - line.top;
         // Expand towards the neighbours (ascenders/descenders fall below the row threshold)
         // but never past the midpoint of the gap.
@@ -133,6 +171,13 @@ double upsideDownWeight(const std::vector<double>& profile, const std::vector<Li
         if (above + below > 0) {
             vote += (below - above) / (above + below);
         }
+        // Column coverage: how many columns carry ink above the dense band versus below it.
+        // Ascenders, capitals, Arabic tall letters and dots outnumber descenders and tails.
+        const double columnsAbove = columnsWithInk(ink, top, bandStart);
+        const double columnsBelow = columnsWithInk(ink, bandEnd + 1, bottom);
+        if (columnsAbove + columnsBelow > 0) {
+            vote += (columnsBelow - columnsAbove) / (columnsAbove + columnsBelow);
+        }
         const double position =
             ((bandStart + bandEnd) / 2.0 - top + 0.5) / std::max(1, bottom - top);
         if (position > params::kBandLowerPosition) {
@@ -140,11 +185,13 @@ double upsideDownWeight(const std::vector<double>& profile, const std::vector<Li
         } else if (position < 1.0 - params::kBandLowerPosition) {
             vote += params::kPositionCueWeight;
         }
-        totalMass += line.mass;
+        // Confident lines (large |vote|) weigh more than ambiguous ones.
+        const double weight = std::min(line.mass, massCap) * std::min(1.0, std::abs(vote));
+        debugLog("  line: position / above-below ratio / vote", position,
+                 (above + below) > 0 ? (above - below) / (above + below) : 0.0, vote);
+        totalMass += weight;
         if (vote > 0) {
-            flipped += line.mass;
-        } else if (vote == 0) {
-            flipped += 0.5 * line.mass;
+            flipped += weight;
         }
     }
     return totalMass > 0 ? flipped / totalMass : 0.0;
@@ -152,42 +199,56 @@ double upsideDownWeight(const std::vector<double>& profile, const std::vector<Li
 
 } // namespace
 
-int estimateOrientation(const cv::Mat& grayUpright, pp_orientation_confidence& confidence) {
-    confidence = PP_ORIENT_NONE;
-    cv::Mat ink = inkMaskFor(grayUpright);
+int estimateAxisRotation(const cv::Mat& gray) {
+    cv::Mat ink = inkMaskFor(gray);
     if (cv::countNonZero(ink) < params::kMinInkFraction * ink.total()) {
         return 0;
     }
-    std::vector<double> rows;
-    const double rowVar = rowProfileVariance(ink, &rows);
+    const double rowVar = rowProfileVariance(ink, nullptr);
     cv::Mat transposed;
     cv::rotate(ink, transposed, cv::ROTATE_90_CLOCKWISE);
-    std::vector<double> cols;
-    const double colVar = rowProfileVariance(transposed, &cols);
+    const double colVar = rowProfileVariance(transposed, nullptr);
+    return colVar > params::kAxisRatio * rowVar ? 90 : 0;
+}
 
-    int rotation = 0;
-    const std::vector<double>* profile = &rows;
-    if (colVar > params::kAxisRatio * rowVar) {
-        rotation = 90;
-        profile = &cols;
-    } else if (rowVar <= 0.0) {
-        return 0;
+bool estimateUpsideDown(const cv::Mat& gray, pp_orientation_confidence& confidence, int strips) {
+    confidence = PP_ORIENT_NONE;
+    cv::Mat ink = inkMaskFor(gray);
+    if (cv::countNonZero(ink) < params::kMinInkFraction * ink.total()) {
+        return false;
     }
-    std::vector<Line> lines = segmentLines(*profile);
-    if (static_cast<int>(lines.size()) < params::kMinLinesForVote) {
-        return rotation;
+    // Vote per vertical strip: within a strip the lines of a curled page are nearly straight,
+    // so the row profile still separates them; the strips' votes are pooled by line mass.
+    double flipped = 0;
+    double totalMass = 0;
+    int lineCount = 0;
+    for (int k = 0; k < strips; ++k) {
+        const int x0 = ink.cols * k / strips;
+        const int x1 = ink.cols * (k + 1) / strips;
+        cv::Mat strip = ink.colRange(x0, x1);
+        std::vector<double> rows;
+        rowProfileVariance(strip, &rows);
+        std::vector<Line> lines = segmentLines(rows);
+        if (static_cast<int>(lines.size()) < params::kMinLinesForVote) {
+            continue;
+        }
+        double mass = 0;
+        const double stripFlipped = upsideDownWeight(strip, rows, lines, mass);
+        flipped += stripFlipped * mass;
+        totalMass += mass;
+        lineCount += static_cast<int>(lines.size());
     }
-    double mass = 0;
-    const double flipped = upsideDownWeight(*profile, lines, mass);
-    if (flipped >= params::kFlipThreshold) {
-        rotation = (rotation + 180) % 360;
+    if (totalMass <= 0 || lineCount < params::kMinLinesForVote) {
+        return false;
     }
-    const double agreement = std::max(flipped, 1.0 - flipped);
-    confidence = (lines.size() >= static_cast<size_t>(params::kHighConfidenceLines) &&
-                  agreement >= params::kHighConfidenceAgreement)
-                     ? PP_ORIENT_HIGH
-                     : PP_ORIENT_LOW;
-    return rotation;
+    const double fraction = flipped / totalMass;
+    debugLog("orient: lines / flipped fraction", lineCount, fraction, 0);
+    const double agreement = std::max(fraction, 1.0 - fraction);
+    confidence =
+        (lineCount >= params::kHighConfidenceLines && agreement >= params::kHighConfidenceAgreement)
+            ? PP_ORIENT_HIGH
+            : PP_ORIENT_LOW;
+    return fraction >= params::kFlipThreshold;
 }
 
 void applyRotation(cv::Mat& image, int rotation) {

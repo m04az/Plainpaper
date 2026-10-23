@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <opencv2/imgproc.hpp>
+#include <vector>
 
 // Style rendering and page framing (research R8, R9).
 namespace pp {
@@ -83,11 +84,46 @@ cv::Mat sauvolaInk(const cv::Mat& gray, volatile int32_t* cancel) {
     return ink;
 }
 
+/**
+ * Removes ink components that touch the page border and are both long and thick: desk
+ * slivers left beside a curled or slightly mis-detected edge. Ruled lines and table borders
+ * are thin and survive; text never spans a border that way.
+ */
+void dropBorderSlivers(cv::Mat& ink) {
+    cv::Mat labels, stats, centroids;
+    const int count = cv::connectedComponentsWithStats(ink, labels, stats, centroids, 8, CV_32S);
+    const int longEdge = std::max(ink.cols, ink.rows);
+    const int minThickness = static_cast<int>(params::kSliverMinThickness * longEdge);
+    std::vector<uint8_t> drop(static_cast<size_t>(count), 0);
+    for (int i = 1; i < count; ++i) {
+        const int x = stats.at<int>(i, cv::CC_STAT_LEFT);
+        const int y = stats.at<int>(i, cv::CC_STAT_TOP);
+        const int w = stats.at<int>(i, cv::CC_STAT_WIDTH);
+        const int h = stats.at<int>(i, cv::CC_STAT_HEIGHT);
+        const bool touchesBorder = x == 0 || y == 0 || x + w == ink.cols || y + h == ink.rows;
+        const bool horizontalBand = w >= params::kSliverMinExtent * ink.cols && h >= minThickness;
+        const bool verticalBand = h >= params::kSliverMinExtent * ink.rows && w >= minThickness;
+        if (touchesBorder && (horizontalBand || verticalBand)) {
+            drop[static_cast<size_t>(i)] = 1;
+        }
+    }
+    for (int y = 0; y < ink.rows; ++y) {
+        const int* label = labels.ptr<int>(y);
+        uint8_t* row = ink.ptr<uint8_t>(y);
+        for (int x = 0; x < ink.cols; ++x) {
+            if (drop[static_cast<size_t>(label[x])] != 0) {
+                row[x] = 0;
+            }
+        }
+    }
+}
+
 cv::Mat renderScan(const cv::Mat& normalizedBgr, volatile int32_t* cancel) {
     cv::Mat gray;
     cv::cvtColor(normalizedBgr, gray, cv::COLOR_BGR2GRAY);
     cv::Mat ink = sauvolaInk(gray, cancel);
     cv::medianBlur(ink, ink, 3);
+    dropBorderSlivers(ink);
     checkCancel(cancel);
     // Anti-aliased composite: soften the mask edge so strokes stay crisp but not jagged.
     cv::Mat alpha;

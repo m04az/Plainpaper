@@ -1,4 +1,5 @@
 #include "cancel.hpp"
+#include "debug.hpp"
 #include "errors.hpp"
 #include "params.hpp"
 #include "session.hpp"
@@ -182,18 +183,20 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
         if (isInvertedDocument(ctx.working, previewGray)) {
             ctx.flags |= PP_FLAG_INVERTED_DOCUMENT;
         }
-        geometry.deskewDeg = estimateDeskewDegrees(previewGray);
+        // Portrait/landscape is decided first (it only needs the line axis); the tilt is then
+        // measured on the axis-corrected preview, where text lines run horizontally. Rotations
+        // about the page centre commute, so the angle applies unchanged to the warp. Up/down
+        // waits until the page is flattened, when the row profiles are clean.
+        geometry.rotation = estimateAxisRotation(previewGray);
+        cv::Mat axisGray = previewGray;
+        if (geometry.rotation == 90) {
+            cv::rotate(previewGray, axisGray, cv::ROTATE_90_CLOCKWISE);
+        }
+        geometry.deskewDeg = estimateDeskewDegrees(axisGray);
+        debugLog("deskew: preview degrees", geometry.deskewDeg, geometry.rotation, 0);
         if (std::abs(geometry.deskewDeg) < 0.3) {
             geometry.deskewDeg = 0.0;
             timer.setStatus(PP_STEP_SKIPPED_NOT_NEEDED);
-        }
-        checkCancel(cancel);
-        StepTimer orientTimer(ctx.timings, PP_STEP_ORIENT);
-        pp_orientation_confidence orientationConfidence = PP_ORIENT_NONE;
-        geometry.rotation = estimateOrientation(previewGray, orientationConfidence);
-        geometry.orientationConfidence = orientationConfidence;
-        if (geometry.rotation == 0) {
-            orientTimer.setStatus(PP_STEP_SKIPPED_NOT_NEEDED);
         }
         checkCancel(cancel);
     }
@@ -208,18 +211,83 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
         checkCancel(cancel);
     }
 
-    // 4. Flattening (Full capability only).
+    // 4. Up/down vote on the crisp page (working resolution, illumination-normalised, strips
+    //    tolerate curl); a flip rotates the page before flattening.
+    {
+        StepTimer timer(ctx.timings, PP_STEP_ORIENT);
+        cv::Mat small;
+        const double scale = std::min(1.0, static_cast<double>(options->working_long_edge) /
+                                               std::max(session->page.cols, session->page.rows));
+        cv::resize(session->page, small, cv::Size(), scale, scale, cv::INTER_AREA);
+        cv::Mat normalized;
+        normalizeIllumination(small, estimateBackground(small, options->working_long_edge),
+                              normalized, cancel);
+        cv::Mat gray;
+        cv::cvtColor(normalized, gray, cv::COLOR_BGR2GRAY);
+        pp_orientation_confidence orientationConfidence = PP_ORIENT_NONE;
+        const bool upsideDown =
+            estimateUpsideDown(gray, orientationConfidence, params::kOrientStrips);
+        debugLog("orient: upside-down / confidence", upsideDown ? 1 : 0, orientationConfidence, 0);
+        geometry.orientationConfidence = orientationConfidence;
+        if (upsideDown) {
+            geometry.rotation = (geometry.rotation + 180) % 360;
+            cv::rotate(session->page, session->page, cv::ROTATE_180);
+        }
+        if (geometry.rotation == 0) {
+            timer.setStatus(PP_STEP_SKIPPED_NOT_NEEDED);
+        }
+        checkCancel(cancel);
+    }
+
+    // 5. Flattening (Full capability only). Bowed lines fool the pre-warp tilt estimate, so a
+    //    flattened page gets a second, residual deskew.
     {
         StepTimer timer(ctx.timings, PP_STEP_FLATTEN);
         if (!ctx.fullCapability || options->allow_flatten == 0) {
             timer.setStatus(PP_STEP_SKIPPED_CAPABILITY);
         } else {
-            timer.setStatus(flattenPage(session->page, cancel));
+            const pp_step_status status = flattenPage(session->page, cancel);
+            timer.setStatus(status);
+            if (status == PP_STEP_APPLIED) {
+                checkCancel(cancel);
+                cv::Mat small;
+                const double scale =
+                    std::min(1.0, static_cast<double>(options->working_long_edge) /
+                                      std::max(session->page.cols, session->page.rows));
+                cv::resize(session->page, small, cv::Size(), scale, scale, cv::INTER_AREA);
+                cv::Mat smallGray;
+                cv::cvtColor(small, smallGray, cv::COLOR_BGR2GRAY);
+                const double residual = estimateDeskewDegrees(smallGray);
+                debugLog("flatten: residual deskew degrees", residual, 0, 0);
+                if (std::abs(residual) >= 0.3) {
+                    cv::Mat rotation = cv::getRotationMatrix2D(
+                        cv::Point2f(session->page.cols / 2.f, session->page.rows / 2.f), residual,
+                        1.0);
+                    cv::warpAffine(session->page, session->page, rotation, session->page.size(),
+                                   cv::INTER_CUBIC, cv::BORDER_REPLICATE);
+                }
+                // Straight lines now: a confident whole-width vote may overturn the strip vote.
+                checkCancel(cancel);
+                cv::resize(session->page, small, cv::Size(), scale, scale, cv::INTER_AREA);
+                cv::Mat normalizedSmall;
+                normalizeIllumination(small, estimateBackground(small, options->working_long_edge),
+                                      normalizedSmall, cancel);
+                cv::cvtColor(normalizedSmall, smallGray, cv::COLOR_BGR2GRAY);
+                pp_orientation_confidence revoteConfidence = PP_ORIENT_NONE;
+                const bool stillUpsideDown = estimateUpsideDown(smallGray, revoteConfidence, 1);
+                debugLog("flatten: re-vote upside-down / confidence", stillUpsideDown ? 1 : 0,
+                         revoteConfidence, 0);
+                if (stillUpsideDown && revoteConfidence == PP_ORIENT_HIGH) {
+                    geometry.rotation = (geometry.rotation + 180) % 360;
+                    geometry.orientationConfidence = revoteConfidence;
+                    cv::rotate(session->page, session->page, cv::ROTATE_180);
+                }
+            }
         }
         checkCancel(cancel);
     }
 
-    // 5. Illumination estimate (applied at render time so Original keeps the raw page).
+    // 6. Illumination estimate (applied at render time so Original keeps the raw page).
     {
         StepTimer timer(ctx.timings, PP_STEP_ILLUMINATION);
         session->backgroundSmall = estimateBackground(session->page, options->working_long_edge);

@@ -34,7 +34,16 @@ object Gate {
                 thresholds.syntheticCornerWithinRate,
                 enforced,
             ) {
-                it.cornerError!! <= thresholds.syntheticCornerErrorMax
+                // A curled page has bowed edges: its straight quad is held to the real-photo tolerance.
+                val limit =
+                    if (Category.Curled in
+                        it.tags
+                    ) {
+                        thresholds.cornerErrorMax
+                    } else {
+                        thresholds.syntheticCornerErrorMax
+                    }
+                it.cornerError!! <= limit
             },
             rate("synthetic orientation accuracy", oriented, thresholds.syntheticOrientationAccuracyMin, enforced) {
                 it.orientationCorrect == true

@@ -5,7 +5,7 @@ import app.plainpaper.core.domain.model.OutputStyle
 import java.io.File
 
 /**
- * `./gradlew :tools:scansuite:run [--args="--styles scan,grayscale --simplified"]`
+ * `./gradlew :tools:scansuite:run [--args="--styles scan,grayscale --simplified --only <id-substring>"]`
  * Writes build/scansuite/report.{md,json} and outputs/; never fails the build (the gate is the test).
  */
 fun main(args: Array<String>) {
@@ -20,8 +20,28 @@ fun main(args: Array<String>) {
             ?.toSet()
             ?: setOf(OutputStyle.Scan)
     val capability = if (args.contains("--simplified")) DeviceCapability.Simplified else DeviceCapability.Full
+    val only = args.getOrNull(args.indexOf("--only") + 1)?.takeIf { args.contains("--only") }
     val runner = SuiteRunner(outputDir, capability, styles, legibility = Tesseract.ifAvailable())
-    val report = runner.run(SuiteRunner.defaultSources(rootDir, outputDir))
+    val sources =
+        SuiteRunner.defaultSources(rootDir, outputDir).map { source ->
+            if (only ==
+                null
+            ) {
+                source
+            } else {
+                source.copy(
+                    manifest =
+                        source.manifest.copy(
+                            photos =
+                                source.manifest.photos.filter {
+                                    only in
+                                        it.id
+                                },
+                        ),
+                )
+            }
+        }
+    val report = runner.run(sources)
     println(report.toMarkdown())
     println("Report written to ${File(outputDir, "report.md")}")
 }

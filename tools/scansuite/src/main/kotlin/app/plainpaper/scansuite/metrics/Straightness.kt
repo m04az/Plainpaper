@@ -33,6 +33,27 @@ object Straightness {
         return if (abs(bestAngle) < 1e-9) 0.0 else bestAngle
     }
 
+    /**
+     * Mean deviation of text baselines from horizontal in degrees, including curvature: for each
+     * detected line the worst of its fitted slope and its bow (max residual over half the width).
+     * Null when fewer than three lines are found.
+     */
+    fun baselineDeviationDegrees(gray: GrayImage): Double? {
+        val small = gray.downscaled(1000)
+        val threshold = GrayImage.otsuThreshold(small.histogram())
+        val ink = BooleanArray(small.width * small.height) { small.data[it].toInt() and 0xFF < threshold }
+        val lines = TextLines.find(ink, small.width, small.height)
+        if (lines.size < 3) return null
+        val deviations =
+            lines.map { line ->
+                val slope = Math.toDegrees(kotlin.math.atan(line.slope))
+                // The quadratic term adds a slope of 2 * bow / half-width at the line ends.
+                val bow = Math.toDegrees(kotlin.math.atan(2.0 * line.bowPx / (line.width / 2.0)))
+                maxOf(abs(slope), abs(bow))
+            }
+        return deviations.average()
+    }
+
     private fun profileVariance(
         ink: BooleanArray,
         width: Int,

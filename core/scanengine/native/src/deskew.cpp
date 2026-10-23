@@ -53,7 +53,13 @@ double profileVariance(const cv::Mat& ink, double degrees) {
 
 } // namespace
 
-double estimateDeskewDegrees(const cv::Mat& gray) {
+double estimateDeskewDegrees(const cv::Mat& grayFull) {
+    // Central crop: page borders, desk slivers and bowed edges would otherwise dominate the
+    // projection profile; the tilt of the text block is what matters.
+    const int marginX = static_cast<int>(grayFull.cols * params::kDeskewSideMargin);
+    const int marginY = static_cast<int>(grayFull.rows * params::kDeskewMargin);
+    cv::Mat gray = grayFull(
+        cv::Rect(marginX, marginY, grayFull.cols - 2 * marginX, grayFull.rows - 2 * marginY));
     cv::Mat ink = inkMask(gray, params::kDeskewWidth);
     if (cv::countNonZero(ink) < params::kMinInkFraction * ink.total()) {
         return 0.0;

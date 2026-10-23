@@ -179,7 +179,15 @@ class SuiteRunner(
             whiteness = scanGray?.let { ToneMetrics.whiteness(it) },
             textDarkness = scanGray?.let { ToneMetrics.textDarkness(it) },
             legibility = legibilityScore,
-            straightnessDeg = if (hasText) scanGray?.let { Straightness.skewDegrees(it) } else null,
+            straightnessDeg =
+                if (hasText) {
+                    scanGray?.let {
+                        Straightness.baselineDeviationDegrees(it)
+                            ?: Straightness.skewDegrees(it)
+                    }
+                } else {
+                    null
+                },
             rotationApplied = analysis.rotationApplied,
             orientationCorrect =
                 if (hasText) {
