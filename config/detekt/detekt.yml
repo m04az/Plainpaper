@@ -12,7 +12,8 @@ style:
     ignoreCompanionObjectPropertyDeclaration: true
     # Developer tooling full of pixel math (metrics, synthetic rendering) is exempt.
     excludes: ['**/test/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/androidUnitTest/**',
-               '**/androidInstrumentedTest/**', '**/jsTest/**', '**/iosTest/**', '**/tools/scansuite/**']
+               '**/androidInstrumentedTest/**', '**/androidDeviceTest/**', '**/jsTest/**', '**/iosTest/**',
+               '**/tools/scansuite/**']
   UnusedPrivateMember:
     ignoreAnnotated: ['Preview']
   ReturnCount:
