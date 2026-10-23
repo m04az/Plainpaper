@@ -281,9 +281,9 @@ const JNINativeMethod kMethods[] = {
     method("nativeCancelFlagDestroy", "(J)V", reinterpret_cast<void*>(nativeCancelFlagDestroy)),
     method("nativeAnalyzeBytes", "(J[BIIIIIZ[FJ[I)J", reinterpret_cast<void*>(nativeAnalyzeBytes)),
 #if defined(PP_ANDROID)
-    method("nativeAnalyzeBitmap", "(JLandroid/graphics/Bitmap;IIZ[FJ[I)J",
+    method("nativeAnalyzeBitmap", "(JLjava/lang/Object;IIZ[FJ[I)J",
            reinterpret_cast<void*>(nativeAnalyzeBitmap)),
-    method("nativeRenderToBitmap", "(JIIIIJLandroid/graphics/Bitmap;[J)I",
+    method("nativeRenderToBitmap", "(JIIIIJLjava/lang/Object;[J)I",
            reinterpret_cast<void*>(nativeRenderToBitmap)),
 #endif
     method("nativeSessionInfo", "(J[J[D)V", reinterpret_cast<void*>(nativeSessionInfo)),
@@ -301,10 +301,13 @@ extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void*) {
     }
     jclass bridge = env->FindClass(kBridgeClass);
     if (bridge == nullptr) {
+        env->ExceptionClear();
         return JNI_ERR;
     }
+    // The Kotlin declarations type the Bitmap parameters as Any, hence java/lang/Object below.
     const jint count = static_cast<jint>(sizeof(kMethods) / sizeof(kMethods[0]));
     if (env->RegisterNatives(bridge, kMethods, count) != JNI_OK) {
+        env->ExceptionClear();
         return JNI_ERR;
     }
     return JNI_VERSION_1_6;

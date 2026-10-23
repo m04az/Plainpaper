@@ -102,6 +102,14 @@ val buildNativeHost by tasks.registering(CMakeBuildTask::class) {
 // ---------------------------------------------------------------------------------------------
 kotlin {
     jvm()
+
+    // Instrumented tests: the on-device smoke test and the benchmark (research R16).
+    androidLibrary {
+        withDeviceTestBuilder { sourceSetTreeName = "test" }.configure {
+            instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        }
+    }
+
     // Custom dependsOn edges below would otherwise disable the default template (and with it
     // the shared iosMain source set); applying it explicitly keeps both.
     applyDefaultHierarchyTemplate()
@@ -122,6 +130,12 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(projects.core.testing)
+        }
+        getByName("androidDeviceTest").dependencies {
+            implementation(libs.androidx.test.runner)
+            implementation(libs.androidx.test.ext.junit)
+            implementation(libs.junit4)
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 
