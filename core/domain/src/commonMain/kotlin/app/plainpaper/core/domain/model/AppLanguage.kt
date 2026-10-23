@@ -9,3 +9,6 @@ public enum class AppLanguage(public val tag: String?) {
     ENGLISH("en"),
     ARABIC("ar"),
 }
+
+
+   
