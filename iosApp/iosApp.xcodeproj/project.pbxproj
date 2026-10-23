@@ -10,6 +10,7 @@
 		A1000001000000000000AA01 /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000001000000000000FA01 /* iOSApp.swift */; };
 		A1000001000000000000AA02 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000001000000000000FA02 /* ContentView.swift */; };
 		A1000001000000000000AA03 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000001000000000000FA03 /* Assets.xcassets */; };
+		A1000001000000000000AA06 /* opencv2.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1000001000000000000FA06 /* opencv2.xcframework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -19,6 +20,7 @@
 		A1000001000000000000FA03 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1000001000000000000FA04 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A1000001000000000000FA05 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
+		A1000001000000000000FA06 /* opencv2.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = opencv2.xcframework; path = "../core/scanengine/build/opencv/ios/build/opencv2.xcframework"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -26,6 +28,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1000001000000000000AA06 /* opencv2.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -38,7 +41,16 @@
 				A1000001000000000000CC01 /* iosApp */,
 				A1000001000000000000CC02 /* Configuration */,
 				A1000001000000000000CC03 /* Products */,
+				A1000001000000000000CC04 /* Frameworks */,
 			);
+			sourceTree = "<group>";
+		};
+		A1000001000000000000CC04 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				A1000001000000000000FA06 /* opencv2.xcframework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		A1000001000000000000CC01 /* iosApp */ = {
@@ -251,6 +263,17 @@
 					"$(inherited)",
 					"-framework",
 					ComposeApp,
+					"-lc++",
+					"-framework",
+					Accelerate,
+					"-framework",
+					CoreImage,
+					"-framework",
+					CoreMedia,
+					"-framework",
+					CoreVideo,
+					"-framework",
+					AVFoundation,
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_ID)";
 				PRODUCT_NAME = "$(APP_NAME)";
@@ -285,6 +308,17 @@
 					"$(inherited)",
 					"-framework",
 					ComposeApp,
+					"-lc++",
+					"-framework",
+					Accelerate,
+					"-framework",
+					CoreImage,
+					"-framework",
+					CoreMedia,
+					"-framework",
+					CoreVideo,
+					"-framework",
+					AVFoundation,
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_ID)";
 				PRODUCT_NAME = "$(APP_NAME)";
