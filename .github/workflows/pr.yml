@@ -1,0 +1,167 @@
+name: PR
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+env:
+  ORG_GRADLE_PROJECT_ci: "true"
+  GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g
+
+jobs:
+  static-analysis:
+    name: static-analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - name: Formatting and static analysis
+        run: ./gradlew spotlessCheck detekt --no-daemon
+      - name: No hard-coded user-visible strings
+        run: scripts/check-hardcoded-strings.sh
+      - name: Upload detekt reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: detekt-reports
+          path: "**/build/reports/detekt/*.html"
+          if-no-files-found: ignore
+
+  test-android:
+    name: test-android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - name: Unit tests (JVM host) and coverage gate
+        run: ./gradlew testAndroidHostTest koverXmlReport koverVerify --continue
+      - name: Test report
+        if: always()
+        uses: dorny/test-reporter@v3
+        with:
+          name: Android unit tests
+          path: "**/build/test-results/testAndroidHostTest/*.xml"
+          reporter: java-junit
+          fail-on-error: false
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: kover-report
+          path: |
+            build/reports/kover/report.xml
+            build/reports/kover/html
+          if-no-files-found: ignore
+
+  build-android:
+    name: build-android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - name: Assemble debug APK
+        run: ./gradlew :androidApp:assembleDebug
+      - uses: actions/upload-artifact@v7
+        with:
+          name: androidApp-debug
+          path: androidApp/build/outputs/apk/debug/*.apk
+
+  test-ios:
+    name: test-ios
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+      - name: Select Xcode 26
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          echo "Using $XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - name: Cache Kotlin/Native
+        uses: actions/cache@v6
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+          restore-keys: konan-${{ runner.os }}-
+      - name: iOS simulator unit tests
+        run: ./gradlew iosSimulatorArm64Test --continue
+      - name: Test report
+        if: always()
+        uses: dorny/test-reporter@v3
+        with:
+          name: iOS unit tests
+          path: "**/build/test-results/iosSimulatorArm64Test/*.xml"
+          reporter: java-junit
+          fail-on-error: false
+
+  build-ios:
+    name: build-ios
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+      - name: Select Xcode 26
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          echo "Using $XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - name: Cache Kotlin/Native
+        uses: actions/cache@v6
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+          restore-keys: konan-${{ runner.os }}-
+      - name: Warm up Kotlin/Native and Gradle caches
+        run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+      - name: Build iOS app (simulator)
+        # The "Compile Kotlin Framework" run-script phase in the Xcode project runs
+        # ./gradlew :composeApp:embedAndSignAppleFrameworkForXcode, which places ComposeApp.framework
+        # under composeApp/build/xcode-frameworks/<CONFIGURATION>/<SDK_NAME>.
+        run: |
+          xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            ARCHS=arm64 CODE_SIGNING_ALLOWED=NO build

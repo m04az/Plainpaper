@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_title">Documents</string>
+    <string name="home_empty_title">No documents yet</string>
+    <string name="home_empty_body">Scan a page with your camera, or turn photos you already have into clean scans.</string>
+    <string name="home_scan_button">Scan a page</string>
+    <string name="home_import_button">Import photos</string>
+    <string name="home_empty_illustration_cd">Illustration of a blank page</string>
+</resources>
