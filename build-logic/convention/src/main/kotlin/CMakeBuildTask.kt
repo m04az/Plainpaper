@@ -1,5 +1,3 @@
-import java.io.File
-import javax.inject.Inject
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.DirectoryProperty
@@ -13,6 +11,8 @@ import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import org.gradle.process.ExecOperations
+import java.io.File
+import javax.inject.Inject
 
 /**
  * Configures and builds a CMake project with Ninja. `cmake` is looked up on `PATH`, then in
@@ -53,9 +53,12 @@ abstract class CMakeBuildTask : DefaultTask() {
         val args =
             mutableListOf(
                 cmake.absolutePath,
-                "-S", sourceDir.get().asFile.absolutePath,
-                "-B", build.absolutePath,
-                "-G", "Ninja",
+                "-S",
+                sourceDir.get().asFile.absolutePath,
+                "-B",
+                build.absolutePath,
+                "-G",
+                "Ninja",
                 "-DCMAKE_BUILD_TYPE=${buildType.get()}",
             )
         ninja?.let { args += "-DCMAKE_MAKE_PROGRAM=${it.absolutePath}" }
@@ -73,7 +76,8 @@ abstract class CMakeBuildTask : DefaultTask() {
         }
         val sdk = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT") ?: androidSdkFromLocalProperties()
         val sdkCmake =
-            sdk?.let { File(it, "cmake") }
+            sdk
+                ?.let { File(it, "cmake") }
                 ?.listFiles()
                 ?.filter { File(it, "bin/cmake").canExecute() }
                 ?.maxByOrNull { it.name }
@@ -90,7 +94,8 @@ abstract class CMakeBuildTask : DefaultTask() {
         while (dir != null) {
             val props = File(dir, "local.properties")
             if (props.isFile) {
-                return props.readLines()
+                return props
+                    .readLines()
                     .firstOrNull { it.startsWith("sdk.dir=") }
                     ?.substringAfter("=")
                     ?.replace("\\:", ":")
@@ -101,7 +106,8 @@ abstract class CMakeBuildTask : DefaultTask() {
     }
 
     private fun findOnPath(name: String): File? =
-        System.getenv("PATH")
+        System
+            .getenv("PATH")
             ?.split(File.pathSeparator)
             ?.map { File(it, name) }
             ?.firstOrNull { it.canExecute() }
