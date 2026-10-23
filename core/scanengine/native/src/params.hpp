@@ -18,7 +18,7 @@ constexpr int kPageLongEdgeSimplified = 2600;
 constexpr double kTooDarkMedianLuminance = 0.12;
 /** Detected quads are shrunk towards their centre by this fraction so desk pixels never reach the
  * page edge. */
-constexpr double kQuadInset = 0.004;
+constexpr double kQuadInset = 0.01;
 /** Number of horizontal bands used by the full-resolution warp so cancellation is prompt. */
 constexpr int kWarpBands = 8;
 /** OpenCV worker threads per capability (research R11). */

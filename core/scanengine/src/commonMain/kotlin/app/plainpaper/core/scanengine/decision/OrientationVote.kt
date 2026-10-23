@@ -13,6 +13,9 @@ public object OrientationVote {
     public const val FLIP_THRESHOLD: Double = 0.60
     public const val HIGH_CONFIDENCE_LINES: Int = 6
     public const val HIGH_CONFIDENCE_AGREEMENT: Double = 0.75
+    private const val QUARTER_TURN = 90
+    private const val HALF_TURN = 180
+    private const val FULL_TURN = 360
 
     /** One text line: its ink mass and whether its cues say "upside down". */
     public data class LineVote(
@@ -29,7 +32,7 @@ public object OrientationVote {
     public fun axisRotation(
         rowVariance: Double,
         columnVariance: Double,
-    ): Int = if (columnVariance > AXIS_RATIO * rowVariance) 90 else 0
+    ): Int = if (columnVariance > AXIS_RATIO * rowVariance) QUARTER_TURN else 0
 
     public fun decide(
         axisRotation: Int,
@@ -39,7 +42,7 @@ public object OrientationVote {
         val total = lines.sumOf { it.mass }
         if (total <= 0.0) return Decision(axisRotation, OrientationConfidence.None)
         val flipped = lines.filter { it.upsideDown }.sumOf { it.mass } / total
-        val rotation = if (flipped >= FLIP_THRESHOLD) (axisRotation + 180) % 360 else axisRotation
+        val rotation = if (flipped >= FLIP_THRESHOLD) (axisRotation + HALF_TURN) % FULL_TURN else axisRotation
         val agreement = maxOf(flipped, 1.0 - flipped)
         val confidence =
             if (lines.size >= HIGH_CONFIDENCE_LINES && agreement >= HIGH_CONFIDENCE_AGREEMENT) {

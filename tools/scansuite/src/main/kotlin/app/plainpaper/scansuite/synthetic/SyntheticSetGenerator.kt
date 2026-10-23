@@ -223,9 +223,14 @@ class SyntheticSetGenerator(
                     g = DESK_G * texture
                     b = DESK_B * texture
                 }
-                // Illumination: gentle horizontal gradient always; a hard shadow half-plane on request.
+                // Illumination: gentle horizontal gradient always; on request a cast shadow with a
+                // soft penumbra (real shadows are never a hard step).
                 var light = 0.88 + 0.12 * x / w
-                if (variant.shadow && x * shadowCos + y * shadowSin < shadowOffset) light *= 0.55
+                if (variant.shadow) {
+                    val distance = x * shadowCos + y * shadowSin - shadowOffset
+                    val t = ((distance + PENUMBRA_PX) / (2 * PENUMBRA_PX)).coerceIn(0.0, 1.0)
+                    light *= SHADOW_DEPTH + (1 - SHADOW_DEPTH) * t * t * (3 - 2 * t)
+                }
                 val n = (noise.nextDouble() - 0.5) * NOISE_AMPLITUDE
                 row[x] = rgb(r * light + n, g * light + n, b * light + n)
             }
@@ -346,7 +351,7 @@ class SyntheticSetGenerator(
     private fun round1(value: Double): Double = (value * 10).roundToInt() / 10.0
 
     companion object {
-        const val VERSION = 1
+        const val VERSION = 2
         const val PAGE_WIDTH = 1240 // A4 at 150 DPI
         const val PAGE_HEIGHT = 1754
         const val CANVAS_WIDTH = 1500
@@ -362,6 +367,8 @@ class SyntheticSetGenerator(
         private const val DESK_G = 92.0
         private const val DESK_B = 74.0
         private const val NOISE_AMPLITUDE = 10.0
+        private const val PENUMBRA_PX = 24.0
+        private const val SHADOW_DEPTH = 0.55
         private const val JPEG_QUALITY = 0.8f
     }
 }

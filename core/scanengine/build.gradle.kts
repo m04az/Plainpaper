@@ -41,7 +41,8 @@ val hasXcode: Boolean =
 
 fun registerIosNativeBuild(taskName: String, sysroot: String, outputName: String) =
     tasks.register<CMakeBuildTask>(taskName) {
-        onlyIf("Xcode is installed") { hasXcode }
+        val xcodeInstalled = hasXcode // captured as a value: the configuration cache cannot serialise the script
+        onlyIf("Xcode is installed") { xcodeInstalled }
         dependsOn(downloadOpencvIosXcframework)
         sourceDir.set(nativeDir)
         buildDir.set(layout.buildDirectory.dir("native/$outputName"))
@@ -101,6 +102,9 @@ val buildNativeHost by tasks.registering(CMakeBuildTask::class) {
 // ---------------------------------------------------------------------------------------------
 kotlin {
     jvm()
+    // Custom dependsOn edges below would otherwise disable the default template (and with it
+    // the shared iosMain source set); applying it explicitly keeps both.
+    applyDefaultHierarchyTemplate()
 
     sourceSets {
         val jvmCommonMain by creating { dependsOn(commonMain.get()) }
@@ -159,7 +163,8 @@ kotlin {
     }
 }
 
+val xcodeInstalled = hasXcode
 tasks.withType<CInteropProcess>().configureEach {
-    onlyIf("Xcode is installed") { hasXcode }
+    onlyIf("Xcode is installed") { xcodeInstalled }
     dependsOn(if (konanTarget.name.contains("simulator")) buildNativeIosSimulatorArm64 else buildNativeIosArm64)
 }

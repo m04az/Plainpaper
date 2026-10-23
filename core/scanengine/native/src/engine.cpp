@@ -172,8 +172,13 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
     {
         StepTimer timer(ctx.timings, PP_STEP_DESKEW);
         cv::Mat preview = warpPreview(ctx, geometry, options->working_long_edge);
+        // Text analysis works on an illumination-normalised preview so shadows and casts do
+        // not masquerade as ink in the projection profiles.
+        cv::Mat previewBackground = estimateBackground(preview, options->working_long_edge);
+        cv::Mat previewNormalized;
+        normalizeIllumination(preview, previewBackground, previewNormalized, cancel);
         cv::Mat previewGray;
-        cv::cvtColor(preview, previewGray, cv::COLOR_BGR2GRAY);
+        cv::cvtColor(previewNormalized, previewGray, cv::COLOR_BGR2GRAY);
         geometry.deskewDeg = estimateDeskewDegrees(previewGray);
         if (std::abs(geometry.deskewDeg) < 0.3) {
             geometry.deskewDeg = 0.0;
