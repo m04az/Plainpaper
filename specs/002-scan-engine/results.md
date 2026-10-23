@@ -38,7 +38,7 @@ The emulator smoke test (`SmokeDeviceTest`) passes on the same image.
 
 ## Coverage
 
-Kover merged line coverage with `:core:scanengine` included: 88.6 % (gate ≥ 80 %, `koverVerify`
+Kover merged line coverage with `:core:scanengine` included: 92.0 % (gate ≥ 80 %, `koverVerify`
 passes).
 
 ## Competitor comparison
