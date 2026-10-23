@@ -14,7 +14,7 @@
 | Job id | Runner | Gradle / shell commands | Artifacts |
 |--------|--------|-------------------------|-----------|
 | `static-analysis` | ubuntu-latest | `./gradlew spotlessCheck detekt --no-daemon` | detekt SARIF (`build/reports/detekt/merge.sarif`) uploaded to code scanning |
-| `test-android` | ubuntu-latest | `./gradlew testDebugUnitTest androidHostTest jvmTest --continue` (whichever tasks exist per module), then `./gradlew koverXmlReport koverVerify` | `**/build/test-results/**/*.xml`, `build/reports/kover/report.xml` |
+| `test-android` | ubuntu-latest | `./gradlew testAndroidHostTest --continue` (Android host-test task of the KMP library plugin; exact name confirmed in T012 and kept in sync here), then `./gradlew koverXmlReport koverVerify` | `**/build/test-results/**/*.xml`, `build/reports/kover/report.xml` |
 | `build-android` | ubuntu-latest | `./gradlew :androidApp:assembleDebug` | `androidApp/build/outputs/apk/debug/*.apk` |
 | `test-ios` | macos-26 | `sudo xcode-select -s /Applications/Xcode_26.4.app` (or latest 26.x present), `./gradlew iosSimulatorArm64Test` | `**/build/test-results/iosSimulatorArm64Test/*.xml` |
 | `build-ios` | macos-26 | `./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64`, then `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build` | none (build log) |
@@ -46,6 +46,12 @@ Kover root configuration merges `:core:domain`, `:feature:home`, `:feature:setti
 excludes `*Screen*`, `*Route*`, `*Preview*`, `*ComposableSingletons*`, `*Module*Kt` and
 generated `Res` classes. Rule: minimum 80% `LINE` coverage, `koverVerify` fails the build
 otherwise and prints the measured value (spec acceptance scenario US4-4).
+
+## Localization guard
+
+`static-analysis` also runs `scripts/check-hardcoded-strings.sh`, which greps `**/src/commonMain/**/*.kt`
+for `Text("`, `text = "`, `contentDescription = "` and `title = "` with a literal argument and
+fails on any match (FR-008). Allowed exception: `*Preview*.kt` files.
 
 ## Failure semantics
 

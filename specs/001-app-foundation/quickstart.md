@@ -24,7 +24,7 @@ Expected: both succeed; APK at `androidApp/build/outputs/apk/debug/androidApp-de
 ## 2. Run unit tests and the coverage gate
 
 ```sh
-./gradlew testDebugUnitTest koverXmlReport koverVerify
+./gradlew testAndroidHostTest koverXmlReport koverVerify
 ```
 
 Expected: all tests green; `koverVerify` passes with ≥ 80% line coverage over domain +
@@ -36,6 +36,15 @@ presentation. The HTML report is at `build/reports/kover/html/index.html`.
 ./gradlew :androidApp:installDebug
 adb shell am start -n app.plainpaper/.MainActivity
 ```
+
+Measure cold start (SC-001, after a force-stop):
+
+```sh
+adb shell am force-stop app.plainpaper
+adb shell am start -W -n app.plainpaper/.MainActivity | grep TotalTime
+```
+
+Expected: `TotalTime` under 3000 ms on a mid-range device.
 
 Check:
 - Launcher shows "Plainpaper" with the paper icon.

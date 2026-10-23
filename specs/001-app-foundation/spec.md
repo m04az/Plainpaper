@@ -178,9 +178,6 @@ confirm the pipeline reports a failure; fix it and confirm all checks pass.
   Documents (Home), Folders and Settings, and a round floating "Scan" button beside it, on
   every top-level screen. The current tab MUST be visually highlighted. Folders MUST open a
   placeholder screen in this feature.
-- **FR-005a**: The visual design MUST follow the approved Plainpaper design and its token
-  sheet (colors for light and dark, type scale, spacing, radii, glass material) so later
-  features reuse the same components.
 - **FR-006**: Settings MUST let the user choose the app language from: Follow system, English,
   Arabic. The selection MUST apply immediately without restarting the app and MUST persist
   across launches.
@@ -206,11 +203,15 @@ confirm the pipeline reports a failure; fix it and confirm all checks pass.
   coverage report with the constitutional 80% gate for domain and presentation, an Android
   debug build and an iOS build.
 - **FR-015**: A pull request with any failing check MUST be reported as not mergeable.
-- **FR-016**: The Home, Settings and placeholder screens MUST each have unit tests for their
-  state and user actions, written with or before the implementation, in line with the
-  constitution's test-first rule.
+- **FR-016**: The Home and Settings ViewModels, every use case, the preferences repository and
+  mapper, and the navigation/locale resolvers MUST have unit tests written with or before the
+  implementation, in line with the constitution's test-first rule. Placeholder screens carry no
+  state and need no ViewModel.
 - **FR-017**: The app MUST install and run on Android 8.0 (API 26) and newer, and on iOS 15
   and newer.
+- **FR-018**: The visual design MUST follow the approved Plainpaper design and its token
+  sheet (colors for light and dark, type scale, spacing, radii, glass material) so later
+  features reuse the same components.
 
 ### Key Entities
 

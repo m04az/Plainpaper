@@ -25,7 +25,8 @@ only in `:iosApp`
 ui-tooling-preview), org.jetbrains.androidx.lifecycle 2.11.0 (viewmodel-compose,
 runtime-compose), org.jetbrains.androidx.navigation navigation-compose 2.10.0-rc01,
 kotlinx-serialization-json 1.12.0, kotlinx-coroutines 1.11.0, Koin 4.2.2 (core, compose,
-compose-viewmodel), androidx.datastore datastore-preferences-core 1.3.0, androidx.activity
+compose-viewmodel), androidx.datastore datastore-preferences-core 1.3.0 (+ okio 3.x for
+`Path`), androidx.activity
 activity-compose 1.13.0 (Android host only). Build: AGP 9.3.1, Gradle 9.6.0, Spotless 8.10.4 +
 ktlint 1.8.0, detekt 1.23.8, Kover 0.9.11. See [research.md](research.md) R1–R5, R9.
 
@@ -34,8 +35,9 @@ no database in this feature.
 
 **Testing**: kotlin.test, kotlinx-coroutines-test 1.11.0, Turbine 1.2.1, fakes in
 `:core:testing`; Kover gate ≥ 80% line coverage over `:core:domain`, `:feature:home`,
-`:feature:settings`. Android target tests run on the JVM (`testDebugUnitTest` /
-`androidHostTest`); iOS tests run on `iosSimulatorArm64Test`.
+`:feature:settings`. Android host (JVM) tests are enabled per module with
+`androidLibrary { withHostTestBuilder {} }` and run with the generated task
+(`testAndroidHostTest`, name confirmed in T012); iOS tests run on `iosSimulatorArm64Test`.
 
 **Target Platform**: Android 8.0+ (minSdk 26, compileSdk/targetSdk 36); iOS 15.0+ (arm64 device,
 arm64 simulator; x64 simulator omitted). Development machine: macOS, JDK 21, Android SDK 36,
@@ -64,14 +66,14 @@ workflow with 5 jobs, 9 Gradle modules + build-logic.
 | I. Privacy & Offline First | PASS | No network dependency, no INTERNET permission, no analytics, no crash reporter in this feature. Preferences stay in app sandbox. |
 | II. Honest Product | PASS | No Pro surface in this feature; Settings omits Pro banner and App lock rows (spec assumption). |
 | III. KMP + Clean Architecture | PASS | `:core:domain` is pure Kotlin (no Compose, no platform deps); `:core:data` depends on domain + DataStore; features depend on domain + designsystem only; platform specifics behind `expect`/`actual` (`LocalAppLocale`, DataStore path) and Koin-provided platform modules. |
-| IV. MVVM + UDF | PASS | `HomeViewModel` and `SettingsViewModel` each expose one `StateFlow<UiState>`, accept a sealed `Action`, emit `Effect` via `Channel`; screens are stateless composables fed state + callbacks. |
+| IV. MVVM + UDF | PASS with note | `HomeViewModel` and `SettingsViewModel` each expose one `StateFlow<UiState>`, accept a sealed `Action`, emit `Effect` via `Channel`; screens are stateless composables fed state + callbacks. The three placeholder screens are stateless informational composables with no ViewModel (justified in Complexity Tracking). |
 | V. Coroutines & Structured Concurrency | PASS | `DispatcherProvider` interface in domain, injected by Koin; ViewModels use `viewModelScope`; no `GlobalScope`. |
 | VI. Test-First (NON-NEGOTIABLE) | PASS | Tasks will order tests before implementation for every use case, repository, mapper and ViewModel; Kover verify at 80% over domain + presentation; fakes in `:core:testing`. |
 | VII. Continuous Integration | PASS | `pr.yml` with static-analysis, test-android, build-android, test-ios, build-ios jobs (research R11). |
 | VIII. User-Friendly & Accessible | PASS | RTL computed in common code; all strings in `values`/`values-ar`; `contentDescription` on icon buttons; 48dp minimum sizes in design-system components; dynamic type via `sp`; light and dark color schemes from design tokens. |
 | IX. Simplicity | PASS with notes | No `:core:database`, `:core:scanengine`, Room, camera or ML dependencies. Navigation 2.10.0-rc01 is a release candidate (justified in R3). `:androidApp` is an extra module forced by AGP 9 (R2). |
 
-**Post-design re-check (after Phase 1)**: unchanged, all PASS. The two notes under IX are
+**Post-design re-check (after Phase 1)**: unchanged, all PASS. The notes under IV and IX are
 recorded in Complexity Tracking.
 
 ## Project Structure
@@ -247,3 +249,4 @@ in-process string refresh (R6), verified in quickstart step 6.
 |-----------|------------|-------------------------------------|
 | Extra `:androidApp` module (10 modules instead of 9) | AGP 9 forbids `com.android.application` in a KMP module | Legacy variant API flag is removed in AGP 10 (H2 2026); migrating later costs more than splitting now |
 | Navigation 2.10.0-rc01 (release candidate) | Only JetBrains navigation build aligned with lifecycle 2.11.0 and Compose Multiplatform 1.12.2 | Stable 2.9.2 targets lifecycle 2.9.x and risks runtime binary mismatch with the stable lifecycle 2.11.0 the ViewModels need |
+| Placeholder screens without a ViewModel (Principle IV) | Scan, Import and Folders placeholders show static title + body and a back action; they hold no state and perform no logic | An empty ViewModel per placeholder adds three classes and tests that assert nothing; the screens are replaced by real features (3, 3, 6) anyway |

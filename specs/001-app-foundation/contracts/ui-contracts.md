@@ -150,4 +150,8 @@ expect object LocalAppLocale {
 
 Behavioural contract: changing `language` re-keys `content` so every `stringResource` re-reads
 with the new locale; `LocalLayoutDirection` is always set from `layoutDirection`, never from
-the platform.
+the platform. The `NavHostController` MUST be created with `rememberNavController()` in
+`PlainpaperApp` **outside** `AppEnvironment` and passed in, so re-keying never resets the back
+stack (spec edge case: switching language on a placeholder keeps the user there). The Android
+`actual` captures the device locale once at first composition and restores it when the tag is
+`null` ("Follow system").
