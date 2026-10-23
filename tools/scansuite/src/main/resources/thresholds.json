@@ -1,0 +1,32 @@
+{
+  // SC-001
+  "cornerErrorMax": 0.02,
+  "cornerWithinRate": 0.90,
+  "noPageClassifiedRate": 1.00,
+  // SC-002 (Scan style)
+  "whitenessMin": 0.97,
+  "textDarknessMax": 0.25,
+  "styleRate": 0.95,
+  // SC-003 (average over ar/en/fr; per subset)
+  "legibilityRelativeMin": 0.95,
+  "legibilitySubsetMin": 0.90,
+  // SC-004 (curled subset, Full capability)
+  "straightnessMaxDeg": 0.5,
+  // SC-010
+  "orientationAccuracyMin": 0.95,
+  // SC-008
+  "competitorMatchOrBeatRate": 0.60,
+  "competitorWorstRelative": -0.10,
+  // SC-007
+  "cancelLatencyMaxMillis": 200,
+  "cancelTrials": 50,
+  // informational
+  "hostMedianMillisInfoOnly": 2000,
+  // synthetic set: exact ground truth
+  "syntheticCornerErrorMax": 0.01,
+  "syntheticCornerWithinRate": 1.00,
+  "syntheticOrientationAccuracyMin": 1.00,
+  "syntheticLegibilityRelativeMin": 0.95,
+  // a real-photo category is enforced once it has this many photos
+  "minPhotosPerCategory": 3
+}

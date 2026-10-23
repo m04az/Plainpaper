@@ -1,0 +1,7 @@
+Plainpaper transforme les photos de documents papier en fichiers qui semblent sortir d'un scanner à plat.
+Chaque étape s'exécute sur le téléphone : rien n'est envoyé sur Internet, aucun compte n'est requis et aucun filigrane n'est ajouté.
+Le moteur détecte les bords de la page, la redresse en rectangle, supprime les ombres et les dominantes de couleur, puis rend le texte net et sombre sur un papier parfaitement blanc.
+Les reçus, les contrats, les cartes d'identité et les notes manuscrites suivent le même chemin, en arabe, en anglais ou en français.
+La qualité est mesurée, jamais devinée : un ensemble fixe de photos de référence est traité à chaque modification et comparé à des seuils.
+Lorsqu'une page est gondolée, les lignes de texte sont redressées avant le rendu final afin que chaque ligne reste horizontale.
+Le résultat est produit à trois cents points par pouce sur une page au format A4 ou Letter, prête à être partagée en PDF.

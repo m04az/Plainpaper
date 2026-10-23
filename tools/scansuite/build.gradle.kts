@@ -4,7 +4,8 @@ plugins {
     application
 }
 
-description = "Reference-photo quality suite for the scan engine (specs/002-scan-engine). Developer tooling, never shipped."
+description =
+    "Reference-photo quality suite for the scan engine (specs/002-scan-engine). Developer tooling, never shipped."
 
 kotlin {
     jvmToolchain(21)
@@ -41,6 +42,7 @@ tasks.withType<JavaExec>().configureEach {
     dependsOn(hostNativeLibrary)
     workingDir = rootDir
     systemProperty("pp.native.path", hostLibraryPath())
+    systemProperty("java.awt.headless", "true")
     jvmArgs("-Xmx2g")
 }
 
@@ -49,6 +51,7 @@ tasks.test {
     useJUnitPlatform()
     workingDir = rootDir
     systemProperty("pp.native.path", hostLibraryPath())
+    systemProperty("java.awt.headless", "true")
     environment("PP_REQUIRE_OCR", System.getenv("PP_REQUIRE_OCR") ?: "0")
     maxHeapSize = "2g"
     testLogging {
