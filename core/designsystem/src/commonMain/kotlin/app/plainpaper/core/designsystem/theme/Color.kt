@@ -10,6 +10,11 @@ import androidx.compose.ui.graphics.Color
 /**
  * Plainpaper color tokens from the approved design ("Design tokens & components" board).
  * Paper and ink with one accent; document pages always stay white, even in dark mode.
+ *
+ * WCAG contrast (verified 2026-10-23, tasks T068): ink on background 16.6 (light) / 17.0 (dark);
+ * onSurfaceVariant on surface 6.5 / 6.6; onPrimary on primary 8.0 / 8.1; primary on background
+ * 7.1 / 8.1; onPrimaryContainer on primaryContainer 9.4 / 10.2; surface on success 5.2 / 7.6;
+ * surface on error 6.6 / 6.0. Every text pair clears 4.5:1; `outline` is decorative only.
  */
 public object PpColors {
     // Light
