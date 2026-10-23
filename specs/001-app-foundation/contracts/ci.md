@@ -17,7 +17,7 @@
 | `test-android` | ubuntu-latest | `./gradlew testAndroidHostTest --continue` (Android host-test task of the KMP library plugin; exact name confirmed in T012 and kept in sync here), then `./gradlew koverXmlReport koverVerify` | `**/build/test-results/**/*.xml`, `build/reports/kover/report.xml` |
 | `build-android` | ubuntu-latest | `./gradlew :androidApp:assembleDebug` | `androidApp/build/outputs/apk/debug/*.apk` |
 | `test-ios` | macos-26 | `sudo xcode-select -s /Applications/Xcode_26.4.app` (or latest 26.x present), `./gradlew iosSimulatorArm64Test` | `**/build/test-results/iosSimulatorArm64Test/*.xml` |
-| `build-ios` | macos-26 | `./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64`, then `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build` | none (build log) |
+| `build-ios` | macos-26 | `./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64` (cache warm-up), then `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build`; the Xcode run-script phase calls `embedAndSignAppleFrameworkForXcode` | none (build log) |
 
 Shared steps for every job: `actions/checkout@v7`, `actions/setup-java@v6` (temurin 21),
 `gradle/actions/setup-gradle@v6` (cache enabled, `cache-read-only` on non-main),

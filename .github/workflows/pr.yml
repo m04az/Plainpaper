@@ -155,10 +155,13 @@ jobs:
           path: ~/.konan
           key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
           restore-keys: konan-${{ runner.os }}-
-      - name: Build Compose framework (simulator)
+      - name: Warm up Kotlin/Native and Gradle caches
         run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
       - name: Build iOS app (simulator)
+        # The "Compile Kotlin Framework" run-script phase in the Xcode project runs
+        # ./gradlew :composeApp:embedAndSignAppleFrameworkForXcode, which places ComposeApp.framework
+        # under composeApp/build/xcode-frameworks/<CONFIGURATION>/<SDK_NAME>.
         run: |
           xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED=YES build
+            CODE_SIGNING_ALLOWED=NO build
