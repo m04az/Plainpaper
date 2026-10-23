@@ -35,10 +35,7 @@ object CompetitorComparison {
     }
 
     /** Per app: on how many photos Plainpaper matches or beats it, and the worst relative delta. */
-    fun summarise(
-        rows: List<MetricRow>,
-        thresholds: Thresholds,
-    ): List<CompetitorSummary> =
+    fun summarise(rows: List<MetricRow>): List<CompetitorSummary> =
         Manifest.COMPETITOR_APPS.mapNotNull { app ->
             val pairs = rows.mapNotNull { row -> row.competitor[app]?.let { row to it } }
             if (pairs.isEmpty()) return@mapNotNull null
@@ -46,7 +43,7 @@ object CompetitorComparison {
             var worst: Double? = null
             for ((row, competitor) in pairs) {
                 val ours = row.whiteness ?: continue
-                val whitenessOk = ours >= competitor.whiteness - thresholds.cornerErrorMax * 0 // exact compare
+                val whitenessOk = ours >= competitor.whiteness
                 val legibilityOk =
                     if (row.legibility != null &&
                         competitor.legibility != null

@@ -234,6 +234,8 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
       - name: Reference quality suite (gate)
         if: steps.changes.outputs.engine == 'true'
+        env:
+          PP_REQUIRE_OCR: "1"
         run: ./gradlew :tools:scansuite:test
       - name: Quality report
         if: always() && steps.changes.outputs.engine == 'true'

@@ -73,7 +73,7 @@ class SuiteRunner(
                 capability = capability.name,
                 rows = rows,
                 checks = Gate.evaluate(rows, thresholds),
-                competitorSummary = CompetitorComparison.summarise(rows, thresholds),
+                competitorSummary = CompetitorComparison.summarise(rows),
             )
         report.write(outputDir)
         return report
