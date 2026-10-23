@@ -3,6 +3,9 @@ plugins {
 }
 
 kotlin {
+    // The host JVM target serves the scan-engine quality suite (specs/002, research R4).
+    jvm()
+
     sourceSets {
         commonMain.dependencies {
             api(libs.kotlinx.coroutines.core)
