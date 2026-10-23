@@ -24,7 +24,6 @@ import app.plainpaper.scanengine.cinterop.pp_analysis_info
 import app.plainpaper.scanengine.cinterop.pp_analyze
 import app.plainpaper.scanengine.cinterop.pp_analyze_options
 import app.plainpaper.scanengine.cinterop.pp_api_version
-import app.plainpaper.scanengine.cinterop.pp_engine
 import app.plainpaper.scanengine.cinterop.pp_engine_create
 import app.plainpaper.scanengine.cinterop.pp_image_rgba
 import app.plainpaper.scanengine.cinterop.pp_last_error
@@ -32,9 +31,10 @@ import app.plainpaper.scanengine.cinterop.pp_output_free
 import app.plainpaper.scanengine.cinterop.pp_output_image
 import app.plainpaper.scanengine.cinterop.pp_quad
 import app.plainpaper.scanengine.cinterop.pp_render
-import app.plainpaper.scanengine.cinterop.pp_session
 import app.plainpaper.scanengine.cinterop.pp_session_destroy
 import app.plainpaper.scanengine.cinterop.pp_session_info
+import cnames.structs.pp_engine
+import cnames.structs.pp_session
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.CPointerVar
 import kotlinx.cinterop.ExperimentalForeignApi
