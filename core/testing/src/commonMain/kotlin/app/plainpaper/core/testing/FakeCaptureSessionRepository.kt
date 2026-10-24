@@ -65,7 +65,12 @@ class FakeCaptureSessionRepository(
         if (recoverableSession?.id == sessionId) recoverableSession = null
     }
 
-    override suspend fun recoverable(): CaptureSession? = recoverableSession ?: state.value?.takeIf { it.pageCount > 0 }
+    /** Like the file repository, a recovered session becomes the active one. */
+    override suspend fun recoverable(): CaptureSession? {
+        val leftover = recoverableSession ?: state.value?.takeIf { it.pageCount > 0 }
+        if (leftover != null && state.value == null) state.value = leftover
+        return leftover
+    }
 
     override fun sessionDirectory(sessionId: String): String = "$root/$sessionId"
 

@@ -14,6 +14,7 @@ import app.plainpaper.core.domain.model.capture.CaptureMode
 import app.plainpaper.core.domain.model.capture.CaptureSettings
 import app.plainpaper.core.domain.model.capture.PageState
 import app.plainpaper.core.domain.model.capture.PageTag
+import app.plainpaper.core.domain.model.capture.SessionSource
 import app.plainpaper.core.domain.model.capture.SessionStatus
 import app.plainpaper.core.domain.usecase.capture.AddCapturedPageUseCase
 import app.plainpaper.core.domain.usecase.capture.DiscardSessionUseCase
@@ -313,5 +314,82 @@ class CameraViewModelTest {
                 assertEquals(CameraEffect.NavigateToImport(noCamera = true), awaitItem())
             }
             assertEquals(0, camera.startCount)
+        }
+
+    // ---- US3: many pages, lifecycle ------------------------------------------------------------
+
+    @Test
+    fun screenStopAndStartRestartTheCameraButKeepTheSession() =
+        runTest {
+            val vm = runningViewModel()
+            vm.onAction(CameraAction.Shutter)
+            val sessionId = vm.uiState.value.sessionId
+            vm.onAction(CameraAction.ScreenStopped)
+            assertEquals(1, camera.stopCount)
+            vm.onAction(CameraAction.ScreenStarted)
+            assertEquals(2, camera.startCount)
+            assertEquals(sessionId, vm.uiState.value.sessionId)
+            assertEquals(1, vm.uiState.value.pageCount)
+        }
+
+    @Test
+    fun thirtyCapturesKeepOrderAndCount() =
+        runTest {
+            val vm = runningViewModel()
+            repeat(30) {
+                vm.onAction(CameraAction.Shutter)
+                advanceTimeBy(400)
+            }
+            val session = assertNotNull(sessions.state.value)
+            assertEquals(30, session.pageCount)
+            assertEquals((0 until 30).toList(), session.pages.map { it.position })
+            assertEquals(30, vm.uiState.value.pageCount)
+        }
+
+    @Test
+    fun doneWhileProcessingStillHandsOver() =
+        runTest {
+            val vm = runningViewModel()
+            vm.onAction(CameraAction.Shutter)
+            vm.effects.test {
+                vm.onAction(CameraAction.Done)
+                assertIs<CameraEffect.NavigateToHandoff>(awaitItem())
+            }
+        }
+
+    @Test
+    fun anExistingActiveCameraSessionIsReused() =
+        runTest {
+            val existing = sessions.start(SessionSource.Camera)
+            sessions.addPage(existing.id, "/o.jpg", PageTag.Document, PageSize.A4)
+            val vm = runningViewModel()
+            assertEquals(existing.id, vm.uiState.value.sessionId)
+            assertEquals(1, vm.uiState.value.pageCount)
+        }
+
+    // ---- US4: modes ------------------------------------------------------------------------
+
+    @Test
+    fun selectingAModePersistsAndChangesTheHintAndTags() =
+        runTest {
+            val vm = runningViewModel()
+            vm.onAction(CameraAction.SelectMode(CaptureMode.IdCard))
+            assertEquals(CaptureMode.IdCard, settings.state.value.mode)
+            assertEquals(HintKind.FrontOfCard, vm.uiState.value.hint)
+            vm.onAction(CameraAction.Shutter)
+            advanceTimeBy(400)
+            assertEquals(HintKind.BackOfCard, vm.uiState.value.hint)
+            vm.onAction(CameraAction.Shutter)
+            advanceTimeBy(400)
+            assertEquals(HintKind.FrontOfCard, vm.uiState.value.hint)
+            vm.onAction(CameraAction.SelectMode(CaptureMode.Receipt))
+            assertEquals(HintKind.FitReceipt, vm.uiState.value.hint)
+            vm.onAction(CameraAction.Shutter)
+            val pages = assertNotNull(sessions.state.value).pages
+            assertIs<PageTag.IdFront>(pages[0].tag)
+            assertIs<PageTag.IdBack>(pages[1].tag)
+            assertEquals((pages[0].tag as PageTag.IdFront).cardId, (pages[1].tag as PageTag.IdBack).cardId)
+            assertEquals(PageTag.Receipt, pages[2].tag)
+            assertTrue(pages.all { it.pageSize == PageSize.Natural })
         }
 }
