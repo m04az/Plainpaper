@@ -128,6 +128,18 @@ typedef struct {
     pp_step_timing steps[2]; /* render, resample */
 } pp_output_image;
 
+/* pp_detect flags */
+#define PP_FRAME_BGRA 0x1u /* pixel order is B,G,R,A instead of R,G,B,A */
+
+/* Detection-only result for live preview frames (specs/003 contracts/c-api-detect.md). */
+typedef struct {
+    pp_quad corners;          /* frame pixels, TL TR BR BL; full frame when not found */
+    pp_confidence confidence; /* same classes as pp_analyze */
+    float mean_luma;          /* 0..255 mean luminance of the frame */
+    float fill_fraction;      /* quad area / frame area, 0 when not found */
+    int64_t micros;           /* wall time of the call */
+} pp_detect_info;
+
 PP_EXPORT int pp_api_version(void);
 PP_EXPORT pp_engine* pp_engine_create(void);
 PP_EXPORT void pp_engine_destroy(pp_engine* engine);
@@ -141,6 +153,14 @@ PP_EXPORT pp_status pp_analyze(pp_engine* engine, const pp_image_rgba* photo,
                                const pp_analyze_options* options, volatile int32_t* cancel_flag,
                                pp_session** out_session);
 PP_EXPORT void pp_session_info(const pp_session* session, pp_analysis_info* out);
+
+/*
+ * Detection only, for live preview frames (long edge 240..6000 px; frames above 800 px are
+ * downscaled). Creates no session. Returns PP_OK, PP_CANCELLED, PP_ERR_INVALID_INPUT or
+ * PP_ERR_INTERNAL. Safe to call while pp_analyze runs on another thread.
+ */
+PP_EXPORT pp_status pp_detect(pp_engine* engine, const pp_image_rgba* frame, uint32_t flags,
+                              volatile int32_t* cancel_flag, pp_detect_info* out);
 
 /*
  * Render the analysed page. out_width/out_height are computed by the caller (PageSize);

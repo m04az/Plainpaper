@@ -7,6 +7,7 @@
 #include "stages.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
@@ -86,7 +87,7 @@ void configureThreads(pp_capability capability) {
 }
 
 /** Builds the downscaled BGR working image and records the decode step. */
-void prepareWorking(AnalyzeContext& ctx) {
+void prepareWorking(AnalyzeContext& ctx, bool bgra = false) {
     StepTimer timer(ctx.timings, PP_STEP_DECODE);
     const pp_image_rgba& photo = *ctx.photo;
     ctx.photoView = cv::Mat(photo.height, photo.width, CV_8UC4, const_cast<uint8_t*>(photo.pixels),
@@ -101,8 +102,75 @@ void prepareWorking(AnalyzeContext& ctx) {
     } else {
         workingRgba = ctx.photoView;
     }
-    cv::cvtColor(workingRgba, ctx.working, cv::COLOR_RGBA2BGR);
+    cv::cvtColor(workingRgba, ctx.working, bgra ? cv::COLOR_BGRA2BGR : cv::COLOR_RGBA2BGR);
     checkCancel(ctx.cancel);
+}
+
+void validateFrame(const pp_image_rgba* frame, const pp_detect_info* out) {
+    if (frame == nullptr || frame->pixels == nullptr || out == nullptr) {
+        throw Error{PP_ERR_INVALID_INPUT, "null input"};
+    }
+    const int longEdge = std::max(frame->width, frame->height);
+    if (frame->width <= 0 || frame->height <= 0 || longEdge < params::kMinDetectLongEdge) {
+        throw Error{PP_ERR_INVALID_INPUT, "frame too small"};
+    }
+    if (longEdge > params::kMaxInputLongEdge) {
+        throw Error{PP_ERR_INVALID_INPUT, "frame too large"};
+    }
+    if (frame->stride_bytes < frame->width * 4) {
+        throw Error{PP_ERR_INVALID_INPUT, "stride smaller than width"};
+    }
+}
+
+double quadArea(const Quad& quad) {
+    double sum = 0;
+    for (int i = 0; i < 4; ++i) {
+        const auto& a = quad[i];
+        const auto& b = quad[(i + 1) % 4];
+        sum += static_cast<double>(a.x) * b.y - static_cast<double>(b.x) * a.y;
+    }
+    return std::abs(sum) / 2.0;
+}
+
+/** Detection only (specs/003 contracts/c-api-detect.md): reuses detectPage on a small frame. */
+pp_status runDetect(const pp_image_rgba* frame, uint32_t flags, volatile int32_t* cancel,
+                    pp_detect_info* out) {
+    const auto start = std::chrono::steady_clock::now();
+    validateFrame(frame, out);
+    pp_analyze_options options{};
+    options.capability = PP_CAP_FULL;
+    options.working_long_edge =
+        std::min(params::kDetectWorkingLongEdge, std::max(frame->width, frame->height));
+    options.allow_flatten = 0;
+    options.user_corners = nullptr;
+
+    AnalyzeContext ctx;
+    ctx.photo = frame;
+    ctx.options = &options;
+    ctx.cancel = cancel;
+    ctx.fullCapability = true;
+    prepareWorking(ctx, (flags & PP_FRAME_BGRA) != 0);
+
+    cv::Mat gray;
+    cv::cvtColor(ctx.working, gray, cv::COLOR_BGR2GRAY);
+    const double meanLuma = cv::mean(gray)[0];
+    checkCancel(cancel);
+
+    const DetectResult detected = detectPage(ctx);
+    *out = pp_detect_info{};
+    for (int i = 0; i < 4; ++i) {
+        out->corners.c[i] = pp_point{detected.quad[i].x, detected.quad[i].y};
+    }
+    out->confidence = detected.confidence;
+    out->mean_luma = static_cast<float>(meanLuma);
+    const double frameArea = static_cast<double>(frame->width) * frame->height;
+    out->fill_fraction = detected.confidence == PP_CONF_NOT_FOUND
+                             ? 0.f
+                             : static_cast<float>(quadArea(detected.quad) / frameArea);
+    out->micros = std::chrono::duration_cast<std::chrono::microseconds>(
+                      std::chrono::steady_clock::now() - start)
+                      .count();
+    return PP_OK;
 }
 
 bool isTooDark(const cv::Mat& workingBgr) {
@@ -410,6 +478,15 @@ PP_EXPORT pp_status pp_analyze(pp_engine* engine, const pp_image_rgba* photo,
     }
     return pp::guarded(
         [&] { return pp::runAnalysis(engine, photo, options, cancel_flag, out_session); });
+}
+
+PP_EXPORT pp_status pp_detect(pp_engine* engine, const pp_image_rgba* frame, uint32_t flags,
+                              volatile int32_t* cancel_flag, pp_detect_info* out) {
+    if (engine == nullptr) {
+        pp::setLastError("null engine");
+        return PP_ERR_INVALID_INPUT;
+    }
+    return pp::guarded([&] { return pp::runDetect(frame, flags, cancel_flag, out); });
 }
 
 PP_EXPORT void pp_session_info(const pp_session* session, pp_analysis_info* out) {

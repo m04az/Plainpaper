@@ -72,6 +72,30 @@ pp_status analyzePixels(JNIEnv* env, jlong engine, const uint8_t* pixels, jint w
                       outSession);
 }
 
+constexpr jsize kDetectValues = 12; // 8 corner coordinates, confidence, mean luma, fill, micros
+
+pp_status detectPixels(JNIEnv* env, jlong engine, const uint8_t* pixels, jint width, jint height,
+                       jint strideBytes, jint flags, jlong cancel, jdoubleArray out) {
+    pp_image_rgba frame{pixels, width, height, strideBytes};
+    pp_detect_info info{};
+    pp_status status = pp_detect(fromHandle<pp_engine>(engine), &frame,
+                                 static_cast<uint32_t>(flags), cancelPointer(cancel), &info);
+    if (out != nullptr) {
+        jdouble packed[kDetectValues];
+        for (int i = 0; i < 4; ++i) {
+            packed[i * 2] = info.corners.c[i].x;
+            packed[i * 2 + 1] = info.corners.c[i].y;
+        }
+        packed[8] = info.confidence;
+        packed[9] = info.mean_luma;
+        packed[10] = info.fill_fraction;
+        packed[11] = static_cast<jdouble>(info.micros);
+        const jsize count = std::min<jsize>(env->GetArrayLength(out), kDetectValues);
+        env->SetDoubleArrayRegion(out, 0, count, packed);
+    }
+    return status;
+}
+
 // ---- natives -------------------------------------------------------------------------------
 
 jint nativeApiVersion(JNIEnv*, jclass) {
@@ -154,6 +178,36 @@ jlong nativeAnalyzeBitmap(JNIEnv* env, jclass, jlong engine, jobject bitmap, jin
     return toHandle(session);
 }
 #endif
+
+jint nativeDetectBytes(JNIEnv* env, jclass, jlong engine, jbyteArray pixels, jint width,
+                       jint height, jint strideBytes, jint flags, jlong cancel, jdoubleArray out) {
+    if (pixels == nullptr || static_cast<int64_t>(env->GetArrayLength(pixels)) <
+                                 static_cast<int64_t>(strideBytes) * height) {
+        return PP_ERR_INVALID_INPUT;
+    }
+    jbyte* data = env->GetByteArrayElements(pixels, nullptr);
+    if (data == nullptr) {
+        return PP_ERR_OUT_OF_MEMORY;
+    }
+    const pp_status status = detectPixels(env, engine, reinterpret_cast<const uint8_t*>(data),
+                                          width, height, strideBytes, flags, cancel, out);
+    env->ReleaseByteArrayElements(pixels, data, JNI_ABORT);
+    return status;
+}
+
+/** Direct java.nio.ByteBuffer (camera analysis planes), read in place. */
+jint nativeDetectBuffer(JNIEnv* env, jclass, jlong engine, jobject buffer, jint width, jint height,
+                        jint strideBytes, jint flags, jlong cancel, jdoubleArray out) {
+    if (buffer == nullptr) {
+        return PP_ERR_INVALID_INPUT;
+    }
+    const auto* data = static_cast<const uint8_t*>(env->GetDirectBufferAddress(buffer));
+    const jlong capacity = env->GetDirectBufferCapacity(buffer);
+    if (data == nullptr || capacity < static_cast<jlong>(strideBytes) * height) {
+        return PP_ERR_INVALID_INPUT;
+    }
+    return detectPixels(env, engine, data, width, height, strideBytes, flags, cancel, out);
+}
 
 void nativeSessionInfo(JNIEnv* env, jclass, jlong session, jlongArray longs, jdoubleArray doubles) {
     auto* handle = fromHandle<pp_session>(session);
@@ -297,6 +351,9 @@ const JNINativeMethod kMethods[] = {
     method("nativeRenderToBitmap", "(JIIIIJLjava/lang/Object;[J)I",
            reinterpret_cast<void*>(nativeRenderToBitmap)),
 #endif
+    method("nativeDetectBytes", "(J[BIIIIJ[D)I", reinterpret_cast<void*>(nativeDetectBytes)),
+    method("nativeDetectBuffer", "(JLjava/nio/ByteBuffer;IIIIJ[D)I",
+           reinterpret_cast<void*>(nativeDetectBuffer)),
     method("nativeSessionInfo", "(J[J[D)V", reinterpret_cast<void*>(nativeSessionInfo)),
     method("nativeRenderToBytes", "(JIIIIJ[J)[B", reinterpret_cast<void*>(nativeRenderToBytes)),
     method("nativeSessionDestroy", "(J)V", reinterpret_cast<void*>(nativeSessionDestroy)),
