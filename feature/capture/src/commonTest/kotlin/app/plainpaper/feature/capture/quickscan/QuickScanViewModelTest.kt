@@ -13,7 +13,6 @@ import app.plainpaper.core.domain.usecase.capture.AddCapturedPageUseCase
 import app.plainpaper.core.domain.usecase.capture.DiscardSessionUseCase
 import app.plainpaper.core.domain.usecase.capture.FinishSessionUseCase
 import app.plainpaper.core.domain.usecase.capture.ObserveActiveSessionUseCase
-import app.plainpaper.core.domain.usecase.capture.ResolveDefaultPageSizeUseCase
 import app.plainpaper.core.domain.usecase.capture.SessionDirectoryUseCase
 import app.plainpaper.core.domain.usecase.capture.StartSessionUseCase
 import app.plainpaper.core.scanengine.DefaultScanEngine
@@ -21,7 +20,6 @@ import app.plainpaper.core.testing.FakeCapabilityProvider
 import app.plainpaper.core.testing.FakeCaptureSessionRepository
 import app.plainpaper.core.testing.FakeNativeBridge
 import app.plainpaper.core.testing.FakePhotoDecoder
-import app.plainpaper.core.testing.FakeRegionProvider
 import app.plainpaper.core.testing.TestDispatcherProvider
 import app.plainpaper.feature.capture.fakes.FakeBackgroundTask
 import app.plainpaper.feature.capture.fakes.FakeDocumentScanner
@@ -80,7 +78,6 @@ class QuickScanViewModelTest {
             discardSession = DiscardSessionUseCase(sessions),
             observeSession = ObserveActiveSessionUseCase(sessions),
             sessionDirectory = SessionDirectoryUseCase(sessions),
-            resolvePageSize = ResolveDefaultPageSizeUseCase(FakeRegionProvider("US")),
             processor = processor,
             dispatchers = dispatchers,
         )
@@ -169,7 +166,8 @@ class QuickScanViewModelTest {
                 assertEquals(paths, session.pages.map { it.originalPath })
                 assertEquals(listOf(PageSource.QuickScan, PageSource.QuickScan), session.pages.map { it.source })
                 assertEquals(listOf(PageTag.Document, PageTag.Document), session.pages.map { it.tag })
-                assertEquals(PageSize.Letter, session.pages.first().pageSize)
+                // Already cropped by the phone's scanner: the page keeps its own shape.
+                assertEquals(PageSize.Natural, session.pages.first().pageSize)
                 assertEquals(SessionStatus.HandedOff, session.status)
                 assertFalse(vm.uiState.value.busy)
             }

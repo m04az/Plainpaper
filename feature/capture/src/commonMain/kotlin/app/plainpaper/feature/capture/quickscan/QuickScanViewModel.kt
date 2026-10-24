@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import app.plainpaper.core.capture.scanner.ScannerAvailability
 import app.plainpaper.core.capture.scanner.ScannerResult
 import app.plainpaper.core.domain.coroutines.DispatcherProvider
-import app.plainpaper.core.domain.model.capture.CaptureMode
+import app.plainpaper.core.domain.model.PageSize
 import app.plainpaper.core.domain.model.capture.PageSource
 import app.plainpaper.core.domain.model.capture.PageTag
 import app.plainpaper.core.domain.model.capture.SessionSource
@@ -14,7 +14,6 @@ import app.plainpaper.core.domain.usecase.capture.AddCapturedPageUseCase
 import app.plainpaper.core.domain.usecase.capture.DiscardSessionUseCase
 import app.plainpaper.core.domain.usecase.capture.FinishSessionUseCase
 import app.plainpaper.core.domain.usecase.capture.ObserveActiveSessionUseCase
-import app.plainpaper.core.domain.usecase.capture.ResolveDefaultPageSizeUseCase
 import app.plainpaper.core.domain.usecase.capture.SessionDirectoryUseCase
 import app.plainpaper.core.domain.usecase.capture.StartSessionUseCase
 import app.plainpaper.feature.capture.processing.PageProcessor
@@ -83,7 +82,6 @@ class QuickScanViewModel(
     private val discardSession: DiscardSessionUseCase,
     private val observeSession: ObserveActiveSessionUseCase,
     private val sessionDirectory: SessionDirectoryUseCase,
-    private val resolvePageSize: ResolveDefaultPageSizeUseCase,
     private val processor: PageProcessor,
     private val dispatchers: DispatcherProvider,
 ) : ViewModel() {
@@ -171,7 +169,8 @@ class QuickScanViewModel(
             release(id, null)
             return
         }
-        val size = resolvePageSize(CaptureMode.Document)
+        // Already cropped by the phone's scanner: keep the page's own shape.
+        val size = PageSize.Natural
         paths.forEach { path ->
             val page = addPage(id, path, PageTag.Document, size, PageSource.QuickScan)
             processor.enqueue(id, page.id)

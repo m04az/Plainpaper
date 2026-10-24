@@ -67,7 +67,6 @@ val captureFeatureModule: Module =
                 discardSession = get(),
                 observeSession = get(),
                 sessionDirectory = get(),
-                resolvePageSize = get(),
                 processor = get(),
                 dispatchers = get(),
             )
