@@ -262,8 +262,189 @@ Candidate scoreQuad(const Quad& quad, const cv::Mat& edges, double frameArea) {
     return c;
 }
 
-bool fromContours(const cv::Mat& mask, const cv::Mat& edges, double frameArea, int mode,
-                  Candidate& best) {
+bool intersect(const cv::Vec4f& a, const cv::Vec4f& b, cv::Point2f& out) {
+    // Lines as point + direction: p = (a[2], a[3]) + t * (a[0], a[1]).
+    const double cross = a[0] * b[1] - a[1] * b[0];
+    if (std::abs(cross) < 1e-9) {
+        return false;
+    }
+    const double dx = b[2] - a[2];
+    const double dy = b[3] - a[3];
+    const double t = (dx * b[1] - dy * b[0]) / cross;
+    out = cv::Point2f(static_cast<float>(a[2] + t * a[0]), static_cast<float>(a[3] + t * a[1]));
+    return true;
+}
+
+/** Robust line through the edge pixels near side a-b (ends skipped); false when too few. */
+bool fitSideLine(const cv::Mat& edges, const cv::Point2f& a, const cv::Point2f& b, double band,
+                 cv::Vec4f& line) {
+    const cv::Point2f d = b - a;
+    const double length = std::hypot(d.x, d.y);
+    if (length < 1.0) {
+        return false;
+    }
+    const cv::Point2f u(static_cast<float>(d.x / length), static_cast<float>(d.y / length));
+    const cv::Point2f n(-u.y, u.x);
+    const int x0 = std::max(0, static_cast<int>(std::floor(std::min(a.x, b.x) - band)));
+    const int y0 = std::max(0, static_cast<int>(std::floor(std::min(a.y, b.y) - band)));
+    const int x1 = std::min(edges.cols - 1, static_cast<int>(std::ceil(std::max(a.x, b.x) + band)));
+    const int y1 = std::min(edges.rows - 1, static_cast<int>(std::ceil(std::max(a.y, b.y) + band)));
+    std::vector<cv::Point2f> points;
+    for (int y = y0; y <= y1; ++y) {
+        const uint8_t* row = edges.ptr<uint8_t>(y);
+        for (int x = x0; x <= x1; ++x) {
+            if (row[x] == 0) {
+                continue;
+            }
+            const cv::Point2f p(static_cast<float>(x) - a.x, static_cast<float>(y) - a.y);
+            const double t = (p.x * u.x + p.y * u.y) / length;
+            const double dist = std::abs(p.x * n.x + p.y * n.y);
+            if (t > 0.1 && t < 0.9 && dist <= band) {
+                points.emplace_back(static_cast<float>(x), static_cast<float>(y));
+            }
+        }
+    }
+    if (static_cast<int>(points.size()) < params::kRefineMinPoints) {
+        return false;
+    }
+    cv::fitLine(points, line, cv::DIST_HUBER, 0, 0.01, 0.01);
+    return true;
+}
+
+/** Line (direction, point) through a and b. */
+cv::Vec4f lineThrough(const cv::Point2f& a, const cv::Point2f& b) {
+    const cv::Point2f d = b - a;
+    const float length = std::max(1e-3f, std::hypot(d.x, d.y));
+    return cv::Vec4f(d.x / length, d.y / length, a.x, a.y);
+}
+
+/** Corners from four side lines (side i runs from corner i to corner i+1). */
+bool cornersFromLines(const std::array<cv::Vec4f, 4>& lines, Quad& out) {
+    for (int i = 0; i < 4; ++i) {
+        if (!intersect(lines[(i + 3) % 4], lines[i], out[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * Slides each side along its outward normal to the offset with the best edge support; ties go
+ * to the outermost line, because a document's border is its outermost edge (a card shows a
+ * second, inner line from its thickness and print).
+ */
+std::array<cv::Vec4f, 4> snapSidesOutward(const cv::Mat& edges, const Quad& quad) {
+    cv::Point2f centre(0.f, 0.f);
+    for (const auto& p : quad) {
+        centre += p * 0.25f;
+    }
+    std::array<cv::Vec4f, 4> lines;
+    for (int i = 0; i < 4; ++i) {
+        const cv::Point2f& a = quad[i];
+        const cv::Point2f& b = quad[(i + 1) % 4];
+        cv::Vec4f line = lineThrough(a, b);
+        cv::Point2f normal(-line[1], line[0]);
+        if ((a - centre).dot(normal) < 0) {
+            normal = -normal;
+        }
+        double bestSupport = -1.0;
+        float bestOffset = 0.f;
+        const int reach = static_cast<int>(params::kRefineSnapPx);
+        for (int step = -reach; step <= reach; ++step) {
+            const cv::Point2f shift = normal * static_cast<float>(step);
+            const double support = sideSupport(edges, a + shift, b + shift);
+            if (support >= bestSupport) {
+                bestSupport = support;
+                bestOffset = static_cast<float>(step);
+            }
+        }
+        lines[i] = cv::Vec4f(line[0], line[1], line[2] + normal.x * bestOffset,
+                             line[3] + normal.y * bestOffset);
+    }
+    return lines;
+}
+
+/**
+ * Snaps a coarse quad (hull fit, rounded card corners) onto the edge pixels along its sides:
+ * one robust line per side, corners at the intersections, then each side slides out to the
+ * outermost well-supported edge.
+ */
+bool refineQuad(const cv::Mat& edges, const Quad& coarse, Quad& out) {
+    Quad quad = coarse;
+    for (int pass = 0; pass < 2; ++pass) {
+        std::array<cv::Vec4f, 4> lines;
+        for (int i = 0; i < 4; ++i) {
+            const cv::Point2f& a = quad[i];
+            const cv::Point2f& b = quad[(i + 1) % 4];
+            const double length = std::hypot(b.x - a.x, b.y - a.y);
+            const double band = pass == 0
+                                    ? std::clamp(params::kRefineBandFraction * length,
+                                                 params::kRefineBandMinPx, params::kRefineBandMaxPx)
+                                    : params::kRefineSecondBandPx;
+            if (!fitSideLine(edges, a, b, band, lines[i])) {
+                lines[i] = lineThrough(a, b); // keep the coarse side when it has too few pixels
+            }
+        }
+        if (!cornersFromLines(lines, quad)) {
+            return false;
+        }
+    }
+    if (!cornersFromLines(snapSidesOutward(edges, quad), quad)) {
+        return false;
+    }
+    const float tolX = edges.cols * 0.02f;
+    const float tolY = edges.rows * 0.02f;
+    for (const auto& p : quad) {
+        if (p.x < -tolX || p.y < -tolY || p.x > edges.cols + tolX || p.y > edges.rows + tolY) {
+            return false;
+        }
+    }
+    const std::vector<cv::Point2f> pts(quad.begin(), quad.end());
+    if (!cv::isContourConvex(pts)) {
+        return false;
+    }
+    out = quad;
+    return true;
+}
+
+double quadContrast(const cv::Mat& gray, const Quad& quad);
+
+/** Mean luminance inside a quad minus a thin ring just outside it (local contrast). */
+double ringContrast(const cv::Mat& gray, const Quad& quad) {
+    cv::Mat mask = cv::Mat::zeros(gray.size(), CV_8U);
+    std::vector<cv::Point> pts;
+    for (const auto& p : quad) {
+        pts.emplace_back(static_cast<int>(std::lround(p.x)), static_cast<int>(std::lround(p.y)));
+    }
+    cv::fillConvexPoly(mask, pts, cv::Scalar(255));
+    const int ring = std::max(
+        3, static_cast<int>(params::kSmallPageRingFraction * std::hypot(gray.cols, gray.rows)));
+    cv::Mat grown;
+    cv::dilate(mask, grown,
+               cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2 * ring + 1, 2 * ring + 1)));
+    cv::Mat ringMask = grown - mask;
+    if (cv::countNonZero(ringMask) == 0) {
+        return 0.0;
+    }
+    return cv::mean(gray, mask)[0] - cv::mean(gray, ringMask)[0];
+}
+
+/**
+ * A small quad (card, receipt) is only a document when it lies inside the frame, its outline is
+ * mostly present and it is clearly brighter than its surroundings; a box printed on a page is not.
+ */
+bool smallDocumentEvidence(const Candidate& c, const cv::Mat& gray) {
+    if (c.borderSides != 0 || c.minSupport < params::kSmallPageMinSupport ||
+        c.meanSupport < params::kSmallPageMinMeanSupport) {
+        return false;
+    }
+    const double contrast = ringContrast(gray, c.quad);
+    debugLog("  small quad: area meanSupport contrast", c.areaFraction, c.meanSupport, contrast);
+    return contrast >= params::kHullMinContrast;
+}
+
+bool fromContours(const cv::Mat& mask, const cv::Mat& edges, const cv::Mat& gray, double frameArea,
+                  int mode, Candidate& best) {
     std::vector<std::vector<cv::Point>> contours;
     cv::findContours(mask.clone(), contours, mode, cv::CHAIN_APPROX_SIMPLE);
     bool found = false;
@@ -273,7 +454,7 @@ bool fromContours(const cv::Mat& mask, const cv::Mat& edges, double frameArea, i
         }
         std::vector<cv::Point> hull;
         cv::convexHull(contour, hull);
-        if (cv::contourArea(hull) < params::kMinPageAreaFraction * frameArea) {
+        if (cv::contourArea(hull) < params::kMinSmallPageAreaFraction * frameArea) {
             continue;
         }
         Quad quad;
@@ -283,13 +464,25 @@ bool fromContours(const cv::Mat& mask, const cv::Mat& edges, double frameArea, i
             continue;
         }
         Candidate c = scoreQuad(quad, edges, frameArea);
+        // Small quads (cards) are snapped to their edges; large pages keep the hull fit, whose
+        // corners already sit on the (possibly curled) outline.
+        Quad refined;
+        if (c.areaFraction < params::kMinPageAreaFraction && refineQuad(edges, quad, refined)) {
+            Candidate r = scoreQuad(refined, edges, frameArea);
+            if (r.meanSupport > c.meanSupport) {
+                c = r;
+            }
+        }
         debugLog("  candidate: area minSupport score", c.areaFraction, c.minSupport, c.score);
         // Curled pages bow their top and bottom edges away from the straight quad, so one or
         // two sides may have little support; the mean still has to be convincing.
-        if (c.areaFraction < params::kMinPageAreaFraction ||
+        if (c.areaFraction < params::kMinSmallPageAreaFraction ||
             c.areaFraction > params::kMaxPageAreaFraction ||
             c.minSupport < params::kMinAcceptSupport ||
             c.meanSupport < params::kMinAcceptMeanSupport) {
+            continue;
+        }
+        if (c.areaFraction < params::kMinPageAreaFraction && !smallDocumentEvidence(c, gray)) {
             continue;
         }
         if (!found || c.score > best.score) {
@@ -298,6 +491,42 @@ bool fromContours(const cv::Mat& mask, const cv::Mat& edges, double frameArea, i
         }
     }
     return found;
+}
+
+/**
+ * Text-dense documents (cards, printed pages) become solid blobs once the edge map is closed;
+ * an opening then cuts thin attachments (cables, desk seams) that merge the outline with the
+ * clutter around it. The outer contours of the blobs are fitted and scored like edge contours.
+ */
+bool fromFilledEdges(const cv::Mat& edges, const cv::Mat& gray, double frameArea, Candidate& best) {
+    // Morphology runs at preview scale (cheap, and scale-independent in effect); the mask is
+    // scaled back so the contours are fitted and scored at full working resolution.
+    const double scale = std::min(1.0, static_cast<double>(params::kDetectWorkingLongEdge) /
+                                           std::max(edges.cols, edges.rows));
+    cv::Mat small;
+    if (scale < 1.0) {
+        cv::resize(edges, small, cv::Size(), scale, scale, cv::INTER_AREA);
+        cv::threshold(small, small, 0, 255, cv::THRESH_BINARY);
+    } else {
+        small = edges;
+    }
+    const int shortSide = std::min(small.cols, small.rows);
+    const int closeSize = std::max(3, static_cast<int>(params::kFillCloseFraction * shortSide));
+    const int openSize = std::max(3, static_cast<int>(params::kFillOpenFraction * shortSide));
+    cv::Mat closed;
+    cv::morphologyEx(small, closed, cv::MORPH_CLOSE,
+                     cv::getStructuringElement(cv::MORPH_RECT, cv::Size(closeSize, closeSize)));
+    std::vector<std::vector<cv::Point>> outer;
+    cv::findContours(closed, outer, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    cv::Mat filled = cv::Mat::zeros(small.size(), CV_8U);
+    cv::drawContours(filled, outer, -1, cv::Scalar(255), cv::FILLED);
+    cv::morphologyEx(filled, filled, cv::MORPH_OPEN,
+                     cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(openSize, openSize)));
+    if (scale < 1.0) {
+        cv::resize(filled, filled, edges.size(), 0, 0, cv::INTER_NEAREST);
+    }
+    debugDump("filled", filled);
+    return fromContours(filled, edges, gray, frameArea, cv::RETR_EXTERNAL, best);
 }
 
 /**
@@ -405,19 +634,6 @@ bool fitClusterLine(const LineCluster& cluster, cv::Vec4f& line) {
         return false;
     }
     cv::fitLine(cluster.points, line, cv::DIST_L2, 0, 0.01, 0.01);
-    return true;
-}
-
-bool intersect(const cv::Vec4f& a, const cv::Vec4f& b, cv::Point2f& out) {
-    // Lines as point + direction: p = (a[2], a[3]) + t * (a[0], a[1]).
-    const double cross = a[0] * b[1] - a[1] * b[0];
-    if (std::abs(cross) < 1e-9) {
-        return false;
-    }
-    const double dx = b[2] - a[2];
-    const double dy = b[3] - a[3];
-    const double t = (dx * b[1] - dy * b[0]) / cross;
-    out = cv::Point2f(static_cast<float>(a[2] + t * a[0]), static_cast<float>(a[3] + t * a[1]));
     return true;
 }
 
@@ -645,7 +861,17 @@ DetectResult detectPage(AnalyzeContext& ctx) {
     checkCancel(ctx.cancel);
 
     Candidate best;
-    bool found = fromContours(edges, edges, frameArea, cv::RETR_LIST, best);
+    bool found = fromContours(edges, edges, gray, frameArea, cv::RETR_LIST, best);
+    {
+        Candidate filledCandidate;
+        if (fromFilledEdges(edges, gray, frameArea, filledCandidate) &&
+            (!found || filledCandidate.score > best.score)) {
+            debugLog("filled quad: area support score", filledCandidate.areaFraction,
+                     filledCandidate.minSupport, filledCandidate.score);
+            best = filledCandidate;
+            found = true;
+        }
+    }
     bool lowConfidenceOnly = false;
     checkCancel(ctx.cancel);
     if (!found) {
@@ -664,7 +890,7 @@ DetectResult detectPage(AnalyzeContext& ctx) {
         debugDump("edges-faint", faint);
         Candidate faintCandidate;
         const bool faintFound =
-            fromContours(faint, faint, frameArea, cv::RETR_LIST, faintCandidate) ||
+            fromContours(faint, faint, gray, frameArea, cv::RETR_LIST, faintCandidate) ||
             houghCandidate(faint, frameArea, kHoughRelaxed, faintCandidate);
         if (faintFound) {
             debugLog("faint quad: area support contrast", faintCandidate.areaFraction,

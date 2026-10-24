@@ -54,12 +54,33 @@ constexpr double kRegionMinIoU = 0.85;
 constexpr int kRegionMaxBorderSides = 1;
 /** Accepted page area as a fraction of the frame. */
 constexpr double kMinPageAreaFraction = 0.20;
+/** Small documents (ID cards, receipts held at a distance) down to this area are accepted when
+ * no side lies on the frame border, the outline is mostly present and the quad is clearly
+ * brighter than a thin ring around it (kHullMinContrast). */
+constexpr double kMinSmallPageAreaFraction = 0.05;
+constexpr double kSmallPageMinSupport = 0.3;
+constexpr double kSmallPageMinMeanSupport = 0.6;
+/** Side refinement: edge pixels within this band of a fitted side (fraction of its length,
+ * clamped in pixels) are fitted with a robust line; the band then narrows for a second pass. */
+constexpr double kRefineBandFraction = 0.04;
+constexpr double kRefineBandMinPx = 6.0;
+constexpr double kRefineBandMaxPx = 20.0;
+constexpr double kRefineSecondBandPx = 4.0;
+constexpr int kRefineMinPoints = 20;
+/** After the fit each side may slide this far (px at working resolution) to the outermost edge. */
+constexpr double kRefineSnapPx = 8.0;
+/** Filled-edge candidates: closing that fills text, opening that cuts thin attachments
+ * (fractions of the short side). */
+constexpr double kFillCloseFraction = 0.025;
+constexpr double kFillOpenFraction = 0.12;
+/** Width of the ring outside a small quad used for its contrast (fraction of the diagonal). */
+constexpr double kSmallPageRingFraction = 0.02;
 constexpr double kMaxPageAreaFraction = 0.985;
 /** Points sampled per side when measuring edge support. */
 constexpr int kEdgeSupportSamples = 32;
 /** High confidence needs this edge support on every side and this area fraction. */
 constexpr double kHighConfidenceSupport = 0.80;
-constexpr double kHighConfidenceArea = 0.30;
+constexpr double kHighConfidenceArea = 0.08;
 /** Page-fills-frame rule: bright (>= this luminance, 0..1), flat (variance below) pixels. */
 constexpr double kPaperLuminance = 0.60;
 constexpr double kPaperVariance = 64.0;
