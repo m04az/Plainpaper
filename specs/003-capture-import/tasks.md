@@ -204,12 +204,12 @@
 ## Phase 8: Polish & Cross-Cutting Concerns
 
 - [X] T067 [P] Write `feature/capture/src/androidDeviceTest/kotlin/app/plainpaper/feature/capture/CaptureSemanticsTest.kt` (Compose UI test with fakes: every control on the camera and import screens has a content description/role, `assertTouchHeightIsEqualTo`/width ≥ 48 dp, hint pill is a live region, RTL: close at the end and Done at the start, Arabic strings resolve) and run on the emulator (SC-010); attach light/dark/RTL screenshots of both screens to the PR description
-- [ ] T068 [P] Measure SC-001…SC-006 on the emulator (and the owner's phone when available): preview start time, detect micros per frame (`ScanReport`-style log), auto-capture latency over 20 trials, 10-photo import duration, cancel latency; record in `specs/003-capture-import/results.md` with device/build
+- [X] T068 [P] Measure SC-001…SC-006 on the emulator (and the owner's phone when available): preview start time, detect micros per frame (`ScanReport`-style log), auto-capture latency over 20 trials, 10-photo import duration, cancel latency; record in `specs/003-capture-import/results.md` with device/build
 - [X] T069 [P] Update `CLAUDE.md` (module map: `:core:capture`, `:feature:capture`; commands: camera smoke script, device tests; rule: camera code only in `:core:capture`) and `README.md`
 - [X] T070 [P] Review Kover: `./gradlew koverXmlReport koverVerify` ≥ 80 % with the new modules; add tests for uncovered decisions
 - [X] T071 [P] Detekt/Spotless clean; `scripts/check-hardcoded-strings.sh` clean; remove the obsolete placeholder routes/strings; confirm no new permission beyond CAMERA in the merged manifest (`./gradlew :androidApp:processDebugManifest` + inspect)
 - [X] T073 [P] Write `feature/capture/src/androidDeviceTest/kotlin/app/plainpaper/feature/capture/CaptureSoakDeviceTest.kt` (real repository + processor + engine with bundled photos and a fake camera: 50 sessions × 5 pages, 20 imports × 10 photos, 10 simulated background/foreground cycles via `PageProcessor.resume()`; asserts zero `Failed`, zero lost pages, no crash) and run it on the low-end AVD (SC-008); record in `results.md`
-- [ ] T072 Run the full quickstart.md checklist (sections 1–6), fix anything that fails, mark PR #3 ready for review, ensure all six required checks are green, merge into `main` (merge commit); update memory `plainpaper-progress`
+- [X] T072 (merge left to the owner, as for 002) Run the full quickstart.md checklist (sections 1–6), fix anything that fails, mark PR #3 ready for review, ensure all six required checks are green, merge into `main` (merge commit); update memory `plainpaper-progress`
 
 ---
 

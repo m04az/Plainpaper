@@ -21,7 +21,7 @@ Numbers from the development machine (Apple M5 Pro host) and the Pixel 10a AVD
 | SC | Target | Measured | Where |
 |---|---|---|---|
 | SC-001 preview visible | ≤ 1.5 s mid-range | 1.08 s cold / 0.13 s warm from `start()` to `Running` on the emulator | `CameraSmoke` logcat |
-| SC-002 outline rate / lag | ≥ 15/s, < 150 ms | detect median see smoke log (host 1.8 ms); analysis stream 30 fps on the emulator | `CameraSmokeTest` |
+| SC-002 outline rate / lag | ≥ 15/s, < 150 ms | `pp_detect` on live 640 × 480 frames: median 40 ms on the emulator (Simplified; first call 0.6 s warm-up), 1.8 ms on the host; analysis stream 30 fps, so the outline updates at ≈ 20/s on the emulator | `CameraSmokeTest` log |
 | SC-003 auto-capture within 1 s of steadiness | ≥ 90 % of 20 trials | gate fires at exactly the 700 ms window in `AutoCaptureGateTest`; no real page can be shown to the emulator camera (poster flag ignored) → phone trial pending | unit test |
 | SC-004 preview live again < 1 s; 10 pages processed ≤ 5 s after the last capture | | capture flash 300 ms; pages process concurrently (2 workers on Full, 1 on Simplified); emulator: 2 pages ready within ~3 s of the second shutter | emulator walkthrough |
 | SC-005 10-photo import | ≤ 25 s mid-range / 60 s low-end | see soak import timings below (emulator, Simplified) | `CaptureSoakDeviceTest` |
@@ -33,7 +33,19 @@ Numbers from the development machine (Apple M5 Pro host) and the Pixel 10a AVD
 
 ## Soak (SC-008 sample)
 
-SOAK_PLACEHOLDER
+`CaptureSoakDeviceTest` on the Pixel 10a AVD (Simplified pipeline, one worker), 2026-10-24:
+50 camera-style sessions × 5 pages + 20 imports × 10 photos with a simulated foreground
+cycle every page = **450 pages, 0 failures, 0 lost pages**, `OK (1 test)`.
+
+Import of 10 photos (3 MP synthetic page, copy + analyze + render + JPEG + thumbnail):
+
+| Condition | 10-photo import |
+|---|---|
+| Emulator CPU shared with Gradle builds (first 10 imports) | 52–56 s |
+| Emulator idle (last 9 imports) | 2.3–3.6 s (≈ 0.3 s per photo) |
+
+The idle figure is the one comparable to SC-005 (≤ 25 s mid-range, ≤ 60 s low-end); phone
+numbers are pending.
 
 ## Screenshots (Pixel 10a AVD, light theme)
 
