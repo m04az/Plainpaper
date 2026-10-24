@@ -69,7 +69,9 @@ class CaptureSoakDeviceTest {
             output: ScanOutput,
             path: String,
             quality: Int,
-        ): Boolean = real.writeJpeg(output, path, quality)
+            rotation: Int,
+            mirrored: Boolean,
+        ): Boolean = real.writeJpeg(output, path, quality, rotation, mirrored)
     }
 
     private object NoBackground : BackgroundTask {

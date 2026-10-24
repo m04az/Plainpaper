@@ -57,6 +57,16 @@ Reserved (not yet created): `:core:database`.
 - The emulator ignores `-virtualscene-poster`, so auto-capture on a real page is verified on a
   phone; the gate itself is unit-tested.
 
+## Model use
+
+- Planning, specs (Spec Kit), debugging, scan-engine tuning and code review stay in the main
+  session (the strongest model).
+- Well-specified implementation tasks go to the `implementer` subagent (Sonnet,
+  `.claude/agents/implementer.md`) with a brief that names the task, files and acceptance tests.
+- Long or noisy builds, test runs, CI-log downloads and device runs go to the `runner` subagent
+  (Haiku, `.claude/agents/runner.md`), which returns only the outcome and error lines.
+- The main session reviews every subagent result (diff and checks) before it is pushed.
+
 ## Commands
 
 ```sh

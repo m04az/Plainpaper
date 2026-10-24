@@ -18,6 +18,7 @@ import app.plainpaper.core.scanengine.RenderResult
 import app.plainpaper.core.scanengine.ScanAnalysis
 import app.plainpaper.core.scanengine.ScanEngine
 import app.plainpaper.core.scanengine.ScanPhoto
+import app.plainpaper.core.scanengine.model.AnalyzeOptions
 import app.plainpaper.core.scanengine.model.Outcome
 import app.plainpaper.core.scanengine.model.RenderOptions
 import kotlinx.coroutines.CancellationException
@@ -44,6 +45,7 @@ data class PageWork(
  * JPEG + thumbnail → session update (research R8). One page at a time on Simplified devices,
  * two on Full. Survives screen changes; `resume()` re-queues pending pages after a restart.
  */
+@Suppress("TooManyFunctions") // queue operations: enqueue, cancel, resume, restyle, transform
 class PageProcessor(
     private val engine: ScanEngine,
     private val decoder: PhotoDecoder,
@@ -157,7 +159,9 @@ class PageProcessor(
         page: CapturedPage,
         photo: ScanPhoto,
     ) {
-        when (val analyzed = engine.analyze(photo)) {
+        // A page that was already detected keeps its corners: a new look re-renders the same crop.
+        val options = page.corners?.let { AnalyzeOptions(userCorners = it) } ?: AnalyzeOptions()
+        when (val analyzed = engine.analyze(photo, options)) {
             is AnalyzeResult.Failed -> {
                 finish(
                     work,
@@ -176,31 +180,113 @@ class PageProcessor(
         page: CapturedPage,
         analysis: ScanAnalysis,
     ) {
-        val rendered = engine.render(analysis, RenderOptions(OutputStyle.Scan, page.pageSize))
+        val rendered = engine.render(analysis, RenderOptions(page.style, page.pageSize))
         if (rendered is RenderResult.Failed) {
             finish(work, page) { it.copy(state = PageState.Failed(rendered.outcome.toFailure())) }
             return
         }
         val output = (rendered as RenderResult.Ready).output
         val directory = sessions.sessionDirectory(work.sessionId)
-        val index = page.position.toString().padStart(INDEX_DIGITS, '0')
-        val pagePath = "$directory/page-$index.jpg"
-        val thumbnailPath = "$directory/thumb-$index.jpg"
-        if (!files.writeJpeg(output, pagePath)) {
+        val (pagePath, thumbnailPath) = renderedPaths(directory, page)
+        if (!files.writeJpeg(output, pagePath, rotation = page.rotation, mirrored = page.mirrored)) {
             finish(work, page) { it.copy(state = PageState.Failed(PageFailure.Internal)) }
             return
         }
         val thumbnailWritten = files.writeThumbnail(pagePath, thumbnailPath)
+        // The first detection's verdict stands: a re-render with stored corners reports them as
+        // user corners, which would otherwise hide a page that still needs attention.
+        val confidence = page.confidence ?: analysis.confidence
         finish(work, page) {
             it.copy(
-                state = analysis.toPageState(),
+                state = stateFor(analysis.outcome, confidence),
                 pagePath = pagePath,
                 thumbnailPath = if (thumbnailWritten) thumbnailPath else null,
-                corners = analysis.corners,
-                confidence = analysis.confidence,
+                corners = page.corners ?: analysis.corners,
+                confidence = confidence,
                 rotationApplied = analysis.rotationApplied,
             )
         }
+    }
+
+    /**
+     * Re-renders [pageIds] in [style]. Pages keep their corners; a look rendered before for the
+     * same page is reused from its file instead of running the engine again.
+     */
+    fun restyle(
+        sessionId: String,
+        pageIds: List<String>,
+        style: OutputStyle,
+    ) {
+        scope.launch {
+            val session = sessions.activeSession.first()?.takeIf { it.id == sessionId } ?: return@launch
+            val directory = sessions.sessionDirectory(sessionId)
+            val pages =
+                pageIds.mapNotNull(session::page).filter { page ->
+                    page.style != style && page.state !is PageState.Pending && page.state !is PageState.Processing
+                }
+            for (page in pages) {
+                val id = page.id
+                val restyled = page.copy(style = style)
+                val (pagePath, thumbnailPath) = renderedPaths(directory, restyled)
+                if (page.state.hasPage && files.exists(pagePath)) {
+                    val thumb = thumbnailPath.takeIf { files.exists(it) }
+                    sessions.updatePage(sessionId, restyled.copy(pagePath = pagePath, thumbnailPath = thumb))
+                } else {
+                    sessions.updatePage(sessionId, restyled.copy(state = PageState.Pending))
+                    enqueue(sessionId, id)
+                }
+            }
+        }
+    }
+
+    /**
+     * Rotates ([rotateClockwise], 90 degrees) and / or mirrors ([flip]) the page as shown, then
+     * re-renders it from the original with the stored corners. Pages that are still being
+     * processed are left alone (the screens disable the buttons until they are ready).
+     */
+    fun transform(
+        sessionId: String,
+        pageId: String,
+        rotateClockwise: Boolean = false,
+        flip: Boolean = false,
+    ) {
+        scope.launch {
+            val session = sessions.activeSession.first()?.takeIf { it.id == sessionId } ?: return@launch
+            val page = session.page(pageId) ?: return@launch
+            if (page.state is PageState.Pending || page.state is PageState.Processing) return@launch
+            sessions.updatePage(sessionId, transformed(page, rotateClockwise, flip).copy(state = PageState.Pending))
+            enqueue(sessionId, pageId)
+        }
+    }
+
+    private fun transformed(
+        page: CapturedPage,
+        rotateClockwise: Boolean,
+        flip: Boolean,
+    ): CapturedPage {
+        var rotation = page.rotation
+        var mirrored = page.mirrored
+        if (rotateClockwise) rotation = (rotation + QUARTER_TURN) % FULL_TURN
+        if (flip) {
+            // The mirror is applied before the rotation, so mirroring what is on screen
+            // left to right means mirroring first and turning the other way.
+            mirrored = !mirrored
+            rotation = (FULL_TURN - rotation) % FULL_TURN
+        }
+        return page.copy(rotation = rotation, mirrored = mirrored, revision = page.revision + 1)
+    }
+
+    /**
+     * One file pair per page, revision and look, so neither switching looks nor rotating ever
+     * shows a stale cached image. The page id (not the position) names the files so a removed
+     * page cannot collide with the next one.
+     */
+    private fun renderedPaths(
+        directory: String,
+        page: CapturedPage,
+    ): Pair<String, String> {
+        val suffix = "${page.id}-r${page.revision}-${page.style.name.lowercase()}"
+        return "$directory/page-$suffix.jpg" to "$directory/thumb-$suffix.jpg"
     }
 
     /** Writes the final state; a session discarded meanwhile is ignored. */
@@ -221,7 +307,10 @@ class PageProcessor(
         }
     }
 
-    private fun ScanAnalysis.toPageState(): PageState =
+    private fun stateFor(
+        outcome: Outcome,
+        confidence: Confidence,
+    ): PageState =
         when {
             outcome == Outcome.TooDark -> PageState.NeedsAttention(AttentionReason.TooDark)
             confidence == Confidence.NotFound -> PageState.NeedsAttention(AttentionReason.NoPageFound)
@@ -240,6 +329,7 @@ class PageProcessor(
     private companion object {
         const val FULL_WORKERS = 2
         const val SIMPLIFIED_WORKERS = 1
-        const val INDEX_DIGITS = 3
+        const val QUARTER_TURN = 90
+        const val FULL_TURN = 360
     }
 }

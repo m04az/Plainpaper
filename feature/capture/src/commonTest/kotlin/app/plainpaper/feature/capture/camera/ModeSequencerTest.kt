@@ -37,4 +37,18 @@ class ModeSequencerTest {
         assertFalse(sequencer.awaitingBack)
         assertEquals(PageTag.Document, sequencer.next(CaptureMode.Document))
     }
+
+    @Test
+    fun rewindUndoesTheLastCardSide() {
+        val front = sequencer.next(CaptureMode.IdCard)
+        assertTrue(sequencer.awaitingBack)
+        sequencer.rewind(front)
+        assertFalse(sequencer.awaitingBack)
+        val again = sequencer.next(CaptureMode.IdCard)
+        val back = sequencer.next(CaptureMode.IdCard)
+        assertFalse(sequencer.awaitingBack)
+        sequencer.rewind(back)
+        assertTrue(sequencer.awaitingBack)
+        assertEquals(PageTag.IdBack((again as PageTag.IdFront).cardId), sequencer.next(CaptureMode.IdCard))
+    }
 }

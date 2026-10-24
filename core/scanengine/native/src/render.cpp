@@ -126,9 +126,23 @@ void dropBorderSlivers(cv::Mat& ink) {
     }
 }
 
+/**
+ * Grey image in which coloured ink is as dark as black ink: the darkest of the three channels.
+ * Plain luminance makes red and pink pen nearly as light as paper (red is bright in grey), which
+ * thinned and broke handwritten strokes in black-and-white output. Paper stays near white because
+ * the illumination normalisation makes all three channels of paper high.
+ */
+cv::Mat inkGray(const cv::Mat& normalizedBgr) {
+    cv::Mat channels[3];
+    cv::split(normalizedBgr, channels);
+    cv::Mat darkest;
+    cv::min(channels[0], channels[1], darkest);
+    cv::min(darkest, channels[2], darkest);
+    return darkest;
+}
+
 cv::Mat renderScan(const cv::Mat& normalizedBgr, volatile int32_t* cancel) {
-    cv::Mat gray;
-    cv::cvtColor(normalizedBgr, gray, cv::COLOR_BGR2GRAY);
+    cv::Mat gray = inkGray(normalizedBgr);
     cv::Mat ink = sauvolaInk(gray, cancel);
     cv::medianBlur(ink, ink, 3);
     dropBorderSlivers(ink);
@@ -144,6 +158,27 @@ cv::Mat renderScan(const cv::Mat& normalizedBgr, volatile int32_t* cancel) {
     return out;
 }
 
+/** Unsharp mask on a grey image: crisper stroke edges without halos on flat paper. */
+cv::Mat sharpen(const cv::Mat& gray) {
+    cv::Mat blurred, out;
+    cv::GaussianBlur(gray, blurred, cv::Size(0, 0), params::kSharpenSigma);
+    cv::addWeighted(gray, 1.0 + params::kSharpenAmount, blurred, -params::kSharpenAmount, 0.0, out);
+    return out;
+}
+
+/** Unsharp mask on luminance only (Lab L), so colours do not fringe. */
+cv::Mat sharpenColor(const cv::Mat& bgr) {
+    cv::Mat lab;
+    cv::cvtColor(bgr, lab, cv::COLOR_BGR2Lab);
+    cv::Mat channels[3];
+    cv::split(lab, channels);
+    channels[0] = sharpen(channels[0]);
+    cv::merge(channels, 3, lab);
+    cv::Mat out;
+    cv::cvtColor(lab, out, cv::COLOR_Lab2BGR);
+    return out;
+}
+
 cv::Mat toneCurve(const cv::Mat& gray) {
     cv::Mat lut(1, 256, CV_8U);
     for (int i = 0; i < 256; ++i) {
@@ -156,17 +191,30 @@ cv::Mat toneCurve(const cv::Mat& gray) {
 }
 
 cv::Mat renderGrayscale(const cv::Mat& normalizedBgr) {
+    // Half luminance, half darkest channel: photos keep their tones, coloured ink stays legible.
+    cv::Mat luminance;
+    cv::cvtColor(normalizedBgr, luminance, cv::COLOR_BGR2GRAY);
     cv::Mat gray;
-    cv::cvtColor(normalizedBgr, gray, cv::COLOR_BGR2GRAY);
-    return toneCurve(gray);
+    cv::addWeighted(luminance, 1.0 - params::kGrayInkWeight, inkGray(normalizedBgr),
+                    params::kGrayInkWeight, 0.0, gray);
+    return sharpen(toneCurve(gray));
 }
 
-/** White paper; stamps, signatures and logos keep their hue with a little extra saturation. */
+/**
+ * Enhanced colour ("magic colour"): white paper; ink, stamps, signatures and logos keep their
+ * hue, get richer saturation, a darker tone and a crisper edge.
+ */
 cv::Mat renderColorDocument(const cv::Mat& normalizedBgr, volatile int32_t* cancel) {
+    cv::Mat sharp = sharpenColor(normalizedBgr);
+    checkCancel(cancel);
     cv::Mat hsv;
-    cv::cvtColor(normalizedBgr, hsv, cv::COLOR_BGR2HSV);
+    cv::cvtColor(sharp, hsv, cv::COLOR_BGR2HSV);
     checkCancel(cancel);
     const int paperValue = static_cast<int>(params::kPaperLuminanceFraction * 255.0);
+    uint8_t inkLut[256];
+    for (int i = 0; i < 256; ++i) {
+        inkLut[i] = cv::saturate_cast<uint8_t>(255.0 * std::pow(i / 255.0, params::kColorInkGamma));
+    }
     for (int y = 0; y < hsv.rows; ++y) {
         cv::Vec3b* row = hsv.ptr<cv::Vec3b>(y);
         const cv::Vec3b* src = normalizedBgr.ptr<cv::Vec3b>(y);
@@ -178,8 +226,7 @@ cv::Mat renderColorDocument(const cv::Mat& normalizedBgr, volatile int32_t* canc
                 row[x][2] = 255;
             } else {
                 row[x][1] = cv::saturate_cast<uint8_t>(row[x][1] * params::kSaturationBoost);
-                row[x][2] = cv::saturate_cast<uint8_t>(
-                    255.0 * std::pow(row[x][2] / 255.0, params::kToneGamma));
+                row[x][2] = inkLut[row[x][2]];
             }
         }
     }

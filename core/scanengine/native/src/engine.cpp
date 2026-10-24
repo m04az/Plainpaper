@@ -304,7 +304,10 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
         cv::Mat gray;
         cv::cvtColor(normalized, gray, cv::COLOR_BGR2GRAY);
         pp_orientation_confidence orientationConfidence = PP_ORIENT_NONE;
+        // Without a page outline the frame is mostly desk and clutter, whose "lines" make the
+        // up/down vote unreliable (an upright card was turned over on a phone photo).
         const bool upsideDown =
+            detected.source != PP_SRC_FULL_FRAME &&
             estimateUpsideDown(gray, orientationConfidence, params::kOrientStrips, cancel);
         debugLog("orient: upside-down / confidence", upsideDown ? 1 : 0, orientationConfidence, 0);
         geometry.orientationConfidence = orientationConfidence;

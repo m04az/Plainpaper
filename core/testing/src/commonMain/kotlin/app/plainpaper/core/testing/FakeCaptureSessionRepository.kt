@@ -18,6 +18,7 @@ class FakeCaptureSessionRepository(
     val state = MutableStateFlow<CaptureSession?>(null)
     var recoverableSession: CaptureSession? = null
     val discarded = mutableListOf<String>()
+    val removedPages = mutableListOf<String>()
     private var sessionCounter = 0
     private var pageCounter = 0
 
@@ -53,6 +54,14 @@ class FakeCaptureSessionRepository(
         page: CapturedPage,
     ) {
         state.value = requireSession(sessionId).withUpdatedPage(page)
+    }
+
+    override suspend fun removePage(
+        sessionId: String,
+        pageId: String,
+    ) {
+        removedPages += pageId
+        state.value = requireSession(sessionId).withoutPage(pageId)
     }
 
     override suspend fun markHandedOff(sessionId: String) {

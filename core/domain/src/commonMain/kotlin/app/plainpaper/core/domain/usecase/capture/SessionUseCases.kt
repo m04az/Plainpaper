@@ -32,6 +32,15 @@ public class AddCapturedPageUseCase(
     ): CapturedPage = repository.addPage(sessionId, originalPath, tag, pageSize)
 }
 
+public class RemovePageUseCase(
+    private val repository: CaptureSessionRepository,
+) {
+    public suspend operator fun invoke(
+        sessionId: String,
+        pageId: String,
+    ): Unit = repository.removePage(sessionId, pageId)
+}
+
 public class FinishSessionUseCase(
     private val repository: CaptureSessionRepository,
 ) {

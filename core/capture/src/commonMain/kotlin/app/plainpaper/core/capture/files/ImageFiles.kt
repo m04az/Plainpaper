@@ -17,11 +17,16 @@ public sealed interface CopyResult {
 
 /** Image file utilities the capture flows need (research R11); thumbnails are loaded by [ThumbnailLoader]. */
 public interface ImageFiles {
-    /** Encodes a rendered page as JPEG; false when the output type or the write fails. */
+    /**
+     * Encodes a rendered page as JPEG; false when the output type or the write fails. The page is
+     * mirrored left to right first when [mirrored], then rotated clockwise by [rotation] degrees.
+     */
     public suspend fun writeJpeg(
         output: ScanOutput,
         path: String,
         quality: Int = DEFAULT_QUALITY,
+        rotation: Int = 0,
+        mirrored: Boolean = false,
     ): Boolean
 
     /** Downscaled JPEG copy of an image file. */
@@ -36,6 +41,9 @@ public interface ImageFiles {
         uri: String,
         destinationPath: String,
     ): CopyResult
+
+    /** True when a non-empty file exists at [path]. */
+    public fun exists(path: String): Boolean
 
     /** Free bytes on the volume that holds [directory]; `Long.MAX_VALUE` when unknown. */
     public fun freeBytes(directory: String): Long

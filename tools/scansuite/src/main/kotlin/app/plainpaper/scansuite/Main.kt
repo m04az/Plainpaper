@@ -20,6 +20,10 @@ fun main(args: Array<String>) {
             ?.toSet()
             ?: setOf(OutputStyle.Scan)
     val capability = if (args.contains("--simplified")) DeviceCapability.Simplified else DeviceCapability.Full
+    args.getOrNull(args.indexOf("--photos") + 1)?.takeIf { args.contains("--photos") }?.let { dir ->
+        AdHoc.run(File(dir), File(outputDir, "adhoc"), capability)
+        return
+    }
     val only = args.getOrNull(args.indexOf("--only") + 1)?.takeIf { args.contains("--only") }
     val runner = SuiteRunner(outputDir, capability, styles, legibility = Tesseract.ifAvailable())
     val sources =

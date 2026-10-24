@@ -61,13 +61,13 @@ class AutoCaptureGateTest {
     fun smallPagesLowConfidenceAndDarknessNeverCapture() {
         val gate = AutoCaptureGate(diagonal)
         assertTrue(
-            (0L..1_500L step 100).map { gate.onSample(sample(it, fill = 0.15f)) }.all {
+            (0L..1_500L step 100).map { gate.onSample(sample(it, fill = 0.04f)) }.all {
                 it ==
                     GateState.LowConfidence
             },
         )
         assertTrue(
-            (0L..1_500L step 100).map { gate.onSample(sample(it, confidence = Confidence.Low)) }.all {
+            (0L..1_500L step 100).map { gate.onSample(sample(it, confidence = Confidence.NotFound)) }.all {
                 it ==
                     GateState.LowConfidence
             },
@@ -122,5 +122,27 @@ class AutoCaptureGateTest {
         assertEquals(GateState.Cooldown, gate.onSample(sample(100)))
         gate.reset()
         assertEquals(GateState.Tracking(0f), gate.onSample(sample(200)))
+    }
+
+    @Test
+    fun lowConfidenceDetectionCapturesAfterADoubleWindow() {
+        val gate = AutoCaptureGate(diagonal)
+        val states = (0L..1_600L step 100).map { gate.onSample(sample(it, confidence = Confidence.Low)) }
+        assertEquals(14, states.indexOf(GateState.Capture)) // 1400 ms
+        assertIs<GateState.Tracking>(states[8])
+    }
+
+    @Test
+    fun anyLowSampleInTheTrackKeepsTheLongWindow() {
+        val gate = AutoCaptureGate(diagonal)
+        gate.onSample(sample(0))
+        gate.onSample(sample(100, confidence = Confidence.Low))
+        assertIs<GateState.Tracking>(gate.onSample(sample(800)))
+    }
+
+    @Test
+    fun smallDocumentsAboveFivePercentTrack() {
+        val gate = AutoCaptureGate(diagonal)
+        assertIs<GateState.Tracking>(gate.onSample(sample(0, fill = 0.06f)))
     }
 }

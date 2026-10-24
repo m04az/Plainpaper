@@ -19,7 +19,7 @@ public sealed interface GateState {
         val prolonged: Boolean = false,
     ) : GateState
 
-    /** A page, but detection is not confident or the page is too small: adjust or tap the shutter. */
+    /** A page, but it is too small (or detection is unusable): adjust or tap the shutter. */
     data object LowConfidence : GateState
 
     data object TooDark : GateState
@@ -37,8 +37,8 @@ public sealed interface GateState {
 }
 
 /**
- * Steadiness gate for automatic capture (research R5, spec FR-003): high confidence, enough
- * fill, enough light, and corners that stay within [maxDriftFraction] of the frame diagonal
+ * Steadiness gate for automatic capture (research R5, spec FR-003): a detected page (low confidence needs a window
+ * [LOW_CONFIDENCE_WINDOW_FACTOR] times longer), enough fill, enough light, and corners that stay within [maxDriftFraction] of the frame diagonal
  * for [steadyWindowMillis]. After a capture it stays in [GateState.Cooldown] until the page
  * moves more than [cooldownDriftFraction] of the diagonal or disappears and comes back.
  */
@@ -56,6 +56,7 @@ public class AutoCaptureGate(
 
     private var anchorCorners: Quad? = null
     private var anchorTime: Long = 0L
+    private var trackHasLow = false
     private var cooldownCorners: Quad? = null
     private var pageLostDuringCooldown = false
     private var noPageSince: Long? = null
@@ -76,13 +77,13 @@ public class AutoCaptureGate(
                 GateState.Cooldown
             }
 
-            sample.confidence != Confidence.High || sample.fillFraction < minFill -> {
+            sample.confidence == Confidence.NotFound || sample.fillFraction < minFill -> {
                 clearAnchor()
                 GateState.LowConfidence
             }
 
             else -> {
-                track(sample.timestampMillis, corners)
+                track(sample.timestampMillis, corners, sample.confidence == Confidence.Low)
             }
         }
     }
@@ -109,14 +110,18 @@ public class AutoCaptureGate(
     private fun track(
         timestampMillis: Long,
         corners: Quad,
+        low: Boolean,
     ): GateState {
         val anchor = anchorCorners
         if (anchor == null || drift(anchor, corners) > maxDriftFraction) {
             anchorCorners = corners
             anchorTime = timestampMillis
+            trackHasLow = low
             return GateState.Tracking(0f)
         }
-        val progress = ((timestampMillis - anchorTime).toFloat() / steadyWindowMillis).coerceIn(0f, 1f)
+        if (low) trackHasLow = true
+        val window = if (trackHasLow) steadyWindowMillis * LOW_CONFIDENCE_WINDOW_FACTOR else steadyWindowMillis
+        val progress = ((timestampMillis - anchorTime).toFloat() / window).coerceIn(0f, 1f)
         if (progress >= 1f && enabled) {
             enterCooldown(corners)
             return GateState.Capture
@@ -141,6 +146,7 @@ public class AutoCaptureGate(
     private fun clearAnchor() {
         anchorCorners = null
         anchorTime = 0L
+        trackHasLow = false
     }
 
     private fun drift(
@@ -160,7 +166,8 @@ public class AutoCaptureGate(
         const val DEFAULT_STEADY_WINDOW_MILLIS = 700L
         const val SIMPLIFIED_STEADY_WINDOW_MILLIS = 1_000L
         const val DEFAULT_MAX_DRIFT = 0.015f
-        const val DEFAULT_MIN_FILL = 0.20f
+        const val DEFAULT_MIN_FILL = 0.05f
+        const val LOW_CONFIDENCE_WINDOW_FACTOR = 2
         const val DEFAULT_DARK_LUMA = 40f
         const val DEFAULT_COOLDOWN_DRIFT = 0.10f
         const val DEFAULT_PROLONGED_NO_PAGE_MILLIS = 3_000L

@@ -203,6 +203,64 @@ permission in system settings and confirm the camera works on return.
 
 ---
 
+### User Story 6 - Choose how each page looks (Priority: P2)
+
+*Added 2026-10-24 after the first phone test: the owner found black-and-white output too bright
+and detail-poor as the only result and asked for CamScanner-style choices after capture.*
+
+After capture or import the person sees each page large, with a row of looks: Original (the
+straightened photo), Enhanced (white paper, crisp and rich ink — the default), Grayscale and
+Black & white. Tapping a look re-renders that page in a moment; "Apply to all pages" uses it for
+the whole session. The choice is kept with the page.
+
+**Why this priority**: the default look decides whether the first result feels like a scanner
+app or a photocopy; different documents need different looks.
+
+**Independent Test**: capture a page with coloured ink, open it, switch through the four looks,
+apply one to all pages, and confirm each page is re-rendered with the same crop.
+
+**Acceptance Scenarios**:
+
+1. **Given** a new page, **When** it is processed, **Then** it uses the Enhanced look.
+2. **Given** a processed page, **When** the person picks another look, **Then** the page is
+   re-rendered from the original photo with the same corners and the choice is shown as selected.
+3. **Given** several pages, **When** "Apply to all pages" is tapped, **Then** every page is
+   re-rendered in that look.
+4. **Given** handwriting in red or blue ink, **When** Black & white is chosen, **Then** the strokes
+   are solid black and complete.
+
+### User Story 7 - Review each page right after the shot (Priority: P2)
+
+*Added 2026-10-24 after the second phone test: the owner wants a CamScanner-style flow — the
+border found automatically, the shot growing into a large preview, a look chosen, then saved
+before the next page — plus rotate and flip buttons.*
+
+After every shot (automatic or manual) the captured page grows from the outline into a large
+preview over the camera. Under it the person picks a look (Original, Enhanced, Grayscale,
+Black & white), can rotate the page by 90° or flip it, can retake it, and taps Save. Save keeps
+the page and returns to the live camera for the next one; Done finishes the session. The same
+rotate and flip buttons are on the page viewer after the session.
+
+**Why this priority**: a wrong crop, look or orientation is caught while the paper is still in
+front of the camera, so the person never has to redo a whole session.
+
+**Independent Test**: capture a page, watch it grow into the preview, switch to Black & white,
+rotate it once and flip it, Save, capture a second page, and confirm the session holds two
+pages with the first one rotated, flipped and in Black & white.
+
+**Acceptance Scenarios**:
+
+1. **Given** the camera sees a page, an ID card or a receipt filling at least 5% of the view,
+   **When** it is held steady, **Then** an outline follows it and the page is captured
+   automatically (Auto on).
+2. **Given** a shot was taken, **When** the page has been processed, **Then** it animates from the
+   outline position into a large preview with the look chips, Rotate, Flip, Retake and Save.
+3. **Given** the review preview, **When** Rotate is tapped, **Then** the page turns 90° clockwise;
+   **When** Flip is tapped, **Then** it is mirrored left to right; both are kept with the page.
+4. **Given** the review preview, **When** Retake is tapped, **Then** the page is removed and the
+   live camera returns; **When** Save is tapped, **Then** the live camera returns with the page
+   counter increased.
+
 ### Edge Cases
 
 - The device has no camera (some tablets, emulators): the Scan action goes straight to the
@@ -308,6 +366,24 @@ permission in system settings and confirm the camera works on return.
   screen reader.
 - **FR-022**: All processing MUST happen on the device; the feature MUST add no network
   access and no new permission other than the camera.
+- **FR-024**: Every page MUST record its look (Original, Enhanced, Grayscale, Black & white);
+  new pages use Enhanced. The page view MUST let the person change the look of one page or of all
+  pages; a change MUST re-render from the original photo with the page's stored corners.
+- **FR-025**: Black & white and Grayscale MUST keep coloured ink (red, blue, green pen) as dark,
+  complete strokes; Enhanced MUST keep paper white and ink colour visible and crisp.
+- **FR-026**: Page detection MUST find a page whose outline is cut by the photo border, joined to
+  an open book's other page or touched by another object, and the live outline MUST NOT flicker
+  (it appears after two agreeing frames and survives a single missed frame).
+- **FR-027**: Detection MUST find documents covering 5–20% of the view (ID cards, receipts) when
+  their outline lies inside the view and they are clearly brighter than their surroundings, and
+  auto-capture MUST also fire on such low-confidence detections after a longer steady time.
+- **FR-028**: After each camera shot the app MUST show the processed page in a review preview
+  (growing from the outline) with looks, Rotate 90°, Flip, Retake and Save; Save returns to the
+  live camera.
+- **FR-029**: Every page MUST record a rotation (0/90/180/270, clockwise) and a mirror flag set by
+  the person; the rendered page MUST apply them, and changing them MUST re-render the page into
+  new files. The page viewer MUST offer the same Rotate and Flip buttons.
+- **FR-030**: When no page outline is found, the app MUST NOT turn the photo upside down on its own.
 - **FR-023**: Capture, import, session and permission decisions MUST be covered by unit tests
   (steadiness decision, auto-capture gating, free-limit rule, batch progress and cancellation,
   session ordering and recovery, permission state machine, mode tagging).

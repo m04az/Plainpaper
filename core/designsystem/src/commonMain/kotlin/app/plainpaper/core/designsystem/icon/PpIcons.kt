@@ -117,6 +117,23 @@ public object PpIcons {
         }
     }
 
+    /** Clockwise turn arrow; a fixed direction, so it does not mirror in RTL. */
+    public val RotateClockwise: ImageVector by lazy {
+        strokeIcon("RotateClockwise") {
+            path("M23 4v6h-6")
+            path("M20.49 15a9 9 0 1 1-2.12-9.36L23 10")
+        }
+    }
+
+    /** Left-right mirror: a centre line with a triangle on each side. */
+    public val FlipHorizontal: ImageVector by lazy {
+        strokeIcon("FlipHorizontal") {
+            path("M12 3v18")
+            path("M9 6L3 18h6z")
+            path("M15 6l6 12h-6z")
+        }
+    }
+
     public val ArrowBack: ImageVector by lazy {
         strokeIcon("ArrowBack", autoMirror = true) {
             path("M19 12H5M11 6l-6 6 6 6")

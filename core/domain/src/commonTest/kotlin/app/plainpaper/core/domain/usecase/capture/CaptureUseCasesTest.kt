@@ -60,4 +60,20 @@ class CaptureUseCasesTest {
             repository.recoverableSession = repository.state.value
             assertEquals(withPage.id, RecoverSessionUseCase(repository)()?.id)
         }
+
+    @Test
+    fun removePageForwardsAndDropsThePage() =
+        runTest {
+            val session = repository.start(SessionSource.Camera)
+            val a = repository.addPage(session.id, "/a.jpg", PageTag.Document, PageSize.A4)
+            val b = repository.addPage(session.id, "/b.jpg", PageTag.Document, PageSize.A4)
+            RemovePageUseCase(repository)(session.id, a.id)
+            assertEquals(listOf(a.id), repository.removedPages)
+            assertEquals(
+                listOf(b.id),
+                repository.state.value
+                    ?.pages
+                    ?.map { it.id },
+            )
+        }
 }

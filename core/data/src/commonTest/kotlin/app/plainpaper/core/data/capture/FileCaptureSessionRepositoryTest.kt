@@ -1,6 +1,7 @@
 package app.plainpaper.core.data.capture
 
 import app.plainpaper.core.domain.model.Confidence
+import app.plainpaper.core.domain.model.OutputStyle
 import app.plainpaper.core.domain.model.PageSize
 import app.plainpaper.core.domain.model.Point
 import app.plainpaper.core.domain.model.Quad
@@ -79,6 +80,7 @@ class FileCaptureSessionRepositoryTest {
                     corners = quad,
                     confidence = Confidence.High,
                     rotationApplied = 90,
+                    style = OutputStyle.Scan,
                 ),
             )
             assertFalse(fs.exists("$root/id1/session.json.tmp".toPath()))
@@ -90,6 +92,7 @@ class FileCaptureSessionRepositoryTest {
             assertEquals(90, stored.rotationApplied)
             assertEquals(PageTag.IdFront("c1"), stored.tag)
             assertEquals(PageSize.Natural, stored.pageSize)
+            assertEquals(OutputStyle.Scan, stored.style)
             assertEquals("$root/id1/page-000.jpg", stored.pagePath)
         }
 
@@ -185,5 +188,52 @@ class FileCaptureSessionRepositoryTest {
             val recovered = assertNotNull(repository.recoverable())
             assertEquals("old", recovered.id)
             assertEquals("$root/old/o.jpg", recovered.pages.single().originalPath)
+            assertEquals(OutputStyle.ColorDocument, recovered.pages.single().style, "older indexes default to Enhanced")
+        }
+
+    @Test
+    fun rotationMirrorAndRevisionRoundTripAndOldIndexesDefault() =
+        runTest {
+            val session = repository.start(SessionSource.Camera)
+            val page = repository.addPage(session.id, "$root/id1/original-000.jpg", PageTag.Document, PageSize.A4)
+            repository.updatePage(session.id, page.copy(rotation = 270, mirrored = true, revision = 3))
+            val stored =
+                assertNotNull(
+                    FileCaptureSessionRepository(fs, root, now = { clock }).recoverable(),
+                ).pages.single()
+            assertEquals(Triple(270, true, 3), Triple(stored.rotation, stored.mirrored, stored.revision))
+
+            val old = indexText("id1").replace(",\"rotation\":270,\"mirrored\":true,\"revision\":3", "")
+            fs.write("$root/id1/$SESSION_INDEX_FILE".toPath()) { writeUtf8(old) }
+            val legacy =
+                assertNotNull(
+                    FileCaptureSessionRepository(fs, root, now = { clock }).recoverable(),
+                ).pages.single()
+            assertEquals(Triple(0, false, 0), Triple(legacy.rotation, legacy.mirrored, legacy.revision))
+        }
+
+    @Test
+    fun removePageDeletesItsFilesAndKeepsTheOthers() =
+        runTest {
+            val session = repository.start(SessionSource.Camera)
+            val a = repository.addPage(session.id, "$root/id1/original-a.jpg", PageTag.Document, PageSize.A4)
+            val b = repository.addPage(session.id, "$root/id1/original-b.jpg", PageTag.Document, PageSize.A4)
+            for (name in listOf(
+                "original-a.jpg",
+                "original-b.jpg",
+                "page-${a.id}-r0-Scan.jpg",
+                "thumb-${a.id}-r0-Scan.jpg",
+                "page-${b.id}-r0-Scan.jpg",
+            )) {
+                fs.write("$root/id1/$name".toPath()) { writeUtf8("x") }
+            }
+            repository.removePage(session.id, a.id)
+            assertFalse(fs.exists("$root/id1/original-a.jpg".toPath()))
+            assertFalse(fs.exists("$root/id1/page-${a.id}-r0-Scan.jpg".toPath()))
+            assertFalse(fs.exists("$root/id1/thumb-${a.id}-r0-Scan.jpg".toPath()))
+            assertTrue(fs.exists("$root/id1/original-b.jpg".toPath()))
+            assertTrue(fs.exists("$root/id1/page-${b.id}-r0-Scan.jpg".toPath()))
+            val stored = assertNotNull(FileCaptureSessionRepository(fs, root, now = { clock }).recoverable())
+            assertEquals(listOf(b.id), stored.pages.map { it.id })
         }
 }

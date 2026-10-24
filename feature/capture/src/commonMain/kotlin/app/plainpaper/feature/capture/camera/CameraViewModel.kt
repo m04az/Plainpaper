@@ -19,6 +19,8 @@ import app.plainpaper.core.domain.model.capture.CameraPermissionState
 import app.plainpaper.core.domain.model.capture.CaptureMode
 import app.plainpaper.core.domain.model.capture.CaptureSession
 import app.plainpaper.core.domain.model.capture.CaptureSettings
+import app.plainpaper.core.domain.model.capture.PageState
+import app.plainpaper.core.domain.model.capture.PageTag
 import app.plainpaper.core.domain.model.capture.SessionSource
 import app.plainpaper.core.domain.model.capture.SessionStatus
 import app.plainpaper.core.domain.repository.CaptureSettingsRepository
@@ -26,10 +28,12 @@ import app.plainpaper.core.domain.usecase.capture.AddCapturedPageUseCase
 import app.plainpaper.core.domain.usecase.capture.DiscardSessionUseCase
 import app.plainpaper.core.domain.usecase.capture.FinishSessionUseCase
 import app.plainpaper.core.domain.usecase.capture.ObserveActiveSessionUseCase
+import app.plainpaper.core.domain.usecase.capture.RemovePageUseCase
 import app.plainpaper.core.domain.usecase.capture.ResolveDefaultPageSizeUseCase
 import app.plainpaper.core.domain.usecase.capture.SessionDirectoryUseCase
 import app.plainpaper.core.domain.usecase.capture.StartSessionUseCase
 import app.plainpaper.core.scanengine.ScanEngine
+import app.plainpaper.feature.capture.handoff.PREVIEW_EDGE
 import app.plainpaper.feature.capture.processing.PageProcessor
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -56,6 +60,7 @@ class CameraViewModel(
     private val processor: PageProcessor,
     private val startSession: StartSessionUseCase,
     private val addPage: AddCapturedPageUseCase,
+    private val removePage: RemovePageUseCase,
     private val finishSession: FinishSessionUseCase,
     private val discardSession: DiscardSessionUseCase,
     private val observeSession: ObserveActiveSessionUseCase,
@@ -77,6 +82,7 @@ class CameraViewModel(
     private val sequencer = ModeSequencer()
     private var gate: AutoCaptureGate? = null
     private var gateDiagonal = 0f
+    private var stabilizer: OutlineStabilizer? = null
     private var viewWidth = 0
     private var viewHeight = 0
     private var lastCorners: Quad? = null
@@ -85,6 +91,9 @@ class CameraViewModel(
     private var startJob: Job? = null
     private var capturing = false
     private var loadedThumbnailPath: String? = null
+    private var loadedPreviewPath: String? = null
+    private var lastSession: CaptureSession? = null
+    private var reviewTag: PageTag? = null
 
     init {
         viewModelScope.launch {
@@ -170,6 +179,34 @@ class CameraViewModel(
             CameraAction.DismissCaptureFailed -> {
                 mutableState.update { it.copy(captureFailed = false) }
             }
+
+            is CameraAction.ReviewLook -> {
+                withReview { processor.restyle(it.sessionId, listOf(it.pageId), action.style) }
+            }
+
+            CameraAction.ReviewRotate -> {
+                withReview {
+                    if (!it.review.processing) {
+                        processor.transform(
+                            it.sessionId,
+                            it.pageId,
+                            rotateClockwise = true,
+                        )
+                    }
+                }
+            }
+
+            CameraAction.ReviewFlip -> {
+                withReview { if (!it.review.processing) processor.transform(it.sessionId, it.pageId, flip = true) }
+            }
+
+            CameraAction.ReviewRetake -> {
+                onRetake()
+            }
+
+            CameraAction.ReviewSave -> {
+                onSave()
+            }
         }
     }
 
@@ -229,6 +266,11 @@ class CameraViewModel(
     // ---- frames -------------------------------------------------------------------------------
 
     private suspend fun onFrame(cameraFrame: CameraFrame) {
+        if (uiState.value.review != null) {
+            // Reviewing the last shot: no outline, no auto-capture.
+            cameraFrame.release()
+            return
+        }
         val frame = cameraFrame.frame
         val geometry = PreviewGeometry(frame.width, frame.height, cameraFrame.rotationDegrees, viewWidth, viewHeight)
         val gate = gateFor(geometry.frameDiagonal)
@@ -248,13 +290,19 @@ class CameraViewModel(
             )
         val gateState = gate.onSample(sample)
         lastCorners = result.corners
+        // The gate decides on raw detections; the screen shows a stabilised outline (no flicker).
+        val shown = stabilizerFor(geometry.frameDiagonal).onFrame(frame.timestampMillis, result.corners)
         val outline =
-            result.corners?.takeIf { viewWidth > 0 && viewHeight > 0 }?.let { quad ->
+            shown?.takeIf { viewWidth > 0 && viewHeight > 0 }?.let { quad ->
                 geometry.frameToView(quad).points.map { Offset(it.x, it.y) }
             }
         mutableState.update { it.copy(outline = outline, gate = gateState).withHint() }
         if (gateState == GateState.Capture) capture(manual = false)
     }
+
+    private fun stabilizerFor(diagonal: Float): OutlineStabilizer =
+        stabilizer?.takeIf { gateDiagonal == diagonal }
+            ?: OutlineStabilizer(frameDiagonal = diagonal).also { stabilizer = it }
 
     private fun gateFor(diagonal: Float): AutoCaptureGate {
         val current = gate
@@ -277,11 +325,12 @@ class CameraViewModel(
 
     private suspend fun capture(manual: Boolean) {
         val sessionId = uiState.value.sessionId ?: return
-        if (capturing || !uiState.value.isRunning) return
+        if (capturing || !uiState.value.isRunning || uiState.value.review != null) return
         if (files.freeBytes(sessionDirectory(sessionId)) < ImageFiles.MIN_FREE_BYTES) {
             mutableState.update { it.copy(storageFull = true) }
             return
         }
+        val startOutline = uiState.value.outline
         capturing = true
         mutableState.update { it.copy(capturing = true) }
         if (manual) gate?.enterCooldown(lastCorners)
@@ -291,7 +340,17 @@ class CameraViewModel(
                 val tag = sequencer.next(mode)
                 val page = addPage(sessionId, result.originalPath, tag, resolvePageSize(mode))
                 processor.enqueue(sessionId, page.id)
-                mutableState.update { it.copy(awaitingCardBack = sequencer.awaitingBack).withHint() }
+                reviewTag = tag
+                loadedPreviewPath = null
+                mutableState.update {
+                    it
+                        .copy(
+                            awaitingCardBack = sequencer.awaitingBack,
+                            outline = null,
+                            review = ReviewState(page.id, startOutline),
+                        ).withHint()
+                }
+                syncReview(lastSession)
             }
 
             is CaptureResult.Failed -> {
@@ -306,6 +365,8 @@ class CameraViewModel(
     // ---- session ------------------------------------------------------------------------------
 
     private fun onSession(session: CaptureSession?) {
+        lastSession = session
+        syncReview(session)
         val mine = session?.takeIf { it.id == uiState.value.sessionId || uiState.value.sessionId == null }
         val latest = mine?.pages?.lastOrNull()
         mutableState.update {
@@ -325,8 +386,79 @@ class CameraViewModel(
         }
     }
 
+    // ---- review -------------------------------------------------------------------------------
+
+    /** A snapshot of the page under review, handed to the action handlers. */
+    private class ReviewContext(
+        val sessionId: String,
+        val review: ReviewState,
+    ) {
+        val pageId: String get() = review.pageId
+    }
+
+    private fun withReview(block: (ReviewContext) -> Unit) {
+        val review = uiState.value.review ?: return
+        val sessionId = uiState.value.sessionId ?: return
+        block(ReviewContext(sessionId, review))
+    }
+
+    /** Mirrors the reviewed page's look, orientation and processing state; loads its large preview. */
+    private fun syncReview(session: CaptureSession?) {
+        val review = uiState.value.review ?: return
+        val page = session?.page(review.pageId) ?: return
+        val failed = page.state is PageState.Failed
+        mutableState.update { state ->
+            val current = state.review?.takeIf { it.pageId == page.id } ?: return@update state
+            state.copy(
+                review =
+                    current.copy(
+                        style = page.style,
+                        rotation = page.rotation,
+                        mirrored = page.mirrored,
+                        processing = !page.state.hasPage && !failed,
+                        failed = failed,
+                    ),
+            )
+        }
+        val path = page.pagePath?.takeIf { page.state.hasPage }
+        if (path != null && path != loadedPreviewPath) {
+            loadedPreviewPath = path
+            viewModelScope.launch(dispatchers.io) {
+                val bitmap = thumbnails.load(path, PREVIEW_EDGE)
+                mutableState.update { state ->
+                    val current = state.review
+                    if (loadedPreviewPath == path && current?.pageId == page.id) {
+                        state.copy(review = current.copy(preview = bitmap))
+                    } else {
+                        state
+                    }
+                }
+            }
+        }
+    }
+
+    private fun onRetake() {
+        withReview { context ->
+            mutableState.update { it.copy(review = null) }
+            reviewTag?.let(sequencer::rewind)
+            mutableState.update { it.copy(awaitingCardBack = sequencer.awaitingBack).withHint() }
+            viewModelScope.launch {
+                processor.cancel(context.sessionId, context.pageId)
+                removePage(context.sessionId, context.pageId)
+            }
+        }
+    }
+
+    private fun onSave() {
+        if (uiState.value.review == null) return
+        // The shot page is still in front of the camera: do not capture it again at once.
+        gate?.enterCooldown(lastCorners)
+        mutableState.update { it.copy(review = null) }
+    }
+
     private fun onDone() {
         val sessionId = uiState.value.sessionId ?: return
+        mutableState.update { it.copy(review = null) }
         viewModelScope.launch {
             finishSession(sessionId)
             effectChannel.send(CameraEffect.NavigateToHandoff(sessionId))

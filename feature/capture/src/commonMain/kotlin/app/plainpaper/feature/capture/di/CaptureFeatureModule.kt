@@ -30,6 +30,7 @@ val captureFeatureModule: Module =
                 processor = get(),
                 startSession = get(),
                 addPage = get(),
+                removePage = get(),
                 finishSession = get(),
                 discardSession = get(),
                 observeSession = get(),
@@ -62,6 +63,7 @@ val captureFeatureModule: Module =
                 sessionId = sessionId,
                 observeSession = get(),
                 finishSession = get(),
+                processor = get(),
                 thumbnails = get(),
                 dispatchers = get(),
             )

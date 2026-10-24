@@ -8,6 +8,9 @@ import app.plainpaper.core.scanengine.ScanOutput
 /** Records written paths; "unreadable" URIs fail to copy, "missing" URIs are not found. */
 class FakeImageFiles : ImageFiles {
     val jpegs = mutableListOf<String>()
+
+    /** Rotation and mirror each JPEG was written with, by path. */
+    val transforms = mutableMapOf<String, Pair<Int, Boolean>>()
     val thumbnails = mutableListOf<Pair<String, String>>()
     val copies = mutableListOf<Pair<String, String>>()
     var freeBytes: Long = Long.MAX_VALUE
@@ -17,9 +20,12 @@ class FakeImageFiles : ImageFiles {
         output: ScanOutput,
         path: String,
         quality: Int,
+        rotation: Int,
+        mirrored: Boolean,
     ): Boolean {
         if (failWrites) return false
         jpegs += path
+        transforms[path] = rotation to mirrored
         return true
     }
 
@@ -44,6 +50,8 @@ class FakeImageFiles : ImageFiles {
             else -> CopyResult.Copied(destinationPath, 1_000L)
         }
     }
+
+    override fun exists(path: String): Boolean = path in jpegs || thumbnails.any { it.second == path }
 
     override fun freeBytes(directory: String): Long = freeBytes
 }
