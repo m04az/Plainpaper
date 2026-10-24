@@ -2,6 +2,8 @@ package app.plainpaper.core.capture.camera
 
 import android.content.Context
 import android.graphics.BitmapFactory
+import android.os.Handler
+import android.os.Looper
 import android.util.Size
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
@@ -132,12 +134,19 @@ internal class CameraXController(
     }
 
     override fun stop() {
-        registry.currentState = Lifecycle.State.CREATED
-        provider?.unbindAll()
+        runOnMain {
+            registry.currentState = Lifecycle.State.CREATED
+            provider?.unbindAll()
+        }
         surfaceRequests.value = null
         camera = null
         imageCapture = null
         stateFlow.value = CameraState.Idle
+    }
+
+    /** Lifecycle and CameraX binding calls must run on the main thread; callers may not be on it. */
+    private fun runOnMain(block: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) block() else Handler(Looper.getMainLooper()).post(block)
     }
 
     override fun setFlash(enabled: Boolean) {
