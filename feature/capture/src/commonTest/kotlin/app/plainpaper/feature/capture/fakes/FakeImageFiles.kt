@@ -45,5 +45,7 @@ class FakeImageFiles : ImageFiles {
         }
     }
 
+    override fun exists(path: String): Boolean = path in jpegs || thumbnails.any { it.second == path }
+
     override fun freeBytes(directory: String): Long = freeBytes
 }

@@ -41,21 +41,28 @@ object AdHoc {
             }
             val started = System.nanoTime()
             when (val result = runner.engine.analyze(photo, AnalyzeOptions(capability = capability))) {
-                is AnalyzeResult.Failed -> println("${file.name}: ${result.outcome}")
-                is AnalyzeResult.Ready ->
+                is AnalyzeResult.Failed -> {
+                    println("${file.name}: ${result.outcome}")
+                }
+
+                is AnalyzeResult.Ready -> {
                     result.analysis.use { analysis ->
                         val ms = (System.nanoTime() - started) / NANOS_PER_MILLI
+                        val corners = analysis.corners.points.joinToString { "(${it.x.toInt()},${it.y.toInt()})" }
                         println(
-                            "${file.name}: ${analysis.confidence} ${analysis.cornerSource} rot=${analysis.rotationApplied} " +
-                                "aspect=${"%.3f".format(analysis.detectedAspect)} outcome=${analysis.outcome} ${ms}ms " +
-                                "corners=${analysis.corners.points.joinToString { "(${it.x.toInt()},${it.y.toInt()})" }}",
+                            "${file.name}: ${analysis.confidence} ${analysis.cornerSource} " +
+                                "rot=${analysis.rotationApplied} aspect=${"%.3f".format(analysis.detectedAspect)} " +
+                                "outcome=${analysis.outcome} ${ms}ms corners=$corners",
                         )
                         for (style in OutputStyle.entries) {
                             val rendered = runner.engine.render(analysis, RenderOptions(style, PageSize.A4))
-                            val image = ((rendered as? RenderResult.Ready)?.output as? BufferedImageScanOutput)?.image ?: continue
-                            ImageIO.write(image, "png", File(outputDir, "${file.nameWithoutExtension}-${style.name.lowercase()}.png"))
+                            val output =
+                                (rendered as? RenderResult.Ready)?.output as? BufferedImageScanOutput ?: continue
+                            val name = "${file.nameWithoutExtension}-${style.name.lowercase()}.png"
+                            ImageIO.write(output.image, "png", File(outputDir, name))
                         }
                     }
+                }
             }
         }
         println("Outputs in $outputDir")

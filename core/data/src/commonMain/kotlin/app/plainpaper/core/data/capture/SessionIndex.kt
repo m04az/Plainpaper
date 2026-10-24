@@ -1,6 +1,7 @@
 package app.plainpaper.core.data.capture
 
 import app.plainpaper.core.domain.model.Confidence
+import app.plainpaper.core.domain.model.OutputStyle
 import app.plainpaper.core.domain.model.PageSize
 import app.plainpaper.core.domain.model.Point
 import app.plainpaper.core.domain.model.Quad
@@ -41,6 +42,7 @@ internal data class PageIndex(
     val confidence: String? = null,
     val pageSize: String = "A4",
     val rotationApplied: Int = 0,
+    val style: String? = null,
 )
 
 @Serializable
@@ -93,6 +95,7 @@ private fun CapturedPage.toIndex(directory: Path): PageIndex =
         confidence = confidence?.name,
         pageSize = pageSize.name,
         rotationApplied = rotationApplied,
+        style = style.name,
     )
 
 private fun PageIndex.toPage(directory: Path): CapturedPage =
@@ -112,6 +115,7 @@ private fun PageIndex.toPage(directory: Path): CapturedPage =
                 }?.let { Quad.fromDoubles(DoubleArray(QUAD_VALUES) { i -> it[i].toDouble() }) },
         confidence = confidence?.let { name -> Confidence.entries.firstOrNull { it.name == name } },
         rotationApplied = rotationApplied,
+        style = enumOrDefault(style, CapturedPage.DEFAULT_STYLE),
     )
 
 private const val QUAD_VALUES = 8

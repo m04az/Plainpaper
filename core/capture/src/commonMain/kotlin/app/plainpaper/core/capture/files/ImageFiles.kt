@@ -37,6 +37,9 @@ public interface ImageFiles {
         destinationPath: String,
     ): CopyResult
 
+    /** True when a non-empty file exists at [path]. */
+    public fun exists(path: String): Boolean
+
     /** Free bytes on the volume that holds [directory]; `Long.MAX_VALUE` when unknown. */
     public fun freeBytes(directory: String): Long
 

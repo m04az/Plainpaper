@@ -97,6 +97,8 @@ internal class AndroidImageFiles(
             }
         }
 
+    override fun exists(path: String): Boolean = File(path).length() > 0
+
     override fun freeBytes(directory: String): Long =
         runCatching { StatFs(File(directory).let { if (it.exists()) it else it.parentFile ?: it }.path).availableBytes }
             .getOrDefault(Long.MAX_VALUE)

@@ -197,7 +197,7 @@ class CameraViewModelTest {
             assertFalse(vm.uiState.value.capturing)
             // The page was processed by the (fake-backed) engine and its thumbnail requested.
             assertEquals(PageState.Ready, vm.uiState.value.latestPageState)
-            assertEquals(listOf("/fake/capture/${session.id}/thumb-000.jpg"), thumbnails.requested)
+            assertEquals(listOf("/fake/capture/${session.id}/thumb-000-colordocument.jpg"), thumbnails.requested)
             // Still steady: cooldown, no second capture.
             frames(800, 2_000)
             assertEquals(1, camera.captures.size)

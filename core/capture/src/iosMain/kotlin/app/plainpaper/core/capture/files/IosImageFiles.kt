@@ -129,6 +129,18 @@ internal class IosImageFiles(
             CopyResult.Copied(destinationPath, size)
         }
 
+    override fun exists(path: String): Boolean {
+        val size =
+            (
+                NSFileManager.defaultManager
+                    .attributesOfItemAtPath(
+                        path,
+                        error = null,
+                    )?.get(NSFileSize) as? NSNumber
+            )?.longValue
+        return (size ?: 0L) > 0L
+    }
+
     override fun freeBytes(directory: String): Long {
         val attributes = NSFileManager.defaultManager.attributesOfFileSystemForPath(directory, error = null)
         return (attributes?.get(NSFileSystemFreeSize) as? NSNumber)?.longValue ?: Long.MAX_VALUE

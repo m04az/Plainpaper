@@ -1,6 +1,7 @@
 package app.plainpaper.core.domain.model.capture
 
 import app.plainpaper.core.domain.model.Confidence
+import app.plainpaper.core.domain.model.OutputStyle
 import app.plainpaper.core.domain.model.PageSize
 import app.plainpaper.core.domain.model.Quad
 
@@ -18,7 +19,13 @@ public data class CapturedPage(
     val corners: Quad? = null,
     val confidence: Confidence? = null,
     val rotationApplied: Int = 0,
+    /** The look the page is rendered in (spec 003 FR-024); new pages use the enhanced look. */
+    val style: OutputStyle = DEFAULT_STYLE,
 ) {
+    public companion object {
+        public val DEFAULT_STYLE: OutputStyle = OutputStyle.ColorDocument
+    }
+
     public val isReady: Boolean get() = state is PageState.Ready
 }
 

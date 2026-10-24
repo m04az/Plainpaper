@@ -18,6 +18,7 @@ import app.plainpaper.core.scanengine.RenderResult
 import app.plainpaper.core.scanengine.ScanAnalysis
 import app.plainpaper.core.scanengine.ScanEngine
 import app.plainpaper.core.scanengine.ScanPhoto
+import app.plainpaper.core.scanengine.model.AnalyzeOptions
 import app.plainpaper.core.scanengine.model.Outcome
 import app.plainpaper.core.scanengine.model.RenderOptions
 import kotlinx.coroutines.CancellationException
@@ -157,7 +158,9 @@ class PageProcessor(
         page: CapturedPage,
         photo: ScanPhoto,
     ) {
-        when (val analyzed = engine.analyze(photo)) {
+        // A page that was already detected keeps its corners: a new look re-renders the same crop.
+        val options = page.corners?.let { AnalyzeOptions(userCorners = it) } ?: AnalyzeOptions()
+        when (val analyzed = engine.analyze(photo, options)) {
             is AnalyzeResult.Failed -> {
                 finish(
                     work,
@@ -176,31 +179,74 @@ class PageProcessor(
         page: CapturedPage,
         analysis: ScanAnalysis,
     ) {
-        val rendered = engine.render(analysis, RenderOptions(OutputStyle.Scan, page.pageSize))
+        val rendered = engine.render(analysis, RenderOptions(page.style, page.pageSize))
         if (rendered is RenderResult.Failed) {
             finish(work, page) { it.copy(state = PageState.Failed(rendered.outcome.toFailure())) }
             return
         }
         val output = (rendered as RenderResult.Ready).output
         val directory = sessions.sessionDirectory(work.sessionId)
-        val index = page.position.toString().padStart(INDEX_DIGITS, '0')
-        val pagePath = "$directory/page-$index.jpg"
-        val thumbnailPath = "$directory/thumb-$index.jpg"
+        val (pagePath, thumbnailPath) = renderedPaths(directory, page)
         if (!files.writeJpeg(output, pagePath)) {
             finish(work, page) { it.copy(state = PageState.Failed(PageFailure.Internal)) }
             return
         }
         val thumbnailWritten = files.writeThumbnail(pagePath, thumbnailPath)
+        // The first detection's verdict stands: a re-render with stored corners reports them as
+        // user corners, which would otherwise hide a page that still needs attention.
+        val confidence = page.confidence ?: analysis.confidence
         finish(work, page) {
             it.copy(
-                state = analysis.toPageState(),
+                state = stateFor(analysis.outcome, confidence),
                 pagePath = pagePath,
                 thumbnailPath = if (thumbnailWritten) thumbnailPath else null,
-                corners = analysis.corners,
-                confidence = analysis.confidence,
+                corners = page.corners ?: analysis.corners,
+                confidence = confidence,
                 rotationApplied = analysis.rotationApplied,
             )
         }
+    }
+
+    /**
+     * Re-renders [pageIds] in [style]. Pages keep their corners; a look rendered before for the
+     * same page is reused from its file instead of running the engine again.
+     */
+    fun restyle(
+        sessionId: String,
+        pageIds: List<String>,
+        style: OutputStyle,
+    ) {
+        scope.launch {
+            val session = sessions.activeSession.first()?.takeIf { it.id == sessionId } ?: return@launch
+            val directory = sessions.sessionDirectory(sessionId)
+            for (id in pageIds) {
+                val page = session.page(id) ?: continue
+                if (page.style == style || page.state is PageState.Pending ||
+                    page.state is PageState.Processing
+                ) {
+                    continue
+                }
+                val restyled = page.copy(style = style)
+                val (pagePath, thumbnailPath) = renderedPaths(directory, restyled)
+                if (page.state.hasPage && files.exists(pagePath)) {
+                    val thumb = thumbnailPath.takeIf { files.exists(it) }
+                    sessions.updatePage(sessionId, restyled.copy(pagePath = pagePath, thumbnailPath = thumb))
+                } else {
+                    sessions.updatePage(sessionId, restyled.copy(state = PageState.Pending))
+                    enqueue(sessionId, id)
+                }
+            }
+        }
+    }
+
+    /** One file pair per page and look, so switching looks never shows a stale cached image. */
+    private fun renderedPaths(
+        directory: String,
+        page: CapturedPage,
+    ): Pair<String, String> {
+        val index = page.position.toString().padStart(INDEX_DIGITS, '0')
+        val look = page.style.name.lowercase()
+        return "$directory/page-$index-$look.jpg" to "$directory/thumb-$index-$look.jpg"
     }
 
     /** Writes the final state; a session discarded meanwhile is ignored. */
@@ -221,7 +267,10 @@ class PageProcessor(
         }
     }
 
-    private fun ScanAnalysis.toPageState(): PageState =
+    private fun stateFor(
+        outcome: Outcome,
+        confidence: Confidence,
+    ): PageState =
         when {
             outcome == Outcome.TooDark -> PageState.NeedsAttention(AttentionReason.TooDark)
             confidence == Confidence.NotFound -> PageState.NeedsAttention(AttentionReason.NoPageFound)

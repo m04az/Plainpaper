@@ -1,6 +1,7 @@
 package app.plainpaper.core.data.capture
 
 import app.plainpaper.core.domain.model.Confidence
+import app.plainpaper.core.domain.model.OutputStyle
 import app.plainpaper.core.domain.model.PageSize
 import app.plainpaper.core.domain.model.Point
 import app.plainpaper.core.domain.model.Quad
@@ -79,6 +80,7 @@ class FileCaptureSessionRepositoryTest {
                     corners = quad,
                     confidence = Confidence.High,
                     rotationApplied = 90,
+                    style = OutputStyle.Scan,
                 ),
             )
             assertFalse(fs.exists("$root/id1/session.json.tmp".toPath()))
@@ -90,6 +92,7 @@ class FileCaptureSessionRepositoryTest {
             assertEquals(90, stored.rotationApplied)
             assertEquals(PageTag.IdFront("c1"), stored.tag)
             assertEquals(PageSize.Natural, stored.pageSize)
+            assertEquals(OutputStyle.Scan, stored.style)
             assertEquals("$root/id1/page-000.jpg", stored.pagePath)
         }
 
@@ -185,5 +188,6 @@ class FileCaptureSessionRepositoryTest {
             val recovered = assertNotNull(repository.recoverable())
             assertEquals("old", recovered.id)
             assertEquals("$root/old/o.jpg", recovered.pages.single().originalPath)
+            assertEquals(OutputStyle.ColorDocument, recovered.pages.single().style, "older indexes default to Enhanced")
         }
 }

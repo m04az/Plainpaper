@@ -167,7 +167,7 @@ class ImportViewModelTest {
             )
             assertEquals(1, vm.uiState.value.doneCount)
             assertEquals(3, vm.uiState.value.estimatedSecondsLeft) // 3 remaining × 1 s
-            assertEquals(listOf("/fake/capture/${session.id}/thumb-000.jpg"), thumbnails.requested)
+            assertEquals(listOf("/fake/capture/${session.id}/thumb-000-colordocument.jpg"), thumbnails.requested)
             decoder.block = false
             decoder.releaseAll()
             advanceUntilIdle()

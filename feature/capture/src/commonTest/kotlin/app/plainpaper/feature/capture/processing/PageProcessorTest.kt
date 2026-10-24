@@ -2,6 +2,7 @@ package app.plainpaper.feature.capture.processing
 
 import app.plainpaper.core.domain.model.Confidence
 import app.plainpaper.core.domain.model.DeviceCapability
+import app.plainpaper.core.domain.model.OutputStyle
 import app.plainpaper.core.domain.model.PageSize
 import app.plainpaper.core.domain.model.capture.AttentionReason
 import app.plainpaper.core.domain.model.capture.CapturedPage
@@ -73,8 +74,17 @@ class PageProcessorTest {
             advanceUntilIdle()
             val result = stored(page.id)
             assertEquals(PageState.Ready, result.state)
-            assertEquals("/fake/capture/$sessionId/page-000.jpg", result.pagePath)
-            assertEquals("/fake/capture/$sessionId/thumb-000.jpg", result.thumbnailPath)
+            assertEquals("/fake/capture/$sessionId/page-000-colordocument.jpg", result.pagePath)
+            assertEquals("/fake/capture/$sessionId/thumb-000-colordocument.jpg", result.thumbnailPath)
+            assertEquals(OutputStyle.ColorDocument, result.style)
+            assertEquals(
+                OutputStyle.ColorDocument,
+                bridge.sessions
+                    .single()
+                    .renders
+                    .single()
+                    .first,
+            )
             assertEquals(Confidence.High, result.confidence)
             assertNotNull(result.corners)
             assertEquals(listOf(result.pagePath), files.jpegs)
@@ -240,5 +250,68 @@ class PageProcessorTest {
             scope.cancel()
             advanceUntilIdle()
             assertEquals(PageState.Processing, stored(page.id).state)
+        }
+
+    @Test
+    fun restyleReRendersWithTheStoredCornersAndKeepsTheVerdict() =
+        runTest {
+            val processor = processor()
+            val (sessionId, page) = page()
+            bridge.analyzeScript +=
+                FakeNativeBridge.Script.Succeed(info = FakeNativeBridge.defaultInfo(confidence = Confidence.Low))
+            processor.enqueue(sessionId, page.id)
+            advanceUntilIdle()
+            val first = stored(page.id)
+            assertEquals(PageState.NeedsAttention(AttentionReason.LowConfidence), first.state)
+            processor.restyle(sessionId, listOf(page.id), OutputStyle.Scan)
+            advanceUntilIdle()
+            val restyled = stored(page.id)
+            assertEquals(OutputStyle.Scan, restyled.style)
+            assertEquals("/fake/capture/$sessionId/page-000-scan.jpg", restyled.pagePath)
+            assertEquals(PageState.NeedsAttention(AttentionReason.LowConfidence), restyled.state, "first verdict kept")
+            assertEquals(first.corners, bridge.calls.last().userCorners, "same crop")
+            assertEquals(
+                OutputStyle.Scan,
+                bridge.sessions
+                    .last()
+                    .renders
+                    .single()
+                    .first,
+            )
+        }
+
+    @Test
+    fun switchingBackToARenderedLookReusesItsFile() =
+        runTest {
+            val processor = processor()
+            val (sessionId, page) = page()
+            processor.enqueue(sessionId, page.id)
+            advanceUntilIdle()
+            processor.restyle(sessionId, listOf(page.id), OutputStyle.Scan)
+            advanceUntilIdle()
+            val analyses = bridge.calls.size
+            processor.restyle(sessionId, listOf(page.id), OutputStyle.ColorDocument)
+            advanceUntilIdle()
+            assertEquals(analyses, bridge.calls.size, "no new engine run")
+            assertEquals("/fake/capture/$sessionId/page-000-colordocument.jpg", stored(page.id).pagePath)
+            assertEquals(OutputStyle.ColorDocument, stored(page.id).style)
+        }
+
+    @Test
+    fun restyleAllRendersEveryPage() =
+        runTest {
+            val processor = processor()
+            val (sessionId, a) = page("a")
+            val (_, b) = page("b")
+            processor.enqueue(sessionId, a.id)
+            processor.enqueue(sessionId, b.id)
+            advanceUntilIdle()
+            processor.restyle(sessionId, listOf(a.id, b.id), OutputStyle.Grayscale)
+            advanceUntilIdle()
+            assertEquals(
+                listOf(OutputStyle.Grayscale, OutputStyle.Grayscale),
+                listOf(stored(a.id).style, stored(b.id).style),
+            )
+            assertEquals(PageState.Ready, stored(b.id).state)
         }
 }
