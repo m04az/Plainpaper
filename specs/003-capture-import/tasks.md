@@ -259,8 +259,8 @@ outline, bright and detail-poor black-and-white output) and User Story 6 (choose
 turned upside down, and the owner asked for a review step after each shot (User Story 7).
 
 - [X] T081 Native detection: small documents (5–20% of the view) with ring contrast and edge snapping; filled-edge candidates for text-dense cards touching clutter; no up/down flip without a page (FR-027, FR-030)
-- [ ] T082 [P] [US7] Tests first, then `AutoCaptureGate`: Low-confidence detections may auto-capture after a longer steady window; minimum fill 5%
-- [ ] T083 [P] [US7] Tests first, then `CapturedPage.rotation` / `mirrored` persisted in `session.json`; `ImageFiles.writeJpeg` applies them (Android `Matrix`, iOS drawing); `PageProcessor.transform` re-renders into new files (revision in the file name)
-- [ ] T084 [US7] Tests first, then the camera review step in `CameraViewModel` (Reviewing state, look / rotate / flip / retake / save actions) and `CameraScreen` (grow-from-outline animation, chips, buttons); strings EN/AR
-- [ ] T085 [US7] Rotate and Flip buttons on the page viewer (`HandoffViewModel`, `HandoffScreen`); strings EN/AR
+- [X] T082 [P] [US7] Tests first, then `AutoCaptureGate`: Low-confidence detections may auto-capture after a longer steady window; minimum fill 5%
+- [X] T083 [P] [US7] Tests first, then `CapturedPage.rotation` / `mirrored` persisted in `session.json`; `ImageFiles.writeJpeg` applies them (Android `Matrix`, iOS drawing); `PageProcessor.transform` re-renders into new files (revision in the file name)
+- [X] T084 [US7] Tests first, then the camera review step in `CameraViewModel` (Reviewing state, look / rotate / flip / retake / save actions) and `CameraScreen` (grow-from-outline animation, chips, buttons); strings EN/AR
+- [X] T085 [US7] Rotate and Flip buttons on the page viewer (`HandoffViewModel`, `HandoffScreen`); strings EN/AR
 - [ ] T086 Verify on the owner's phone: ID card outline and auto-capture, review flow, rotate/flip; record in results.md

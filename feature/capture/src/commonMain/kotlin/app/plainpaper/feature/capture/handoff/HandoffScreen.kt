@@ -2,7 +2,6 @@ package app.plainpaper.feature.capture.handoff
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,10 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,40 +35,28 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.plainpaper.core.designsystem.component.PpPrimaryButton
+import app.plainpaper.core.designsystem.component.PpToolButton
 import app.plainpaper.core.designsystem.icon.PpIcons
 import app.plainpaper.core.designsystem.theme.PlainpaperTheme
-import app.plainpaper.core.domain.model.OutputStyle
 import app.plainpaper.core.domain.model.capture.PageState
+import app.plainpaper.feature.capture.LookChipRow
 import app.plainpaper.feature.capture.resources.Res
 import app.plainpaper.feature.capture.resources.handoff_apply_all
 import app.plainpaper.feature.capture.resources.handoff_attention_cd
 import app.plainpaper.feature.capture.resources.handoff_back
 import app.plainpaper.feature.capture.resources.handoff_done
 import app.plainpaper.feature.capture.resources.handoff_failed_cd
-import app.plainpaper.feature.capture.resources.handoff_look_bw
-import app.plainpaper.feature.capture.resources.handoff_look_enhanced
-import app.plainpaper.feature.capture.resources.handoff_look_grayscale
-import app.plainpaper.feature.capture.resources.handoff_look_original
-import app.plainpaper.feature.capture.resources.handoff_looks_cd
 import app.plainpaper.feature.capture.resources.handoff_page_cd
 import app.plainpaper.feature.capture.resources.handoff_page_counter
 import app.plainpaper.feature.capture.resources.handoff_processing_cd
-import org.jetbrains.compose.resources.StringResource
+import app.plainpaper.feature.capture.resources.review_flip
+import app.plainpaper.feature.capture.resources.review_rotate
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 private val BackButtonSize = 48.dp
 private val BadgeSize = 28.dp
-
-/** The four looks in the order shown (spec 003 US6). */
-private val Looks: List<Pair<OutputStyle, StringResource>> =
-    listOf(
-        OutputStyle.Original to Res.string.handoff_look_original,
-        OutputStyle.ColorDocument to Res.string.handoff_look_enhanced,
-        OutputStyle.Grayscale to Res.string.handoff_look_grayscale,
-        OutputStyle.Scan to Res.string.handoff_look_bw,
-    )
 
 @Composable
 fun HandoffRoute(
@@ -192,31 +176,29 @@ private fun LookBar(
 ) {
     val spacing = PlainpaperTheme.spacing
     val current = state.currentPage
-    val looksDescription = stringResource(Res.string.handoff_looks_cd)
     Surface(color = PlainpaperTheme.colors.surface, shadowElevation = 8.dp) {
         Column(modifier = Modifier.fillMaxWidth().padding(vertical = spacing.m)) {
+            LookChipRow(
+                selected = current?.style,
+                enabled = current != null && !current.busy,
+                onSelect = { onAction(HandoffAction.ChooseLook(it)) },
+            )
             Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = spacing.l)
-                        .semantics { contentDescription = looksDescription },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.l),
                 horizontalArrangement = Arrangement.spacedBy(spacing.s),
             ) {
-                Looks.forEach { (style, label) ->
-                    FilterChip(
-                        selected = current?.style == style,
-                        onClick = { onAction(HandoffAction.ChooseLook(style)) },
-                        enabled = current != null && !current.busy,
-                        label = { Text(stringResource(label)) },
-                        colors =
-                            FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = PlainpaperTheme.colors.primaryContainer,
-                                selectedLabelColor = PlainpaperTheme.colors.onPrimaryContainer,
-                            ),
-                    )
-                }
+                PpToolButton(
+                    icon = PpIcons.RotateClockwise,
+                    text = stringResource(Res.string.review_rotate),
+                    onClick = { onAction(HandoffAction.RotatePage) },
+                    enabled = current != null && !current.busy,
+                )
+                PpToolButton(
+                    icon = PpIcons.FlipHorizontal,
+                    text = stringResource(Res.string.review_flip),
+                    onClick = { onAction(HandoffAction.FlipPage) },
+                    enabled = current != null && !current.busy,
+                )
             }
             if (state.pages.size > 1) {
                 PpPrimaryButton(
