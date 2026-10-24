@@ -19,7 +19,7 @@
 
 - [ ] T001 Spike + size gate: add `dnn` to `BUILD_LIST` in `scripts/build-opencv-host.sh`; link `opencv_dnn` in `core/scanengine/native/CMakeLists.txt` (host, Android, iOS); a throwaway `pp_engine_load_detector` that calls `cv::dnn::readNetFromONNX(buffer)` on a 2-layer stub ONNX; measure `libplainpaper_scan.so` growth per ABI (`:androidApp:assembleRelease`) and the iOS static lib growth in CI; record in `research.md` R1. Stop and report if growth + 2 MB > 5 MB.
 - [ ] T002 [P] Create `tools/detector-training/` with `pyproject.toml` (uv; torch, numpy, opencv-python, onnx, pyyaml, pytest pinned), `README.md`, `.gitignore` (runs/, cache/), package `detector/`
-- [ ] T003 [P] Add `.github/workflows/pr.yml` step + `scripts/check-no-network-permission.sh`: process the release manifest (`:androidApp:processReleaseMainManifest`) and fail if it contains `android.permission.INTERNET` or `ACCESS_NETWORK_STATE`
+- [X] T003 [P] Add `.github/workflows/pr.yml` step + `scripts/check-no-network-permission.sh`: process the release manifest (`:androidApp:processReleaseMainManifest`) and fail if it contains `android.permission.INTERNET` or `ACCESS_NETWORK_STATE`
 
 ---
 
@@ -59,16 +59,16 @@
 
 ### Tests first
 
-- [ ] T017 [P] [US2] Domain/data tests: `PageSource` default by session source for old indexes; `source` round-trip in `session.json`; `AddCapturedPageUseCase` passes source
-- [ ] T018 [P] [US2] `PageProcessorTest`: QuickScan page analysed with `userCorners = full frame`, `keepOrientation = true`; looks/rotate/flip unchanged
-- [ ] T019 [P] [US2] `QuickScanViewModelTest` (feature/capture): Unavailable → action hidden; NeedsSetup → preparing message; Pages → session started/continued, pages added in order with source QuickScan, navigate to page viewer; Cancelled → nothing; Failed → error message. Home/Camera ViewModel tests for the action's visibility
+- [X] T017 [P] [US2] Domain/data tests: `PageSource` default by session source for old indexes; `source` round-trip in `session.json`; `AddCapturedPageUseCase` passes source
+- [X] T018 [P] [US2] `PageProcessorTest`: QuickScan page analysed with `userCorners = full frame`, `keepOrientation = true`; looks/rotate/flip unchanged
+- [X] T019 [P] [US2] `QuickScanViewModelTest` (feature/capture): Unavailable → action hidden; NeedsSetup → preparing message; Pages → session started/continued, pages added in order with source QuickScan, navigate to page viewer; Cancelled → nothing; Failed → error message. Home/Camera ViewModel tests for the action's visibility
 
 ### Implementation
 
-- [ ] T020 [US2] `PageSource` + `CapturedPage.source` (domain), persistence (data), `AddCapturedPageUseCase(source)`, `PageProcessor` QuickScan path
-- [ ] T021 [US2] `:core:capture` `DocumentScanner` interface + factory + `FakeDocumentScanner`; Android `MlKitDocumentScanner` (ML Kit 16.0.0 in `libs.versions.toml`, `StartIntentSenderForResult` launcher in `remember()`, `ModuleInstall` availability, copy result JPEGs to `destinationDir/original-<n>.jpg`); `androidApp` manifest `tools:node="remove"` for INTERNET and ACCESS_NETWORK_STATE
-- [ ] T022 [US2] iOS `VisionKitDocumentScanner` (`VNDocumentCameraViewController.isSupported`, present from the key window root VC, delegate → `imageOfPage(at:)` → JPEG files); compile-safe interop, verified by CI
-- [ ] T023 [US2] Quick scan UI: Home action + Camera text button (contracts/ui.md), `QuickScanViewModel` or actions in existing ViewModels, navigation to the page viewer; strings EN/AR; Koin wiring
+- [X] T020 [US2] `PageSource` + `CapturedPage.source` (domain), persistence (data), `AddCapturedPageUseCase(source)`, `PageProcessor` QuickScan path
+- [X] T021 [US2] `:core:capture` `DocumentScanner` interface + factory + `FakeDocumentScanner`; Android `MlKitDocumentScanner` (ML Kit 16.0.0 in `libs.versions.toml`, `StartIntentSenderForResult` launcher in `remember()`, `ModuleInstall` availability, copy result JPEGs to `destinationDir/original-<n>.jpg`); `androidApp` manifest `tools:node="remove"` for INTERNET and ACCESS_NETWORK_STATE
+- [X] T022 [US2] iOS `VisionKitDocumentScanner` (`VNDocumentCameraViewController.isSupported`, present from the key window root VC, delegate → `imageOfPage(at:)` → JPEG files); compile-safe interop, verified by CI
+- [X] T023 [US2] Quick scan UI: Home action + Camera text button (contracts/ui.md), `QuickScanViewModel` or actions in existing ViewModels, navigation to the page viewer; strings EN/AR; Koin wiring
 
 **Checkpoint**: on the phone, Quick scan of 3 pages lands in the page viewer with looks/rotate/flip.
 
