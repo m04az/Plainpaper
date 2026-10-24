@@ -91,9 +91,7 @@ public fun PpProgressTile(
                 Badge(colors.error, PpIcons.Warning, Modifier.align(Alignment.BottomEnd))
             }
 
-            else -> {
-                Unit
-            }
+            PpTileState.Queued, PpTileState.Active -> {}
         }
     }
 }

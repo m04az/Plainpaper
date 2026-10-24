@@ -173,9 +173,7 @@ private fun PageTile(page: HandoffPage) {
                 Badge(PpIcons.Warning, stringResource(Res.string.handoff_failed_cd))
             }
 
-            PageState.Ready -> {
-                Unit
-            }
+            PageState.Ready -> {}
         }
     }
 }

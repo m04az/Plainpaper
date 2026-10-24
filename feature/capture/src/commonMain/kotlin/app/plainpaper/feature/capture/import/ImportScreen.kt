@@ -105,6 +105,7 @@ fun ImportRoute(
 }
 
 @OptIn(ExperimentalComposeUiApi::class)
+@Suppress("DEPRECATION") // BackHandler: its NavigationEventHandler replacement is not in our navigation artifact yet
 @Composable
 fun ImportScreen(
     state: ImportUiState,
@@ -154,9 +155,15 @@ fun ImportScreen(
         Footer(state, onAction)
     }
     when (state.phase) {
-        ImportPhase.LimitSheet -> LimitDialog(state, onAction)
-        ImportPhase.CancelChoice -> CancelDialog(state, onAction)
-        else -> Unit
+        ImportPhase.LimitSheet -> {
+            LimitDialog(state, onAction)
+        }
+
+        ImportPhase.CancelChoice -> {
+            CancelDialog(state, onAction)
+        }
+
+        else -> {}
     }
 }
 

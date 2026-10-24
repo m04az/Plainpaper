@@ -114,9 +114,7 @@ fun CameraRoute(
                         viewModel.onAction(CameraAction.ScreenStopped)
                     }
 
-                    else -> {
-                        Unit
-                    }
+                    else -> {}
                 }
             }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -159,6 +157,7 @@ fun CameraRoute(
 }
 
 @OptIn(ExperimentalComposeUiApi::class)
+@Suppress("DEPRECATION") // BackHandler: its NavigationEventHandler replacement is not in our navigation artifact yet
 @Composable
 fun CameraScreen(
     state: CameraUiState,

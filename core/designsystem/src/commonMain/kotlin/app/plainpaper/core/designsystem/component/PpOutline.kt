@@ -9,7 +9,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.semantics.invisibleToUser
+import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.plainpaper.core.designsystem.theme.PpColors
@@ -32,7 +32,7 @@ public fun PpOutline(
     modifier: Modifier = Modifier,
 ) {
     val flashAlpha by animateFloatAsState(targetValue = if (flash) 1f else 0f, label = FLASH_ANIMATION)
-    Canvas(modifier = modifier.semantics { invisibleToUser() }) {
+    Canvas(modifier = modifier.semantics { hideFromAccessibility() }) {
         if (corners != null && corners.size == CORNERS) {
             val path =
                 Path().apply {

@@ -178,9 +178,7 @@ class ImportViewModel(
         session.pages.forEach { page ->
             val index = pageToItem[page.id] ?: return@forEach
             when (val state = page.state) {
-                PageState.Pending -> {
-                    Unit
-                }
+                PageState.Pending -> {}
 
                 PageState.Processing -> {
                     markItem(index) { it.copy(state = ImportItemState.Converting) }
@@ -273,9 +271,7 @@ class ImportViewModel(
                 state.sessionId?.let { effectChannel.trySend(ImportEffect.NavigateToHandoff(it)) }
             }
 
-            ImportPhase.CancelChoice -> {
-                Unit
-            }
+            ImportPhase.CancelChoice -> {}
         }
     }
 

@@ -178,9 +178,15 @@ class CameraViewModel(
     private fun onPermission(state: CameraPermissionState) {
         mutableState.update { it.copy(permission = state) }
         when (state) {
-            CameraPermissionState.Granted -> if (screenStarted) ensureRunning()
-            CameraPermissionState.Unavailable -> effectChannel.trySend(CameraEffect.NavigateToImport(noCamera = true))
-            else -> Unit
+            CameraPermissionState.Granted -> {
+                if (screenStarted) ensureRunning()
+            }
+
+            CameraPermissionState.Unavailable -> {
+                effectChannel.trySend(CameraEffect.NavigateToImport(noCamera = true))
+            }
+
+            else -> {}
         }
     }
 
