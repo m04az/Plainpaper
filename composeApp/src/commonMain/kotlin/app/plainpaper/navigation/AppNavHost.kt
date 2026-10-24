@@ -16,6 +16,7 @@ import app.plainpaper.feature.capture.ImportRoute
 import app.plainpaper.feature.capture.camera.CameraRoute
 import app.plainpaper.feature.capture.handoff.HandoffRoute
 import app.plainpaper.feature.capture.import.ImportRoute
+import app.plainpaper.feature.capture.quickscan.QuickScanHomeAction
 import app.plainpaper.feature.home.HomeRoute
 import app.plainpaper.feature.settings.SettingsRoute
 import app.plainpaper.placeholder.PlaceholderScreen
@@ -29,6 +30,12 @@ fun AppNavHost(navController: NavHostController) {
                 onNavigateToScan = { navController.navigate(CameraRoute) },
                 onNavigateToImport = { navController.navigate(ImportRoute) },
                 onNavigateToHandoff = { sessionId -> navController.navigate(HandoffRoute(sessionId)) },
+                quickScanAction = { modifier ->
+                    QuickScanHomeAction(
+                        onHandoff = { sessionId -> navController.navigate(HandoffRoute(sessionId)) },
+                        modifier = modifier,
+                    )
+                },
             )
         }
         composable<Folders> {

@@ -4,6 +4,7 @@ import app.plainpaper.feature.capture.camera.CameraViewModel
 import app.plainpaper.feature.capture.handoff.HandoffViewModel
 import app.plainpaper.feature.capture.import.ImportViewModel
 import app.plainpaper.feature.capture.processing.PageProcessor
+import app.plainpaper.feature.capture.quickscan.QuickScanViewModel
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -56,6 +57,19 @@ val captureFeatureModule: Module =
                 processor = get(),
                 dispatchers = get(),
                 now = ::nowMillis,
+            )
+        }
+        viewModel {
+            QuickScanViewModel(
+                startSession = get(),
+                addPage = get(),
+                finishSession = get(),
+                discardSession = get(),
+                observeSession = get(),
+                sessionDirectory = get(),
+                resolvePageSize = get(),
+                processor = get(),
+                dispatchers = get(),
             )
         }
         viewModel { (sessionId: String) ->

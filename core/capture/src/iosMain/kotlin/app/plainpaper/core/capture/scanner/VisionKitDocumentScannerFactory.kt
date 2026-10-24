@@ -85,8 +85,19 @@ private class VisionKitDocumentScanner : DocumentScanner {
             val count = scan.pageCount.toInt()
             if (count == 0) return ScannerResult.Cancelled
             val files = NSFileManager.defaultManager
-            files.createDirectoryAtPath(destinationDir, withIntermediateDirectories = true, attributes = null, error = null)
-            val existing = files.contentsOfDirectoryAtPath(destinationDir, error = null)?.filterIsInstance<String>().orEmpty()
+            files.createDirectoryAtPath(
+                destinationDir,
+                withIntermediateDirectories = true,
+                attributes = null,
+                error = null,
+            )
+            val existing =
+                files
+                    .contentsOfDirectoryAtPath(
+                        destinationDir,
+                        error = null,
+                    )?.filterIsInstance<String>()
+                    .orEmpty()
             val first = nextOriginalIndex(existing)
             val written = mutableListOf<String>()
             for (page in 0 until count) {

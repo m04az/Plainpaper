@@ -11,7 +11,8 @@ class OriginalNamesTest {
 
     @Test
     fun continuesAfterTheHighestOriginalAndIgnoresOtherFiles() {
-        val names = listOf("original-000.jpg", "original-004.jpg", "page-p1-r0-scan.jpg", "session.json", "original-x.jpg")
+        val names =
+            listOf("original-000.jpg", "original-004.jpg", "page-p1-r0-scan.jpg", "session.json", "original-x.jpg")
         assertEquals(5, nextOriginalIndex(names))
     }
 
