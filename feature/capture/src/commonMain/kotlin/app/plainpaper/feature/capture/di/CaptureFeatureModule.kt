@@ -62,6 +62,7 @@ val captureFeatureModule: Module =
                 sessionId = sessionId,
                 observeSession = get(),
                 finishSession = get(),
+                processor = get(),
                 thumbnails = get(),
                 dispatchers = get(),
             )

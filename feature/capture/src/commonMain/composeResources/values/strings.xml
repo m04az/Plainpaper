@@ -101,4 +101,12 @@
     <string name="handoff_attention_cd">Needs attention</string>
     <string name="handoff_failed_cd">Failed</string>
     <string name="handoff_processing_cd">Processing</string>
+    <string name="handoff_done">Done</string>
+    <string name="handoff_page_counter">Page %1$d of %2$d</string>
+    <string name="handoff_looks_cd">Page look</string>
+    <string name="handoff_look_original">Original</string>
+    <string name="handoff_look_enhanced">Enhanced</string>
+    <string name="handoff_look_grayscale">Grayscale</string>
+    <string name="handoff_look_bw">Black &amp; white</string>
+    <string name="handoff_apply_all">Apply to all pages</string>
 </resources>

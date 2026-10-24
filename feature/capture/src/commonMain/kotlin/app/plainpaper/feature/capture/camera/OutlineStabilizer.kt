@@ -25,6 +25,7 @@ class OutlineStabilizer(
     private var candidateCount = 0
 
     /** The outline to draw after this frame, or null. */
+    @Suppress("ReturnCount") // one early return per case: same page, confirmed switch, pending switch
     fun onFrame(
         timestampMillis: Long,
         corners: Quad?,
@@ -87,9 +88,9 @@ class OutlineStabilizer(
     ): Quad {
         val a = from.points
         val b = to.points
-        val p =
-            List(a.size) { i -> Point(a[i].x + smoothing * (b[i].x - a[i].x), a[i].y + smoothing * (b[i].y - a[i].y)) }
-        return Quad(p[0], p[1], p[2], p[3])
+
+        fun mix(i: Int) = Point(a[i].x + smoothing * (b[i].x - a[i].x), a[i].y + smoothing * (b[i].y - a[i].y))
+        return Quad(mix(TL), mix(TR), mix(BR), mix(BL))
     }
 
     private fun drift(
@@ -108,5 +109,9 @@ class OutlineStabilizer(
         const val DEFAULT_HOLD_MILLIS = 400L
         const val DEFAULT_SMOOTHING = 0.5f
         const val DEFAULT_SAME_QUAD = 0.12f
+        private const val TL = 0
+        private const val TR = 1
+        private const val BR = 2
+        private const val BL = 3
     }
 }

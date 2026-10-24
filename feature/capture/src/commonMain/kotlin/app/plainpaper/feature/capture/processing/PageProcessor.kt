@@ -219,13 +219,12 @@ class PageProcessor(
         scope.launch {
             val session = sessions.activeSession.first()?.takeIf { it.id == sessionId } ?: return@launch
             val directory = sessions.sessionDirectory(sessionId)
-            for (id in pageIds) {
-                val page = session.page(id) ?: continue
-                if (page.style == style || page.state is PageState.Pending ||
-                    page.state is PageState.Processing
-                ) {
-                    continue
+            val pages =
+                pageIds.mapNotNull(session::page).filter { page ->
+                    page.style != style && page.state !is PageState.Pending && page.state !is PageState.Processing
                 }
+            for (page in pages) {
+                val id = page.id
                 val restyled = page.copy(style = style)
                 val (pagePath, thumbnailPath) = renderedPaths(directory, restyled)
                 if (page.state.hasPage && files.exists(pagePath)) {

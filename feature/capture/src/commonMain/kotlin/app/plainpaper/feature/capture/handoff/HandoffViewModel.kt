@@ -5,10 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.plainpaper.core.capture.files.ThumbnailLoader
 import app.plainpaper.core.domain.coroutines.DispatcherProvider
+import app.plainpaper.core.domain.model.OutputStyle
 import app.plainpaper.core.domain.model.capture.CaptureSession
 import app.plainpaper.core.domain.model.capture.PageState
 import app.plainpaper.core.domain.usecase.capture.FinishSessionUseCase
 import app.plainpaper.core.domain.usecase.capture.ObserveActiveSessionUseCase
+import app.plainpaper.feature.capture.processing.PageProcessor
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,31 +21,58 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/** Long edge of the large page preview (enough for a phone screen, cheap to decode). */
+const val PREVIEW_EDGE = 1600
+
 data class HandoffPage(
     val id: String,
     val position: Int,
     val state: PageState,
+    val style: OutputStyle,
+    val pagePath: String? = null,
     val thumbnail: ImageBitmap? = null,
-)
+) {
+    /** A new look is being rendered. */
+    val busy: Boolean get() = state is PageState.Pending || state is PageState.Processing
+}
 
 data class HandoffUiState(
     val pages: List<HandoffPage> = emptyList(),
     val processingRemaining: Int = 0,
-)
+    val current: Int = 0,
+    /** Large image of the current page, null while it loads (the thumbnail stands in). */
+    val preview: ImageBitmap? = null,
+) {
+    val currentPage: HandoffPage? get() = pages.getOrNull(current)
+}
 
 sealed interface HandoffAction {
     data object BackToHome : HandoffAction
+
+    data class SelectPage(
+        val index: Int,
+    ) : HandoffAction
+
+    data class ChooseLook(
+        val style: OutputStyle,
+    ) : HandoffAction
+
+    data object ApplyLookToAll : HandoffAction
 }
 
 sealed interface HandoffEffect {
     data object NavigateHome : HandoffEffect
 }
 
-/** Placeholder review hand-off until Feature 4: lists the session's pages as they finish. */
+/**
+ * The page view after capture or import (spec 003 US6) until review arrives in Feature 4:
+ * pages one at a time with the four looks and "apply to all".
+ */
 class HandoffViewModel(
     private val sessionId: String,
     observeSession: ObserveActiveSessionUseCase,
     private val finishSession: FinishSessionUseCase,
+    private val processor: PageProcessor,
     private val thumbnails: ThumbnailLoader,
     private val dispatchers: DispatcherProvider,
 ) : ViewModel() {
@@ -54,8 +84,9 @@ class HandoffViewModel(
 
     private val loaded = mutableMapOf<String, ImageBitmap?>()
     private val loading = mutableSetOf<String>()
-
     private var handedOff = false
+    private var previewPath: String? = null
+    private var previewJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -65,8 +96,29 @@ class HandoffViewModel(
 
     fun onAction(action: HandoffAction) {
         when (action) {
-            HandoffAction.BackToHome -> effectChannel.trySend(HandoffEffect.NavigateHome)
+            HandoffAction.BackToHome -> {
+                effectChannel.trySend(HandoffEffect.NavigateHome)
+            }
+
+            is HandoffAction.SelectPage -> {
+                select(action.index)
+            }
+
+            is HandoffAction.ChooseLook -> {
+                uiState.value.currentPage?.let { processor.restyle(sessionId, listOf(it.id), action.style) }
+            }
+
+            HandoffAction.ApplyLookToAll -> {
+                val style = uiState.value.currentPage?.style ?: return
+                processor.restyle(sessionId, uiState.value.pages.map { it.id }, style)
+            }
         }
+    }
+
+    private fun select(index: Int) {
+        val clamped = index.coerceIn(0, maxOf(0, uiState.value.pages.size - 1))
+        mutableState.update { it.copy(current = clamped) }
+        refreshPreview()
     }
 
     private fun onSession(session: CaptureSession) {
@@ -74,27 +126,69 @@ class HandoffViewModel(
             handedOff = true
             viewModelScope.launch { finishSession(sessionId) }
         }
-        mutableState.update {
-            HandoffUiState(
+        mutableState.update { state ->
+            state.copy(
                 pages =
                     session.pages.map { page ->
-                        HandoffPage(page.id, page.position, page.state, page.thumbnailPath?.let(loaded::get))
+                        HandoffPage(
+                            id = page.id,
+                            position = page.position,
+                            state = page.state,
+                            style = page.style,
+                            pagePath = page.pagePath,
+                            thumbnail = page.thumbnailPath?.let(loaded::get),
+                        )
                     },
                 processingRemaining = session.unfinishedPages.size,
+                current = state.current.coerceIn(0, maxOf(0, session.pageCount - 1)),
             )
         }
-        session.pages.forEach { page ->
-            val path = page.thumbnailPath ?: return@forEach
-            if (path in loaded || path in loading) return@forEach
-            loading += path
-            viewModelScope.launch(dispatchers.io) {
-                val bitmap = thumbnails.load(path)
-                loaded[path] = bitmap
-                loading -= path
-                mutableState.update { state ->
-                    state.copy(pages = state.pages.map { if (it.id == page.id) it.copy(thumbnail = bitmap) else it })
-                }
+        session.pages.forEach { page -> page.thumbnailPath?.let { loadThumbnail(page.id, it) } }
+        refreshPreview()
+    }
+
+    private fun loadThumbnail(
+        pageId: String,
+        path: String,
+    ) {
+        if (path in loaded || path in loading) return
+        loading += path
+        viewModelScope.launch(dispatchers.io) {
+            val bitmap = thumbnails.load(path)
+            loaded[path] = bitmap
+            loading -= path
+            mutableState.update { state ->
+                state.copy(
+                    pages =
+                        state.pages.map {
+                            if (it.id == pageId &&
+                                it.thumbnail == null
+                            ) {
+                                it.copy(thumbnail = bitmap)
+                            } else {
+                                it
+                            }
+                        },
+                )
             }
         }
+    }
+
+    /** Loads the large image of the current page whenever its rendered file changes. */
+    private fun refreshPreview() {
+        val path =
+            uiState.value.currentPage
+                ?.takeIf { !it.busy }
+                ?.pagePath
+        if (path == previewPath) return
+        previewPath = path
+        previewJob?.cancel()
+        mutableState.update { it.copy(preview = null) }
+        if (path == null) return
+        previewJob =
+            viewModelScope.launch(dispatchers.io) {
+                val bitmap = thumbnails.load(path, PREVIEW_EDGE)
+                mutableState.update { if (previewPath == path) it.copy(preview = bitmap) else it }
+            }
     }
 }
