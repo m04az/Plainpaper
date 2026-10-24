@@ -6,4 +6,14 @@
     <string name="home_scan_button">مسح صفحة</string>
     <string name="home_import_button">استيراد صور</string>
     <string name="home_empty_illustration_cd">رسم توضيحي لصفحة فارغة</string>
+    <plurals name="home_recovery_title">
+        <item quantity="zero">لديك مسح غير مكتمل</item>
+        <item quantity="one">لديك مسح غير مكتمل من صفحة واحدة</item>
+        <item quantity="two">لديك مسح غير مكتمل من صفحتين</item>
+        <item quantity="few">لديك مسح غير مكتمل من %1$d صفحات</item>
+        <item quantity="many">لديك مسح غير مكتمل من %1$d صفحة</item>
+        <item quantity="other">لديك مسح غير مكتمل من %1$d صفحة</item>
+    </plurals>
+    <string name="home_recovery_continue">متابعة</string>
+    <string name="home_recovery_discard">تجاهل</string>
 </resources>

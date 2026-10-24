@@ -91,6 +91,32 @@ public object PpIcons {
     }
 
     /** Points to the "start" side; mirrored automatically in RTL. */
+    public val Flash: ImageVector by lazy {
+        strokeIcon("Flash") {
+            path("M13 2L4 14h7l-1 8 9-12h-7z")
+        }
+    }
+
+    public val Close: ImageVector by lazy {
+        strokeIcon("Close") {
+            path("M6 6l12 12M18 6L6 18")
+        }
+    }
+
+    public val Warning: ImageVector by lazy {
+        strokeIcon("Warning") {
+            path("M12 3l10 18H2z")
+            path("M12 10v5M12 18v.5")
+        }
+    }
+
+    public val Lock: ImageVector by lazy {
+        strokeIcon("Lock") {
+            path("M5 10h14v10H5z")
+            path("M8 10V7a4 4 0 0 1 8 0v3")
+        }
+    }
+
     public val ArrowBack: ImageVector by lazy {
         strokeIcon("ArrowBack", autoMirror = true) {
             path("M19 12H5M11 6l-6 6 6 6")

@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Camera screen -->
+    <string name="camera_close_cd">Close camera</string>
+    <string name="camera_flash_cd">Flash</string>
+    <string name="camera_flash_off">Off</string>
+    <string name="camera_flash_on">On</string>
+    <string name="camera_auto">Auto</string>
+    <string name="camera_auto_cd">Automatic capture</string>
+    <string name="camera_modes_cd">Scan mode</string>
+    <string name="camera_mode_document">Document</string>
+    <string name="camera_mode_id_card">ID card</string>
+    <string name="camera_mode_receipt">Receipt</string>
+    <string name="camera_shutter_cd">Take photo</string>
+    <string name="camera_done">Done</string>
+    <string name="camera_latest_page_cd">Latest page</string>
+    <plurals name="camera_pages_cd">
+        <item quantity="one">%1$d page</item>
+        <item quantity="other">%1$d pages</item>
+    </plurals>
+    <string name="camera_hint_hold_steady">Hold steady — capturing…</string>
+    <string name="camera_hint_tap_shutter">Tap the shutter when ready</string>
+    <string name="camera_hint_move_closer">Move closer or tap the shutter</string>
+    <string name="camera_hint_too_dark">Too dark — turn on the flash or add light</string>
+    <string name="camera_hint_adjust">Adjust the framing or tap the shutter</string>
+    <string name="camera_hint_id_front">Front side of the card</string>
+    <string name="camera_hint_id_back">Back side of the card</string>
+    <string name="camera_hint_receipt">Fit the whole receipt</string>
+    <plurals name="camera_discard_title">
+        <item quantity="one">Discard %1$d page?</item>
+        <item quantity="other">Discard %1$d pages?</item>
+    </plurals>
+    <string name="camera_discard_body">The pages in this scan will be deleted.</string>
+    <string name="camera_discard_confirm">Discard</string>
+    <string name="camera_discard_keep">Keep scanning</string>
+    <string name="camera_storage_full">Not enough space to save more pages</string>
+    <string name="camera_capture_failed">Couldn’t take that photo. Try again.</string>
+    <string name="camera_unavailable_notice">This device has no camera, so you can import photos instead.</string>
+
+    <!-- Camera permission -->
+    <string name="permission_explain_title">Scan with your camera</string>
+    <string name="permission_explain_body">Plainpaper needs the camera to scan pages. Photos stay on this phone.</string>
+    <string name="permission_allow">Allow camera</string>
+    <string name="permission_denied_title">Camera access is off</string>
+    <string name="permission_denied_body">You can turn it on in Settings, or import photos from your gallery instead.</string>
+    <string name="permission_open_settings">Open settings</string>
+    <string name="permission_import_instead">Import photos instead</string>
+
+    <!-- Import -->
+    <string name="import_title">From Photos</string>
+    <string name="import_cancel">Cancel</string>
+    <plurals name="import_converting_heading">
+        <item quantity="one">Converting %1$d photo</item>
+        <item quantity="other">Converting %1$d photos</item>
+    </plurals>
+    <string name="import_progress_sub">%1$d of %2$d done · about %3$d s left</string>
+    <plurals name="import_ready_heading">
+        <item quantity="one">%1$d page ready</item>
+        <item quantity="other">%1$d pages ready</item>
+    </plurals>
+    <string name="import_ready_sub">All photos are now clean scans.</string>
+    <plurals name="import_skipped_sub">
+        <item quantity="one">%1$d photo could not be read and was skipped.</item>
+        <item quantity="other">%1$d photos could not be read and were skipped.</item>
+    </plurals>
+    <string name="import_privacy">Processed on this phone. Your photos never leave it.</string>
+    <plurals name="import_review_button">
+        <item quantity="one">Review %1$d page</item>
+        <item quantity="other">Review %1$d pages</item>
+    </plurals>
+    <string name="import_converting_button">Converting…</string>
+    <string name="import_limit_title">Free imports 10 photos at a time</string>
+    <string name="import_limit_body">Plainpaper Pro converts as many photos as you like in one go. You can also import the first 10 now.</string>
+    <string name="import_limit_first">Import the first %1$d</string>
+    <string name="import_limit_see_pro">See Pro</string>
+    <string name="import_cancel_title">Stop converting?</string>
+    <plurals name="import_cancel_keep">
+        <item quantity="one">Keep %1$d converted page</item>
+        <item quantity="other">Keep %1$d converted pages</item>
+    </plurals>
+    <string name="import_cancel_keep_none">Back to Home</string>
+    <string name="import_cancel_discard">Discard</string>
+    <string name="import_progress_cd">Import progress</string>
+    <string name="import_tile_done_cd">Converted</string>
+    <string name="import_tile_skipped_cd">Skipped</string>
+    <string name="import_tile_queued_cd">Waiting</string>
+    <string name="import_tile_active_cd">Converting</string>
+
+    <!-- Hand-off (placeholder until review arrives) -->
+    <string name="handoff_title">Pages</string>
+    <plurals name="handoff_count">
+        <item quantity="one">%1$d page</item>
+        <item quantity="other">%1$d pages</item>
+    </plurals>
+    <plurals name="handoff_processing">
+        <item quantity="one">%1$d still processing</item>
+        <item quantity="other">%1$d still processing</item>
+    </plurals>
+    <string name="handoff_back">Back to Home</string>
+    <string name="handoff_page_cd">Page %1$d</string>
+    <string name="handoff_attention_cd">Needs attention</string>
+    <string name="handoff_failed_cd">Failed</string>
+    <string name="handoff_processing_cd">Processing</string>
+</resources>

@@ -4,6 +4,7 @@ package app.plainpaper.core.scanengine.bridge
 
 import app.plainpaper.core.domain.model.DeviceCapability
 import app.plainpaper.core.domain.model.OutputStyle
+import app.plainpaper.core.scanengine.PreviewFrame
 import app.plainpaper.core.scanengine.ScanOutput
 import app.plainpaper.core.scanengine.ScanPhoto
 import app.plainpaper.core.scanengine.model.Confidence
@@ -68,6 +69,37 @@ public sealed interface NativeRenderResult {
     ) : NativeRenderResult
 }
 
+/** `pp_detect_info` plus the call status (contracts/c-api-detect.md). */
+public data class NativeDetectResult(
+    val status: NativeStatus,
+    val corners: Quad,
+    val confidence: Confidence,
+    val fillFraction: Float,
+    val meanLuma: Float,
+    val micros: Long,
+    val detail: String = "",
+) {
+    public companion object {
+        /** Unpacks the 12 doubles written by the JNI/cinterop transport. */
+        public fun decode(
+            status: NativeStatus,
+            values: DoubleArray,
+            detail: String = "",
+        ): NativeDetectResult =
+            NativeDetectResult(
+                status = status,
+                corners = Quad.fromDoubles(values),
+                confidence = Confidence.entries[values[8].toInt().coerceIn(0, 2)],
+                meanLuma = values[9].toFloat(),
+                fillFraction = values[10].toFloat(),
+                micros = values[11].toLong(),
+                detail = detail,
+            )
+
+        public const val VALUES: Int = 12
+    }
+}
+
 /** Cooperative cancellation handle shared with native code. */
 public interface NativeCancelFlag {
     public fun set()
@@ -104,6 +136,12 @@ public interface NativeBridge {
         userCorners: Quad?,
         cancel: NativeCancelFlag,
     ): NativeAnalyzeResult
+
+    /** Detection only on a preview frame; blocking. */
+    public fun detect(
+        frame: PreviewFrame,
+        cancel: NativeCancelFlag,
+    ): NativeDetectResult
 
     public companion object {
         /** Must equal `PP_API_VERSION` in plainpaper_scan.h. */

@@ -49,6 +49,15 @@ public object PpColors {
 
     /** The paper a scanned page is drawn on; identical in both themes by design. */
     public val Paper: Color = Color(0xFFFFFFFF)
+
+    // Camera overlay (design "Camera": always dark, over the live preview)
+    public val CameraGlass: Color = Color(0x7A28282C)
+    public val CameraGlassStroke: Color = Color(0x29FFFFFF)
+    public val CameraOnGlass: Color = Color(0xFFFFFFFF)
+    public val CameraOutline: Color = Color(0xFF6E86FF)
+    public val CameraOutlineFill: Color = Color(0x246E86FF)
+    public val CameraReady: Color = Color(0xFF4ADE80)
+    public val CameraWarning: Color = Color(0xFFFFD84D)
 }
 
 /** Colors Material 3 has no slot for. */

@@ -16,8 +16,6 @@ data object Folders : TabRoute
 @Serializable
 data object Settings : TabRoute
 
+/** "See Pro" destination until the Pro purchase feature exists. */
 @Serializable
-data object ScanPlaceholder : AppRoute
-
-@Serializable
-data object ImportPlaceholder : AppRoute
+data object ProPlaceholder : AppRoute

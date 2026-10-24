@@ -10,6 +10,10 @@ constexpr int kMinInputLongEdge = 640;
 constexpr int kMaxInputLongEdge = 6000;
 /** Working resolution bounds accepted from the caller. */
 constexpr int kMinWorkingLongEdge = 800;
+/** pp_detect (003): preview frames are analysed at most at this long edge; smaller as given. */
+constexpr int kDetectWorkingLongEdge = 800;
+/** Smallest preview frame pp_detect accepts. */
+constexpr int kMinDetectLongEdge = 240;
 constexpr int kMaxWorkingLongEdge = 3000;
 /** Long edge of the corrected page kept in the session, per capability. */
 constexpr int kPageLongEdgeFull = 3508;

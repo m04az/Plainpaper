@@ -4,8 +4,10 @@ package app.plainpaper.core.scanengine.bridge
 
 import app.plainpaper.core.domain.model.DeviceCapability
 import app.plainpaper.core.domain.model.OutputStyle
+import app.plainpaper.core.scanengine.ByteArrayPreviewFrame
 import app.plainpaper.core.scanengine.CgImageScanOutput
 import app.plainpaper.core.scanengine.CgImageScanPhoto
+import app.plainpaper.core.scanengine.PreviewFrame
 import app.plainpaper.core.scanengine.ScanPhoto
 import app.plainpaper.core.scanengine.model.Confidence
 import app.plainpaper.core.scanengine.model.CornerSource
@@ -24,6 +26,8 @@ import app.plainpaper.scanengine.cinterop.pp_analysis_info
 import app.plainpaper.scanengine.cinterop.pp_analyze
 import app.plainpaper.scanengine.cinterop.pp_analyze_options
 import app.plainpaper.scanengine.cinterop.pp_api_version
+import app.plainpaper.scanengine.cinterop.pp_detect
+import app.plainpaper.scanengine.cinterop.pp_detect_info
 import app.plainpaper.scanengine.cinterop.pp_engine_create
 import app.plainpaper.scanengine.cinterop.pp_image_rgba
 import app.plainpaper.scanengine.cinterop.pp_last_error
@@ -126,6 +130,55 @@ internal class CinteropNativeBridge : NativeBridge {
                     if (session != null) pp_session_destroy(session)
                     NativeAnalyzeResult.Failure(status, lastError())
                 }
+            }
+        }
+    }
+
+    override fun detect(
+        frame: PreviewFrame,
+        cancel: NativeCancelFlag,
+    ): NativeDetectResult {
+        val source =
+            frame as? ByteArrayPreviewFrame
+                ?: return NativeDetectResult.decode(
+                    NativeStatus.InvalidInput,
+                    DoubleArray(NativeDetectResult.VALUES),
+                    "frame",
+                )
+        return source.pixels.usePinned { pinned ->
+            memScoped {
+                val image = alloc<pp_image_rgba>()
+                image.pixels = pinned.addressOf(0).reinterpret()
+                image.width = source.width
+                image.height = source.height
+                image.stride_bytes = source.strideBytes
+                val info = alloc<pp_detect_info>()
+                val status =
+                    NativeStatus.fromCode(
+                        pp_detect(
+                            engine,
+                            image.ptr,
+                            source.format.nativeFlags.toUInt(),
+                            (cancel as CinteropCancelFlag).pointer,
+                            info.ptr,
+                        ).toInt(),
+                    )
+                val values = DoubleArray(NativeDetectResult.VALUES)
+                for (i in 0 until 4) {
+                    values[i * 2] =
+                        info.corners.c[i]
+                            .x
+                            .toDouble()
+                    values[i * 2 + 1] =
+                        info.corners.c[i]
+                            .y
+                            .toDouble()
+                }
+                values[8] = info.confidence.toInt().toDouble()
+                values[9] = info.mean_luma.toDouble()
+                values[10] = info.fill_fraction.toDouble()
+                values[11] = info.micros.toDouble()
+                NativeDetectResult.decode(status, values, if (status == NativeStatus.Ok) "" else lastError())
             }
         }
     }

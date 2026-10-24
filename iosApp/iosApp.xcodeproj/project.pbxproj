@@ -12,6 +12,7 @@
 		A1000001000000000000AA03 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000001000000000000FA03 /* Assets.xcassets */; };
 		A1000001000000000000AA06 /* opencv2.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1000001000000000000FA06 /* opencv2.xcframework */; };
 		A1000001000000000000AA07 /* ScanBenchmarkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000001000000000000FA07 /* ScanBenchmarkTests.swift */; };
+		A1000001000000000000AA04 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = A1000001000000000000FA09 /* InfoPlist.strings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,6 +25,8 @@
 		A1000001000000000000FA06 /* opencv2.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = opencv2.xcframework; path = "../core/scanengine/build/opencv/ios/build/opencv2.xcframework"; sourceTree = "<group>"; };
 		A1000001000000000000FA07 /* ScanBenchmarkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanBenchmarkTests.swift; sourceTree = "<group>"; };
 		A1000001000000000000FA08 /* iosAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iosAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1000001000000000000FA0A /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		A1000001000000000000FA0B /* ar */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ar; path = ar.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -79,6 +82,7 @@
 				A1000001000000000000FA02 /* ContentView.swift */,
 				A1000001000000000000FA03 /* Assets.xcassets */,
 				A1000001000000000000FA04 /* Info.plist */,
+				A1000001000000000000FA09 /* InfoPlist.strings */,
 			);
 			path = iosApp;
 			sourceTree = "<group>";
@@ -202,6 +206,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1000001000000000000AA03 /* Assets.xcassets in Resources */,
+				A1000001000000000000AA04 /* InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -255,6 +260,18 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		A1000001000000000000FA09 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				A1000001000000000000FA0A /* en */,
+				A1000001000000000000FA0B /* ar */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		A1000001000000000000EF01 /* Debug */ = {

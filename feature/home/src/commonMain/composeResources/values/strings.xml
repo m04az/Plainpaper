@@ -6,4 +6,10 @@
     <string name="home_scan_button">Scan a page</string>
     <string name="home_import_button">Import photos</string>
     <string name="home_empty_illustration_cd">Illustration of a blank page</string>
+    <plurals name="home_recovery_title">
+        <item quantity="one">You have an unfinished scan of %1$d page</item>
+        <item quantity="other">You have an unfinished scan of %1$d pages</item>
+    </plurals>
+    <string name="home_recovery_continue">Continue</string>
+    <string name="home_recovery_discard">Discard</string>
 </resources>

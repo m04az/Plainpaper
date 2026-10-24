@@ -28,6 +28,7 @@ import app.plainpaper.core.designsystem.component.PpScanFab
 import app.plainpaper.core.designsystem.component.PpTabItem
 import app.plainpaper.core.designsystem.icon.PpIcons
 import app.plainpaper.core.designsystem.theme.PlainpaperTheme
+import app.plainpaper.feature.capture.CameraRoute
 import org.jetbrains.compose.resources.stringResource
 
 private val BarBottomPadding = 14.dp
@@ -75,7 +76,7 @@ fun AppScaffold(
                         modifier = Modifier.weight(1f),
                     )
                     PpScanFab(
-                        onClick = { navController.navigate(ScanPlaceholder) },
+                        onClick = { navController.navigate(CameraRoute) },
                         contentDescription = stringResource(Res.string.scan_fab_cd),
                     )
                 }

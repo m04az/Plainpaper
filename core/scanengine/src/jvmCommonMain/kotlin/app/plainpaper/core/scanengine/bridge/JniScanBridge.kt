@@ -4,6 +4,7 @@ package app.plainpaper.core.scanengine.bridge
  * JNI entry points registered by `JNI_OnLoad` in native/jni/plainpaper_jni.cpp. The method names
  * and signatures are the contract; keep them in sync with the C++ table.
  */
+@Suppress("TooManyFunctions") // one entry per C function; the table in plainpaper_jni.cpp mirrors it
 public object JniScanBridge {
     @JvmStatic
     public external fun nativeApiVersion(): Int
@@ -53,6 +54,34 @@ public object JniScanBridge {
         cancel: Long,
         outStatus: IntArray,
     ): Long
+
+    /** `pp_detect` on RGBA/BGRA bytes; [out] gets 8 corners, confidence, mean luma, fill, micros. Returns the status. */
+    @JvmStatic
+    @Suppress("LongParameterList")
+    public external fun nativeDetectBytes(
+        engine: Long,
+        pixels: ByteArray,
+        width: Int,
+        height: Int,
+        strideBytes: Int,
+        flags: Int,
+        cancel: Long,
+        out: DoubleArray,
+    ): Int
+
+    /** `pp_detect` on a direct `java.nio.ByteBuffer` (camera analysis plane), read in place. */
+    @JvmStatic
+    @Suppress("LongParameterList")
+    public external fun nativeDetectBuffer(
+        engine: Long,
+        buffer: java.nio.ByteBuffer,
+        width: Int,
+        height: Int,
+        strideBytes: Int,
+        flags: Int,
+        cancel: Long,
+        out: DoubleArray,
+    ): Int
 
     /** Packs `pp_analysis_info` into [longs] (>= 34 entries) and [doubles] (>= 9 entries). */
     @JvmStatic

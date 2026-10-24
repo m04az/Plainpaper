@@ -14,7 +14,15 @@ class KoverConventionPlugin : Plugin<Project> {
         with(target) {
             pluginManager.apply("org.jetbrains.kotlinx.kover")
 
-            val measured = listOf(":core:domain", ":core:scanengine", ":feature:home", ":feature:settings")
+            val measured =
+                listOf(
+                    ":core:domain",
+                    ":core:scanengine",
+                    ":core:capture",
+                    ":feature:home",
+                    ":feature:settings",
+                    ":feature:capture",
+                )
             measured.forEach { path ->
                 project(path).pluginManager.apply("org.jetbrains.kotlinx.kover")
             }
@@ -51,6 +59,18 @@ class KoverConventionPlugin : Plugin<Project> {
                                 "*ScanPhoto*",
                                 "*ScanOutput*",
                                 "*NativeLoader*",
+                                // Capture: camera, picker, permission and file actuals run on devices
+                                // (emulator smoke and semantics tests), not on the host.
+                                "*.capture.camera.CameraX*",
+                                "*.capture.camera.Av*",
+                                "*.capture.permission.Android*",
+                                "*.capture.permission.Ios*",
+                                "*.capture.picker.*",
+                                "*.capture.files.*",
+                                "*.capture.background.*",
+                                "*.capture.region.*",
+                                "*Panels*",
+                                "*Dialog*",
                             )
                             androidGeneratedClasses()
                         }

@@ -5,6 +5,7 @@ import app.plainpaper.core.domain.model.DeviceCapability
 import app.plainpaper.core.scanengine.bridge.NativeAnalyzeResult
 import app.plainpaper.core.scanengine.bridge.NativeBridge
 import app.plainpaper.core.scanengine.bridge.NativeCancelFlag
+import app.plainpaper.core.scanengine.bridge.NativeDetectResult
 import app.plainpaper.core.scanengine.bridge.NativeRenderResult
 import app.plainpaper.core.scanengine.bridge.NativeStatus
 import app.plainpaper.core.scanengine.decision.ExecutionPlan
@@ -15,6 +16,8 @@ import app.plainpaper.core.scanengine.decision.UserCornersValidation
 import app.plainpaper.core.scanengine.decision.WorkingResolution
 import app.plainpaper.core.scanengine.model.AnalysisFlag
 import app.plainpaper.core.scanengine.model.AnalyzeOptions
+import app.plainpaper.core.scanengine.model.Confidence
+import app.plainpaper.core.scanengine.model.DetectResult
 import app.plainpaper.core.scanengine.model.Outcome
 import app.plainpaper.core.scanengine.model.RenderOptions
 import kotlinx.coroutines.CancellationException
@@ -114,6 +117,33 @@ public class DefaultScanEngine(
                         outcome = if (native.status == NativeStatus.TooDark) Outcome.TooDark else Outcome.Success,
                     ),
                 )
+            }
+        }
+
+    override suspend fun detect(frame: PreviewFrame): DetectResult =
+        withContext(dispatchers.default) {
+            withCancelFlag { flag -> bridge.detect(frame, flag) }.toDetectResult()
+        }
+
+    private fun NativeDetectResult.toDetectResult(): DetectResult =
+        when (status) {
+            NativeStatus.Ok -> {
+                DetectResult(
+                    corners = corners.takeIf { confidence != Confidence.NotFound },
+                    confidence = confidence,
+                    fillFraction = fillFraction,
+                    meanLuma = meanLuma,
+                    micros = micros,
+                )
+            }
+
+            NativeStatus.Cancelled -> {
+                throw CancellationException("native cancelled")
+            }
+
+            // Preview frames are best effort: any failure reads as "no page" (contracts/kotlin-api.md).
+            else -> {
+                DetectResult.notFound(meanLuma, micros)
             }
         }
 

@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 pattern='(Text\(\s*"|\btext = "|contentDescription = "|\btitle = "|\bbody = "|\blabel = "|placeholder = ")'
 
 matches=$(grep -rnE --include='*.kt' "$pattern" --exclude='*Preview*.kt' \
-  composeApp/src/commonMain core/designsystem/src/commonMain feature/*/src/commonMain 2>/dev/null \
+  composeApp/src/commonMain core/designsystem/src/commonMain core/capture/src/commonMain feature/*/src/commonMain 2>/dev/null \
   | grep -vE '= ""' || true)
 
 if [[ -n "$matches" ]]; then

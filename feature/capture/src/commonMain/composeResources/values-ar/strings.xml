@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Camera screen -->
+    <string name="camera_close_cd">إغلاق الكاميرا</string>
+    <string name="camera_flash_cd">الفلاش</string>
+    <string name="camera_flash_off">مغلق</string>
+    <string name="camera_flash_on">مفعّل</string>
+    <string name="camera_auto">تلقائي</string>
+    <string name="camera_auto_cd">التقاط تلقائي</string>
+    <string name="camera_modes_cd">وضع المسح</string>
+    <string name="camera_mode_document">مستند</string>
+    <string name="camera_mode_id_card">بطاقة هوية</string>
+    <string name="camera_mode_receipt">إيصال</string>
+    <string name="camera_shutter_cd">التقاط صورة</string>
+    <string name="camera_done">تم</string>
+    <string name="camera_latest_page_cd">أحدث صفحة</string>
+    <plurals name="camera_pages_cd">
+        <item quantity="zero">لا صفحات</item>
+        <item quantity="one">صفحة واحدة</item>
+        <item quantity="two">صفحتان</item>
+        <item quantity="few">%1$d صفحات</item>
+        <item quantity="many">%1$d صفحة</item>
+        <item quantity="other">%1$d صفحة</item>
+    </plurals>
+    <string name="camera_hint_hold_steady">اثبت قليلًا — جارٍ الالتقاط…</string>
+    <string name="camera_hint_tap_shutter">اضغط زر الالتقاط عندما تكون جاهزًا</string>
+    <string name="camera_hint_move_closer">اقترب أكثر أو اضغط زر الالتقاط</string>
+    <string name="camera_hint_too_dark">الإضاءة ضعيفة — شغّل الفلاش أو أضف إضاءة</string>
+    <string name="camera_hint_adjust">عدّل الإطار أو اضغط زر الالتقاط</string>
+    <string name="camera_hint_id_front">الوجه الأمامي للبطاقة</string>
+    <string name="camera_hint_id_back">الوجه الخلفي للبطاقة</string>
+    <string name="camera_hint_receipt">أظهر الإيصال كاملًا في الإطار</string>
+    <plurals name="camera_discard_title">
+        <item quantity="zero">تجاهل الصفحات؟</item>
+        <item quantity="one">تجاهل الصفحة؟</item>
+        <item quantity="two">تجاهل الصفحتين؟</item>
+        <item quantity="few">تجاهل %1$d صفحات؟</item>
+        <item quantity="many">تجاهل %1$d صفحة؟</item>
+        <item quantity="other">تجاهل %1$d صفحة؟</item>
+    </plurals>
+    <string name="camera_discard_body">ستُحذف صفحات هذا المسح.</string>
+    <string name="camera_discard_confirm">تجاهل</string>
+    <string name="camera_discard_keep">متابعة المسح</string>
+    <string name="camera_storage_full">لا توجد مساحة كافية لحفظ المزيد من الصفحات</string>
+    <string name="camera_capture_failed">تعذّر التقاط الصورة. حاول مرة أخرى.</string>
+    <string name="camera_unavailable_notice">لا توجد كاميرا في هذا الجهاز، يمكنك استيراد الصور بدلًا من ذلك.</string>
+
+    <!-- Camera permission -->
+    <string name="permission_explain_title">امسح بالكاميرا</string>
+    <string name="permission_explain_body">يحتاج Plainpaper إلى الكاميرا لمسح الصفحات. تبقى الصور على هذا الهاتف.</string>
+    <string name="permission_allow">السماح بالكاميرا</string>
+    <string name="permission_denied_title">الوصول إلى الكاميرا غير مفعّل</string>
+    <string name="permission_denied_body">يمكنك تفعيله من الإعدادات، أو استيراد الصور من معرض الصور بدلًا من ذلك.</string>
+    <string name="permission_open_settings">فتح الإعدادات</string>
+    <string name="permission_import_instead">استيراد الصور بدلًا من ذلك</string>
+
+    <!-- Import -->
+    <string name="import_title">من الصور</string>
+    <string name="import_cancel">إلغاء</string>
+    <plurals name="import_converting_heading">
+        <item quantity="zero">لا صور للتحويل</item>
+        <item quantity="one">جارٍ تحويل صورة واحدة</item>
+        <item quantity="two">جارٍ تحويل صورتين</item>
+        <item quantity="few">جارٍ تحويل %1$d صور</item>
+        <item quantity="many">جارٍ تحويل %1$d صورة</item>
+        <item quantity="other">جارٍ تحويل %1$d صورة</item>
+    </plurals>
+    <string name="import_progress_sub">اكتمل %1$d من %2$d · نحو %3$d ث متبقية</string>
+    <plurals name="import_ready_heading">
+        <item quantity="zero">لا صفحات جاهزة</item>
+        <item quantity="one">صفحة واحدة جاهزة</item>
+        <item quantity="two">صفحتان جاهزتان</item>
+        <item quantity="few">%1$d صفحات جاهزة</item>
+        <item quantity="many">%1$d صفحة جاهزة</item>
+        <item quantity="other">%1$d صفحة جاهزة</item>
+    </plurals>
+    <string name="import_ready_sub">أصبحت كل الصور مستندات ممسوحة نظيفة.</string>
+    <plurals name="import_skipped_sub">
+        <item quantity="zero">لم يُتخطَّ أي صورة.</item>
+        <item quantity="one">تعذّرت قراءة صورة واحدة فتم تخطيها.</item>
+        <item quantity="two">تعذّرت قراءة صورتين فتم تخطيهما.</item>
+        <item quantity="few">تعذّرت قراءة %1$d صور فتم تخطيها.</item>
+        <item quantity="many">تعذّرت قراءة %1$d صورة فتم تخطيها.</item>
+        <item quantity="other">تعذّرت قراءة %1$d صورة فتم تخطيها.</item>
+    </plurals>
+    <string name="import_privacy">تتم المعالجة على هذا الهاتف. صورك لا تغادره أبدًا.</string>
+    <plurals name="import_review_button">
+        <item quantity="zero">مراجعة الصفحات</item>
+        <item quantity="one">مراجعة صفحة واحدة</item>
+        <item quantity="two">مراجعة صفحتين</item>
+        <item quantity="few">مراجعة %1$d صفحات</item>
+        <item quantity="many">مراجعة %1$d صفحة</item>
+        <item quantity="other">مراجعة %1$d صفحة</item>
+    </plurals>
+    <string name="import_converting_button">جارٍ التحويل…</string>
+    <string name="import_limit_title">النسخة المجانية تستورد 10 صور في كل مرة</string>
+    <string name="import_limit_body">يحوّل Plainpaper Pro أي عدد من الصور دفعة واحدة. يمكنك أيضًا استيراد أول 10 صور الآن.</string>
+    <string name="import_limit_first">استيراد أول %1$d</string>
+    <string name="import_limit_see_pro">عرض Pro</string>
+    <string name="import_cancel_title">إيقاف التحويل؟</string>
+    <plurals name="import_cancel_keep">
+        <item quantity="zero">العودة إلى الرئيسية</item>
+        <item quantity="one">الاحتفاظ بصفحة واحدة محوّلة</item>
+        <item quantity="two">الاحتفاظ بصفحتين محوّلتين</item>
+        <item quantity="few">الاحتفاظ بـ %1$d صفحات محوّلة</item>
+        <item quantity="many">الاحتفاظ بـ %1$d صفحة محوّلة</item>
+        <item quantity="other">الاحتفاظ بـ %1$d صفحة محوّلة</item>
+    </plurals>
+    <string name="import_cancel_keep_none">العودة إلى الرئيسية</string>
+    <string name="import_cancel_discard">تجاهل</string>
+    <string name="import_progress_cd">تقدّم الاستيراد</string>
+    <string name="import_tile_done_cd">تم التحويل</string>
+    <string name="import_tile_skipped_cd">تم التخطي</string>
+    <string name="import_tile_queued_cd">في الانتظار</string>
+    <string name="import_tile_active_cd">جارٍ التحويل</string>
+
+    <!-- Hand-off (placeholder until review arrives) -->
+    <string name="handoff_title">الصفحات</string>
+    <plurals name="handoff_count">
+        <item quantity="zero">لا صفحات</item>
+        <item quantity="one">صفحة واحدة</item>
+        <item quantity="two">صفحتان</item>
+        <item quantity="few">%1$d صفحات</item>
+        <item quantity="many">%1$d صفحة</item>
+        <item quantity="other">%1$d صفحة</item>
+    </plurals>
+    <plurals name="handoff_processing">
+        <item quantity="zero">لا شيء قيد المعالجة</item>
+        <item quantity="one">صفحة واحدة لا تزال قيد المعالجة</item>
+        <item quantity="two">صفحتان لا تزالان قيد المعالجة</item>
+        <item quantity="few">%1$d صفحات لا تزال قيد المعالجة</item>
+        <item quantity="many">%1$d صفحة لا تزال قيد المعالجة</item>
+        <item quantity="other">%1$d صفحة لا تزال قيد المعالجة</item>
+    </plurals>
+    <string name="handoff_back">العودة إلى الرئيسية</string>
+    <string name="handoff_page_cd">الصفحة %1$d</string>
+    <string name="handoff_attention_cd">تحتاج إلى مراجعة</string>
+    <string name="handoff_failed_cd">فشلت</string>
+    <string name="handoff_processing_cd">قيد المعالجة</string>
+</resources>

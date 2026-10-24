@@ -1,6 +1,7 @@
 package app.plainpaper.di
 
 import android.content.pm.PackageManager
+import app.plainpaper.core.data.di.CAPTURE_ROOT_QUALIFIER
 import app.plainpaper.core.data.di.PREFERENCES_PATH_QUALIFIER
 import app.plainpaper.core.data.preferences.PREFERENCES_FILE_NAME
 import app.plainpaper.feature.settings.di.SETTINGS_APP_VERSION_QUALIFIER
@@ -18,6 +19,7 @@ val androidPlatformModule: Module =
                 .resolve(PREFERENCES_FILE_NAME)
                 .absolutePath
         }
+        single(named(CAPTURE_ROOT_QUALIFIER)) { androidContext().filesDir.resolve("capture").absolutePath }
         single(named(SETTINGS_APP_VERSION_QUALIFIER)) {
             val context = androidContext()
             runCatching {

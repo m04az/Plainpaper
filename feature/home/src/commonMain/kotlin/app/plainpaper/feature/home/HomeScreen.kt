@@ -13,7 +13,11 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -23,6 +27,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.plainpaper.core.designsystem.component.PpEmptyState
 import app.plainpaper.core.designsystem.component.PpGlassButton
@@ -35,8 +42,12 @@ import app.plainpaper.feature.home.resources.home_empty_body
 import app.plainpaper.feature.home.resources.home_empty_illustration_cd
 import app.plainpaper.feature.home.resources.home_empty_title
 import app.plainpaper.feature.home.resources.home_import_button
+import app.plainpaper.feature.home.resources.home_recovery_continue
+import app.plainpaper.feature.home.resources.home_recovery_discard
+import app.plainpaper.feature.home.resources.home_recovery_title
 import app.plainpaper.feature.home.resources.home_scan_button
 import app.plainpaper.feature.home.resources.home_title
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -47,15 +58,31 @@ private val BottomBarClearance = 120.dp
 fun HomeRoute(
     onNavigateToScan: () -> Unit,
     onNavigateToImport: () -> Unit,
+    onNavigateToHandoff: (sessionId: String) -> Unit,
 ) {
     val viewModel: HomeViewModel = koinViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner, viewModel) {
+        val observer =
+            LifecycleEventObserver { _, event ->
+                if (event ==
+                    Lifecycle.Event.ON_START
+                ) {
+                    viewModel.onAction(HomeAction.ScreenStarted)
+                }
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(viewModel) {
         viewModel.effects.collect { effect ->
             when (effect) {
                 HomeEffect.NavigateToScan -> onNavigateToScan()
                 HomeEffect.NavigateToImport -> onNavigateToImport()
+                is HomeEffect.NavigateToHandoff -> onNavigateToHandoff(effect.sessionId)
             }
         }
     }
@@ -79,6 +106,7 @@ fun HomeScreen(
                 .padding(top = spacing.xl, bottom = BottomBarClearance),
     ) {
         PpTopTitle(text = stringResource(Res.string.home_title))
+        state.recoverable?.let { RecoveryCard(it, onAction) }
         if (state.isEmpty) {
             PpEmptyState(
                 title = stringResource(Res.string.home_empty_title),
@@ -102,6 +130,48 @@ fun HomeScreen(
                 },
                 modifier = Modifier.fillMaxWidth().padding(top = spacing.xxxl * 2),
             )
+        }
+    }
+}
+
+/** "You have an unfinished scan of N pages" with Continue and Discard (spec 003 FR-011). */
+@Composable
+private fun RecoveryCard(
+    recoverable: RecoverableSession,
+    onAction: (HomeAction) -> Unit,
+) {
+    val spacing = PlainpaperTheme.spacing
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.l, vertical = spacing.m),
+        shape = PlainpaperTheme.shapes.card,
+        color = PlainpaperTheme.colors.primaryContainer,
+    ) {
+        Column(modifier = Modifier.padding(spacing.l)) {
+            Text(
+                text =
+                    pluralStringResource(
+                        Res.plurals.home_recovery_title,
+                        recoverable.pageCount,
+                        recoverable.pageCount,
+                    ),
+                style = MaterialTheme.typography.titleMedium,
+                color = PlainpaperTheme.colors.onPrimaryContainer,
+            )
+            Column(
+                modifier = Modifier.padding(top = spacing.m),
+                verticalArrangement = Arrangement.spacedBy(spacing.s),
+            ) {
+                PpPrimaryButton(
+                    text = stringResource(Res.string.home_recovery_continue),
+                    onClick = { onAction(HomeAction.ContinueRecovery) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                PpGlassButton(
+                    text = stringResource(Res.string.home_recovery_discard),
+                    onClick = { onAction(HomeAction.DiscardRecovery) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 }
