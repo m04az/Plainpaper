@@ -5,6 +5,7 @@ import app.plainpaper.core.domain.model.OutputStyle
 import app.plainpaper.core.domain.model.PageSize
 import app.plainpaper.core.domain.model.Point
 import app.plainpaper.core.domain.model.Quad
+import app.plainpaper.core.domain.model.capture.PageSource
 import app.plainpaper.core.domain.model.capture.PageState
 import app.plainpaper.core.domain.model.capture.PageTag
 import app.plainpaper.core.domain.model.capture.SessionSource
@@ -236,4 +237,31 @@ class FileCaptureSessionRepositoryTest {
             val stored = assertNotNull(FileCaptureSessionRepository(fs, root, now = { clock }).recoverable())
             assertEquals(listOf(b.id), stored.pages.map { it.id })
         }
+
+    @Test
+    fun pageSourceRoundTripsAndOldIndexesDefaultFromTheSessionSource() =
+        runTest {
+            val session = repository.start(SessionSource.Camera)
+            repository.addPage(session.id, "$root/id1/a.jpg", PageTag.Document, PageSize.A4, PageSource.QuickScan)
+            repository.addPage(session.id, "$root/id1/b.jpg", PageTag.Document, PageSize.A4)
+            val reloaded = assertNotNull(FileCaptureSessionRepository(fs, root, now = { clock }).recoverable())
+            assertEquals(listOf(PageSource.QuickScan, PageSource.Camera), reloaded.pages.map { it.source })
+
+            assertEquals(PageSource.Camera, oldIndexSource("Camera"))
+            assertEquals(PageSource.Import, oldIndexSource("Import"))
+        }
+
+    private suspend fun oldIndexSource(sessionSource: String): PageSource {
+        val oldFs = FakeFileSystem()
+        oldFs.createDirectories("$root/old".toPath())
+        oldFs.write("$root/old/$SESSION_INDEX_FILE".toPath()) {
+            writeUtf8(
+                """{"schemaVersion":1,"id":"old","source":"$sessionSource","createdAtEpochMillis":5,"status":"Active",
+                "pages":[{"id":"p","position":0,"originalPath":"o.jpg"}]}""",
+            )
+        }
+        return assertNotNull(
+            FileCaptureSessionRepository(oldFs, root, now = { clock }).recoverable(),
+        ).pages.single().source
+    }
 }

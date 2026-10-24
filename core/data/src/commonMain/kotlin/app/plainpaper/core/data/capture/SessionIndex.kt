@@ -9,6 +9,7 @@ import app.plainpaper.core.domain.model.capture.AttentionReason
 import app.plainpaper.core.domain.model.capture.CaptureSession
 import app.plainpaper.core.domain.model.capture.CapturedPage
 import app.plainpaper.core.domain.model.capture.PageFailure
+import app.plainpaper.core.domain.model.capture.PageSource
 import app.plainpaper.core.domain.model.capture.PageState
 import app.plainpaper.core.domain.model.capture.PageTag
 import app.plainpaper.core.domain.model.capture.SessionSource
@@ -46,6 +47,8 @@ internal data class PageIndex(
     val rotation: Int = 0,
     val mirrored: Boolean = false,
     val revision: Int = 0,
+    /** Absent in older indexes: defaults from the session source. */
+    val source: String? = null,
 )
 
 @Serializable
@@ -70,20 +73,23 @@ internal fun CaptureSession.toIndex(directory: Path): SessionIndex =
     )
 
 /** A page read from disk; a page that was `Processing` when the process died is `Pending` again. */
-internal fun SessionIndex.toSession(directory: Path): CaptureSession =
-    CaptureSession(
+internal fun SessionIndex.toSession(directory: Path): CaptureSession {
+    val sessionSource = enumOrDefault(source, SessionSource.Camera)
+    val defaultSource = if (sessionSource == SessionSource.Import) PageSource.Import else PageSource.Camera
+    return CaptureSession(
         id = id,
-        source = enumOrDefault(source, SessionSource.Camera),
+        source = sessionSource,
         createdAtEpochMillis = createdAtEpochMillis,
         pages =
             pages.sortedBy { it.position }.mapIndexed {
                 index,
                 page,
                 ->
-                page.toPage(directory).copy(position = index)
+                page.toPage(directory, defaultSource).copy(position = index)
             },
         status = enumOrDefault(status, SessionStatus.Active),
     )
+}
 
 private fun CapturedPage.toIndex(directory: Path): PageIndex =
     PageIndex(
@@ -102,15 +108,20 @@ private fun CapturedPage.toIndex(directory: Path): PageIndex =
         rotation = rotation,
         mirrored = mirrored,
         revision = revision,
+        source = source.name,
     )
 
-private fun PageIndex.toPage(directory: Path): CapturedPage =
+private fun PageIndex.toPage(
+    directory: Path,
+    defaultSource: PageSource,
+): CapturedPage =
     CapturedPage(
         id = id,
         position = position,
         originalPath = resolve(originalPath, directory),
         tag = tag.toTag(),
         pageSize = enumOrDefault(pageSize, PageSize.A4),
+        source = enumOrDefault(source, defaultSource),
         state = state.toState(),
         pagePath = pagePath?.let { resolve(it, directory) },
         thumbnailPath = thumbnailPath?.let { resolve(it, directory) },

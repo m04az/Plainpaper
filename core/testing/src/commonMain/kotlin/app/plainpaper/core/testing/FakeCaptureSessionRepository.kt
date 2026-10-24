@@ -3,6 +3,7 @@ package app.plainpaper.core.testing
 import app.plainpaper.core.domain.model.PageSize
 import app.plainpaper.core.domain.model.capture.CaptureSession
 import app.plainpaper.core.domain.model.capture.CapturedPage
+import app.plainpaper.core.domain.model.capture.PageSource
 import app.plainpaper.core.domain.model.capture.PageTag
 import app.plainpaper.core.domain.model.capture.SessionSource
 import app.plainpaper.core.domain.model.capture.SessionStatus
@@ -35,6 +36,7 @@ class FakeCaptureSessionRepository(
         originalPath: String,
         tag: PageTag,
         pageSize: PageSize,
+        source: PageSource,
     ): CapturedPage {
         val session = requireSession(sessionId)
         val page =
@@ -44,6 +46,7 @@ class FakeCaptureSessionRepository(
                 originalPath = originalPath,
                 tag = tag,
                 pageSize = pageSize,
+                source = source,
             )
         state.value = session.withPage(page)
         return page

@@ -3,6 +3,7 @@ package app.plainpaper.core.data.capture
 import app.plainpaper.core.domain.model.PageSize
 import app.plainpaper.core.domain.model.capture.CaptureSession
 import app.plainpaper.core.domain.model.capture.CapturedPage
+import app.plainpaper.core.domain.model.capture.PageSource
 import app.plainpaper.core.domain.model.capture.PageTag
 import app.plainpaper.core.domain.model.capture.SessionSource
 import app.plainpaper.core.domain.model.capture.SessionStatus
@@ -64,6 +65,7 @@ public class FileCaptureSessionRepository(
         originalPath: String,
         tag: PageTag,
         pageSize: PageSize,
+        source: PageSource,
     ): CapturedPage =
         mutex.withLock {
             val session = requireSession(sessionId)
@@ -74,6 +76,7 @@ public class FileCaptureSessionRepository(
                     originalPath = originalPath,
                     tag = tag,
                     pageSize = pageSize,
+                    source = source,
                 )
             val updated = session.withPage(page)
             write(updated)

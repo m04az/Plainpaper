@@ -5,6 +5,9 @@ import app.plainpaper.core.domain.model.OutputStyle
 import app.plainpaper.core.domain.model.PageSize
 import app.plainpaper.core.domain.model.Quad
 
+/** Where a page came from; Quick scan pages are already cropped by the phone's scanner (spec 004 FR-012). */
+public enum class PageSource { Camera, Import, QuickScan }
+
 /** One page of a [CaptureSession]: the original photo plus its processed page when ready. */
 public data class CapturedPage(
     val id: String,
@@ -12,6 +15,7 @@ public data class CapturedPage(
     val originalPath: String,
     val tag: PageTag,
     val pageSize: PageSize,
+    val source: PageSource = PageSource.Camera,
     val state: PageState = PageState.Pending,
     val pagePath: String? = null,
     val thumbnailPath: String? = null,

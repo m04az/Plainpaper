@@ -3,6 +3,7 @@ package app.plainpaper.core.domain.usecase.capture
 import app.cash.turbine.test
 import app.plainpaper.core.domain.model.PageSize
 import app.plainpaper.core.domain.model.capture.CaptureSession
+import app.plainpaper.core.domain.model.capture.PageSource
 import app.plainpaper.core.domain.model.capture.PageTag
 import app.plainpaper.core.domain.model.capture.SessionSource
 import app.plainpaper.core.domain.model.capture.SessionStatus
@@ -25,6 +26,16 @@ class CaptureUseCasesTest {
             assertEquals(PageTag.Receipt, page.tag)
             FinishSessionUseCase(repository)(session.id)
             assertEquals(SessionStatus.HandedOff, repository.state.value?.status)
+        }
+
+    @Test
+    fun addCapturedPagePassesTheSourceAndDefaultsToCamera() =
+        runTest {
+            val session = StartSessionUseCase(repository)(SessionSource.Camera)
+            val add = AddCapturedPageUseCase(repository)
+            assertEquals(PageSource.Camera, add(session.id, "/a.jpg", PageTag.Document, PageSize.A4).source)
+            val quick = add(session.id, "/b.jpg", PageTag.Document, PageSize.A4, PageSource.QuickScan)
+            assertEquals(PageSource.QuickScan, quick.source)
         }
 
     @Test

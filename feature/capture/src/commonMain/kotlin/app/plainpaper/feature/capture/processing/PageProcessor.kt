@@ -6,9 +6,12 @@ import app.plainpaper.core.domain.coroutines.DispatcherProvider
 import app.plainpaper.core.domain.model.Confidence
 import app.plainpaper.core.domain.model.DeviceCapability
 import app.plainpaper.core.domain.model.OutputStyle
+import app.plainpaper.core.domain.model.Point
+import app.plainpaper.core.domain.model.Quad
 import app.plainpaper.core.domain.model.capture.AttentionReason
 import app.plainpaper.core.domain.model.capture.CapturedPage
 import app.plainpaper.core.domain.model.capture.PageFailure
+import app.plainpaper.core.domain.model.capture.PageSource
 import app.plainpaper.core.domain.model.capture.PageState
 import app.plainpaper.core.domain.repository.CaptureSessionRepository
 import app.plainpaper.core.scanengine.AnalyzeResult
@@ -159,8 +162,17 @@ class PageProcessor(
         page: CapturedPage,
         photo: ScanPhoto,
     ) {
-        // A page that was already detected keeps its corners: a new look re-renders the same crop.
-        val options = page.corners?.let { AnalyzeOptions(userCorners = it) } ?: AnalyzeOptions()
+        // Quick scan pages are already cropped and upright: the full frame is the crop and the
+        // engine must not turn them (spec 004 FR-012). Otherwise a page that was already
+        // detected keeps its corners: a new look re-renders the same crop.
+        val quickScan = page.source == PageSource.QuickScan
+        val corners = page.corners ?: if (quickScan) fullFrame(photo) else null
+        val options =
+            when {
+                quickScan -> AnalyzeOptions(userCorners = corners, keepOrientation = true)
+                corners != null -> AnalyzeOptions(userCorners = corners)
+                else -> AnalyzeOptions()
+            }
         when (val analyzed = engine.analyze(photo, options)) {
             is AnalyzeResult.Failed -> {
                 finish(
@@ -195,7 +207,8 @@ class PageProcessor(
         val thumbnailWritten = files.writeThumbnail(pagePath, thumbnailPath)
         // The first detection's verdict stands: a re-render with stored corners reports them as
         // user corners, which would otherwise hide a page that still needs attention.
-        val confidence = page.confidence ?: analysis.confidence
+        val confidence =
+            page.confidence ?: if (page.source == PageSource.QuickScan) Confidence.High else analysis.confidence
         finish(work, page) {
             it.copy(
                 state = stateFor(analysis.outcome, confidence),
@@ -325,6 +338,12 @@ class PageProcessor(
             Outcome.Cancelled -> PageFailure.Cancelled
             else -> PageFailure.Internal
         }
+
+    private fun fullFrame(photo: ScanPhoto): Quad {
+        val w = photo.width.toFloat()
+        val h = photo.height.toFloat()
+        return Quad(Point(0f, 0f), Point(w, 0f), Point(w, h), Point(0f, h))
+    }
 
     private companion object {
         const val FULL_WORKERS = 2

@@ -21,6 +21,8 @@ public data class AnalyzeOptions(
     val workingLongEdge: Int? = null,
     /** Allows curl flattening on Full capability. */
     val allowFlatten: Boolean = true,
+    /** Corners used in the given order, no automatic rotation; engine support lands with T012. */
+    val keepOrientation: Boolean = false,
 )
 
 public enum class CornerSource { Detected, User, FullFrame }

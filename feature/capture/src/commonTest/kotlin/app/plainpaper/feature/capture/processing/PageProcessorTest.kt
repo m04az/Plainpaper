@@ -4,14 +4,21 @@ import app.plainpaper.core.domain.model.Confidence
 import app.plainpaper.core.domain.model.DeviceCapability
 import app.plainpaper.core.domain.model.OutputStyle
 import app.plainpaper.core.domain.model.PageSize
+import app.plainpaper.core.domain.model.Point
+import app.plainpaper.core.domain.model.Quad
 import app.plainpaper.core.domain.model.capture.AttentionReason
 import app.plainpaper.core.domain.model.capture.CapturedPage
 import app.plainpaper.core.domain.model.capture.PageFailure
+import app.plainpaper.core.domain.model.capture.PageSource
 import app.plainpaper.core.domain.model.capture.PageState
 import app.plainpaper.core.domain.model.capture.PageTag
 import app.plainpaper.core.domain.model.capture.SessionSource
+import app.plainpaper.core.scanengine.AnalyzeResult
 import app.plainpaper.core.scanengine.DefaultScanEngine
+import app.plainpaper.core.scanengine.ScanEngine
+import app.plainpaper.core.scanengine.ScanPhoto
 import app.plainpaper.core.scanengine.bridge.NativeStatus
+import app.plainpaper.core.scanengine.model.AnalyzeOptions
 import app.plainpaper.core.testing.FakeCapabilityProvider
 import app.plainpaper.core.testing.FakeCaptureSessionRepository
 import app.plainpaper.core.testing.FakeNativeBridge
@@ -356,5 +363,54 @@ class PageProcessorTest {
             advanceUntilIdle()
             assertEquals(0, stored(page.id).revision)
             assertEquals(PageState.Pending, stored(page.id).state)
+        }
+
+    @Test
+    fun quickScanPagesAreAnalysedOnTheFullFrameWithoutTurning() =
+        runTest {
+            val dispatchers = TestDispatcherProvider(StandardTestDispatcher(testScheduler))
+            val real = DefaultScanEngine(bridge, capability, dispatchers)
+            val seen = mutableListOf<AnalyzeOptions>()
+            val recording =
+                object : ScanEngine by real {
+                    override suspend fun analyze(
+                        photo: ScanPhoto,
+                        options: AnalyzeOptions,
+                    ): AnalyzeResult {
+                        seen += options
+                        return real.analyze(photo, options)
+                    }
+                }
+            val processor =
+                PageProcessor(
+                    engine = recording,
+                    decoder = decoder,
+                    files = files,
+                    sessions = sessions,
+                    background = background,
+                    dispatchers = dispatchers,
+                    scope = CoroutineScope(SupervisorJob() + dispatchers.default),
+                )
+            val session = sessions.start(SessionSource.Camera)
+            val quick =
+                sessions.addPage(session.id, "/fake/q.jpg", PageTag.Document, PageSize.A4, PageSource.QuickScan)
+            val camera = sessions.addPage(session.id, "/fake/c.jpg", PageTag.Document, PageSize.A4)
+            processor.enqueue(session.id, quick.id)
+            advanceUntilIdle()
+            processor.enqueue(session.id, camera.id)
+            advanceUntilIdle()
+            val frame = Quad(Point(0f, 0f), Point(4000f, 0f), Point(4000f, 3000f), Point(0f, 3000f))
+            assertEquals(AnalyzeOptions(userCorners = frame, keepOrientation = true), seen[0])
+            assertEquals(AnalyzeOptions(), seen[1], "camera pages are detected and may be turned")
+            assertEquals(Confidence.High, stored(quick.id).confidence)
+            assertEquals(PageSource.QuickScan, stored(quick.id).source)
+
+            processor.transform(session.id, quick.id, rotateClockwise = true, flip = true)
+            advanceUntilIdle()
+            val turned = stored(quick.id)
+            assertEquals(PageState.Ready, turned.state)
+            assertEquals(frame, turned.corners, "looks, rotate and flip keep the stored crop")
+            assertEquals(Triple(270, true, 1), Triple(turned.rotation, turned.mirrored, turned.revision))
+            assertEquals(true, seen.last().keepOrientation)
         }
 }
