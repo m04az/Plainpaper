@@ -1,5 +1,6 @@
 package app.plainpaper.feature.capture.camera
 
+import app.plainpaper.core.domain.model.OutputStyle
 import app.plainpaper.core.domain.model.capture.CameraPermissionState
 import app.plainpaper.core.domain.model.capture.CaptureMode
 
@@ -46,6 +47,18 @@ sealed interface CameraAction {
     data object KeepScanning : CameraAction
 
     data object DismissCaptureFailed : CameraAction
+
+    data class ReviewLook(
+        val style: OutputStyle,
+    ) : CameraAction
+
+    data object ReviewRotate : CameraAction
+
+    data object ReviewFlip : CameraAction
+
+    data object ReviewRetake : CameraAction
+
+    data object ReviewSave : CameraAction
 }
 
 sealed interface CameraEffect {

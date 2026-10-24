@@ -24,6 +24,7 @@ import app.plainpaper.core.domain.usecase.capture.EvaluateImportLimitUseCase
 import app.plainpaper.core.domain.usecase.capture.FinishSessionUseCase
 import app.plainpaper.core.domain.usecase.capture.ObserveActiveSessionUseCase
 import app.plainpaper.core.domain.usecase.capture.RecoverSessionUseCase
+import app.plainpaper.core.domain.usecase.capture.RemovePageUseCase
 import app.plainpaper.core.domain.usecase.capture.ResolveDefaultPageSizeUseCase
 import app.plainpaper.core.domain.usecase.capture.SessionDirectoryUseCase
 import app.plainpaper.core.domain.usecase.capture.StartSessionUseCase
@@ -73,6 +74,7 @@ public val dataModule: Module =
         factory { ObserveActiveSessionUseCase(get()) }
         factory { StartSessionUseCase(get()) }
         factory { AddCapturedPageUseCase(get()) }
+        factory { RemovePageUseCase(get()) }
         factory { FinishSessionUseCase(get()) }
         factory { DiscardSessionUseCase(get()) }
         factory { RecoverSessionUseCase(get()) }

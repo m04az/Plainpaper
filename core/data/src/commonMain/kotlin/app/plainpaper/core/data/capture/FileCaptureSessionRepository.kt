@@ -29,6 +29,7 @@ private const val HEX_WIDTH = 2
  * One session folder per capture run under [rootPath] with an atomically rewritten
  * `session.json` (research R7, contracts/storage.md). Not shared between processes.
  */
+@Suppress("TooManyFunctions") // one override per repository operation
 public class FileCaptureSessionRepository(
     private val fileSystem: FileSystem,
     rootPath: String,
@@ -91,6 +92,20 @@ public class FileCaptureSessionRepository(
         }
     }
 
+    override suspend fun removePage(
+        sessionId: String,
+        pageId: String,
+    ) {
+        mutex.withLock {
+            val session = requireSession(sessionId)
+            val page = session.page(pageId) ?: return
+            val updated = session.withoutPage(pageId)
+            write(updated)
+            state.value = updated
+            deletePageFiles(sessionId, page)
+        }
+    }
+
     override suspend fun markHandedOff(sessionId: String) {
         mutex.withLock {
             val updated = requireSession(sessionId).copy(status = SessionStatus.HandedOff)
@@ -147,6 +162,23 @@ public class FileCaptureSessionRepository(
         loadAll()
             .filter { it.status != SessionStatus.Discarded && it.pageCount > 0 }
             .maxByOrNull { it.createdAtEpochMillis }
+
+    /** Best effort: the original and every rendered file whose name carries the page id. */
+    private fun deletePageFiles(
+        sessionId: String,
+        page: CapturedPage,
+    ) {
+        val dir = directory(sessionId)
+        val names = if (fileSystem.exists(dir)) fileSystem.list(dir) else emptyList()
+        val files = names.filter { it.name.contains(page.id) } + page.originalPath.toPath()
+        for (file in files.distinct()) {
+            try {
+                fileSystem.delete(file, mustExist = false)
+            } catch (_: IOException) {
+                // Best effort.
+            }
+        }
+    }
 
     private fun deleteSession(sessionId: String) {
         try {

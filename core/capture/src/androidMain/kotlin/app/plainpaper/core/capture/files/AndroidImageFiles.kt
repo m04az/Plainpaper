@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
+import android.graphics.Matrix
 import android.graphics.Rect
 import android.graphics.YuvImage
 import android.net.Uri
@@ -18,6 +19,7 @@ import java.io.IOException
 import java.nio.ByteBuffer
 
 private const val THUMBNAIL_QUALITY = 85
+private const val FULL_TURN = 360
 private const val NV21_CHROMA_NEUTRAL: Byte = 128.toByte()
 
 /** Decodes with `inSampleSize` so a thumbnail never allocates the full page. */
@@ -42,19 +44,38 @@ internal class AndroidImageFiles(
         output: ScanOutput,
         path: String,
         quality: Int,
+        rotation: Int,
+        mirrored: Boolean,
     ): Boolean =
         withContext(dispatchers.io) {
             val bitmap = (output as? BitmapScanOutput)?.bitmap ?: return@withContext false
             runCatching {
                 FileOutputStream(File(path)).use { stream ->
                     if (bitmap.config == Bitmap.Config.ALPHA_8) {
-                        grayToNv21(bitmap).compressToJpeg(Rect(0, 0, bitmap.width, bitmap.height), quality, stream)
+                        // Gray pages are transformed on the bytes: Bitmap.createBitmap may widen ALPHA_8.
+                        val plane = grayPlane(bitmap, rotation, mirrored)
+                        nv21(plane).compressToJpeg(Rect(0, 0, plane.width, plane.height), quality, stream)
                     } else {
-                        bitmap.compress(Bitmap.CompressFormat.JPEG, quality, stream)
+                        val transformed = transformed(bitmap, rotation, mirrored)
+                        val ok = transformed.compress(Bitmap.CompressFormat.JPEG, quality, stream)
+                        if (transformed !== bitmap) transformed.recycle()
+                        ok
                     }
                 }
             }.getOrDefault(false)
         }
+
+    private fun transformed(
+        bitmap: Bitmap,
+        rotation: Int,
+        mirrored: Boolean,
+    ): Bitmap {
+        if (rotation % FULL_TURN == 0 && !mirrored) return bitmap
+        val matrix = Matrix()
+        if (mirrored) matrix.postScale(-1f, 1f)
+        matrix.postRotate(rotation.toFloat())
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    }
 
     override suspend fun writeThumbnail(
         fromPath: String,
@@ -103,16 +124,21 @@ internal class AndroidImageFiles(
         runCatching { StatFs(File(directory).let { if (it.exists()) it else it.parentFile ?: it }.path).availableBytes }
             .getOrDefault(Long.MAX_VALUE)
 
-    private fun grayToNv21(bitmap: Bitmap): YuvImage {
-        val width = bitmap.width
-        val height = bitmap.height
-        val gray = ByteBuffer.allocate(bitmap.rowBytes * height)
+    private fun grayPlane(
+        bitmap: Bitmap,
+        rotation: Int,
+        mirrored: Boolean,
+    ): Plane {
+        val gray = ByteBuffer.allocate(bitmap.rowBytes * bitmap.height)
         bitmap.copyPixelsToBuffer(gray)
-        val plane = gray.array()
+        return transformPlane(gray.array(), bitmap.rowBytes, bitmap.width, bitmap.height, rotation, mirrored)
+    }
+
+    private fun nv21(plane: Plane): YuvImage {
+        val width = plane.width
+        val height = plane.height
         val nv21 = ByteArray(width * height + 2 * ((width + 1) / 2) * ((height + 1) / 2))
-        for (y in 0 until height) {
-            System.arraycopy(plane, y * bitmap.rowBytes, nv21, y * width, width)
-        }
+        System.arraycopy(plane.data, 0, nv21, 0, width * height)
         nv21.fill(NV21_CHROMA_NEUTRAL, width * height, nv21.size)
         return YuvImage(nv21, ImageFormat.NV21, width, height, intArrayOf(width, width))
     }

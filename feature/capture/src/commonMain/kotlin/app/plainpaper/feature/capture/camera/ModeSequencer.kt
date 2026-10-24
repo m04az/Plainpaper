@@ -39,6 +39,21 @@ class ModeSequencer(
             }
         }
 
+    /** Undoes [next] for [tag] after its page was retaken. */
+    fun rewind(tag: PageTag) {
+        when (tag) {
+            is PageTag.IdFront -> {
+                currentCard = null
+            }
+
+            is PageTag.IdBack -> {
+                currentCard = tag.cardId
+            }
+
+            else -> {}
+        }
+    }
+
     fun onModeChanged(mode: CaptureMode) {
         if (mode != CaptureMode.IdCard) currentCard = null
     }

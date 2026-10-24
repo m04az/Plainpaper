@@ -45,6 +45,7 @@ data class PageWork(
  * JPEG + thumbnail → session update (research R8). One page at a time on Simplified devices,
  * two on Full. Survives screen changes; `resume()` re-queues pending pages after a restart.
  */
+@Suppress("TooManyFunctions") // queue operations: enqueue, cancel, resume, restyle, transform
 class PageProcessor(
     private val engine: ScanEngine,
     private val decoder: PhotoDecoder,
@@ -187,7 +188,7 @@ class PageProcessor(
         val output = (rendered as RenderResult.Ready).output
         val directory = sessions.sessionDirectory(work.sessionId)
         val (pagePath, thumbnailPath) = renderedPaths(directory, page)
-        if (!files.writeJpeg(output, pagePath)) {
+        if (!files.writeJpeg(output, pagePath, rotation = page.rotation, mirrored = page.mirrored)) {
             finish(work, page) { it.copy(state = PageState.Failed(PageFailure.Internal)) }
             return
         }
@@ -238,14 +239,54 @@ class PageProcessor(
         }
     }
 
-    /** One file pair per page and look, so switching looks never shows a stale cached image. */
+    /**
+     * Rotates ([rotateClockwise], 90 degrees) and / or mirrors ([flip]) the page as shown, then
+     * re-renders it from the original with the stored corners. Pages that are still being
+     * processed are left alone (the screens disable the buttons until they are ready).
+     */
+    fun transform(
+        sessionId: String,
+        pageId: String,
+        rotateClockwise: Boolean = false,
+        flip: Boolean = false,
+    ) {
+        scope.launch {
+            val session = sessions.activeSession.first()?.takeIf { it.id == sessionId } ?: return@launch
+            val page = session.page(pageId) ?: return@launch
+            if (page.state is PageState.Pending || page.state is PageState.Processing) return@launch
+            sessions.updatePage(sessionId, transformed(page, rotateClockwise, flip).copy(state = PageState.Pending))
+            enqueue(sessionId, pageId)
+        }
+    }
+
+    private fun transformed(
+        page: CapturedPage,
+        rotateClockwise: Boolean,
+        flip: Boolean,
+    ): CapturedPage {
+        var rotation = page.rotation
+        var mirrored = page.mirrored
+        if (rotateClockwise) rotation = (rotation + QUARTER_TURN) % FULL_TURN
+        if (flip) {
+            // The mirror is applied before the rotation, so mirroring what is on screen
+            // left to right means mirroring first and turning the other way.
+            mirrored = !mirrored
+            rotation = (FULL_TURN - rotation) % FULL_TURN
+        }
+        return page.copy(rotation = rotation, mirrored = mirrored, revision = page.revision + 1)
+    }
+
+    /**
+     * One file pair per page, revision and look, so neither switching looks nor rotating ever
+     * shows a stale cached image. The page id (not the position) names the files so a removed
+     * page cannot collide with the next one.
+     */
     private fun renderedPaths(
         directory: String,
         page: CapturedPage,
     ): Pair<String, String> {
-        val index = page.position.toString().padStart(INDEX_DIGITS, '0')
-        val look = page.style.name.lowercase()
-        return "$directory/page-$index-$look.jpg" to "$directory/thumb-$index-$look.jpg"
+        val suffix = "${page.id}-r${page.revision}-${page.style.name.lowercase()}"
+        return "$directory/page-$suffix.jpg" to "$directory/thumb-$suffix.jpg"
     }
 
     /** Writes the final state; a session discarded meanwhile is ignored. */
@@ -288,6 +329,7 @@ class PageProcessor(
     private companion object {
         const val FULL_WORKERS = 2
         const val SIMPLIFIED_WORKERS = 1
-        const val INDEX_DIGITS = 3
+        const val QUARTER_TURN = 90
+        const val FULL_TURN = 360
     }
 }

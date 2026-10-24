@@ -193,4 +193,20 @@ class HandoffViewModelTest {
                     .map { it.style },
             )
         }
+
+    @Test
+    fun rotateAndFlipTurnOnlyTheCurrentPage() =
+        runTest {
+            val id = processedSession(2)
+            val vm = viewModel(id)
+            vm.onAction(HandoffAction.SelectPage(1))
+            vm.onAction(HandoffAction.RotatePage)
+            vm.onAction(HandoffAction.FlipPage)
+            val pages = sessions.state.value!!.pages
+            assertEquals(Triple(0, false, 0), Triple(pages[0].rotation, pages[0].mirrored, pages[0].revision))
+            assertEquals(Triple(270, true, 2), Triple(pages[1].rotation, pages[1].mirrored, pages[1].revision))
+            assertEquals(PageState.Ready, pages[1].state)
+            assertEquals(270 to true, files.transforms[pages[1].pagePath])
+            assertTrue(pages[1].pagePath!!.contains("-r2-"))
+        }
 }

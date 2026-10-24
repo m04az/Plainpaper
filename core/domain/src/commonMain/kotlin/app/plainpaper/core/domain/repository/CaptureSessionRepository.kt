@@ -28,6 +28,12 @@ public interface CaptureSessionRepository {
         page: CapturedPage,
     )
 
+    /** Removes the page from the index and deletes its original and rendered files. */
+    public suspend fun removePage(
+        sessionId: String,
+        pageId: String,
+    )
+
     public suspend fun markHandedOff(sessionId: String)
 
     /** Deletes the session and all its files. */

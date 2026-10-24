@@ -6,6 +6,7 @@ import app.plainpaper.core.capture.camera.CaptureFailure
 import app.plainpaper.core.capture.camera.CaptureResult
 import app.plainpaper.core.domain.model.Confidence
 import app.plainpaper.core.domain.model.DeviceCapability
+import app.plainpaper.core.domain.model.OutputStyle
 import app.plainpaper.core.domain.model.PageSize
 import app.plainpaper.core.domain.model.Point
 import app.plainpaper.core.domain.model.Quad
@@ -20,6 +21,7 @@ import app.plainpaper.core.domain.usecase.capture.AddCapturedPageUseCase
 import app.plainpaper.core.domain.usecase.capture.DiscardSessionUseCase
 import app.plainpaper.core.domain.usecase.capture.FinishSessionUseCase
 import app.plainpaper.core.domain.usecase.capture.ObserveActiveSessionUseCase
+import app.plainpaper.core.domain.usecase.capture.RemovePageUseCase
 import app.plainpaper.core.domain.usecase.capture.ResolveDefaultPageSizeUseCase
 import app.plainpaper.core.domain.usecase.capture.SessionDirectoryUseCase
 import app.plainpaper.core.domain.usecase.capture.StartSessionUseCase
@@ -98,6 +100,7 @@ class CameraViewModelTest {
             processor = processor(),
             startSession = StartSessionUseCase(sessions),
             addPage = AddCapturedPageUseCase(sessions),
+            removePage = RemovePageUseCase(sessions),
             finishSession = FinishSessionUseCase(sessions),
             discardSession = DiscardSessionUseCase(sessions),
             observeSession = ObserveActiveSessionUseCase(sessions),
@@ -197,7 +200,13 @@ class CameraViewModelTest {
             assertFalse(vm.uiState.value.capturing)
             // The page was processed by the (fake-backed) engine and its thumbnail requested.
             assertEquals(PageState.Ready, vm.uiState.value.latestPageState)
-            assertEquals(listOf("/fake/capture/${session.id}/thumb-000-colordocument.jpg"), thumbnails.requested)
+            assertEquals(
+                listOf(
+                    "/fake/capture/${session.id}/thumb-p1-r0-colordocument.jpg",
+                    "/fake/capture/${session.id}/page-p1-r0-colordocument.jpg", // the review preview
+                ),
+                thumbnails.requested.sorted().reversed(),
+            )
             // Still steady: cooldown, no second capture.
             frames(800, 2_000)
             assertEquals(1, camera.captures.size)
@@ -343,6 +352,7 @@ class CameraViewModelTest {
             repeat(30) {
                 vm.onAction(CameraAction.Shutter)
                 advanceTimeBy(400)
+                vm.onAction(CameraAction.ReviewSave)
             }
             val session = assertNotNull(sessions.state.value)
             assertEquals(30, session.pageCount)
@@ -382,18 +392,162 @@ class CameraViewModelTest {
             assertEquals(HintKind.FrontOfCard, vm.uiState.value.hint)
             vm.onAction(CameraAction.Shutter)
             advanceTimeBy(400)
+            vm.onAction(CameraAction.ReviewSave)
             assertEquals(HintKind.BackOfCard, vm.uiState.value.hint)
             vm.onAction(CameraAction.Shutter)
             advanceTimeBy(400)
+            vm.onAction(CameraAction.ReviewSave)
             assertEquals(HintKind.FrontOfCard, vm.uiState.value.hint)
             vm.onAction(CameraAction.SelectMode(CaptureMode.Receipt))
             assertEquals(HintKind.FitReceipt, vm.uiState.value.hint)
             vm.onAction(CameraAction.Shutter)
+            vm.onAction(CameraAction.ReviewSave)
             val pages = assertNotNull(sessions.state.value).pages
             assertIs<PageTag.IdFront>(pages[0].tag)
             assertIs<PageTag.IdBack>(pages[1].tag)
             assertEquals((pages[0].tag as PageTag.IdFront).cardId, (pages[1].tag as PageTag.IdBack).cardId)
             assertEquals(PageTag.Receipt, pages[2].tag)
             assertTrue(pages.all { it.pageSize == PageSize.Natural })
+        }
+
+    // ---- US7: review after each shot ------------------------------------------------------------
+
+    @Test
+    fun aShotOpensTheReviewWithTheOutlineItWasTakenAt() =
+        runTest {
+            val vm = runningViewModel()
+            detected()
+            camera.emitFrame(FakeCameraController.frame(timestampMillis = 0))
+            camera.emitFrame(FakeCameraController.frame(timestampMillis = 33))
+            val outline = assertNotNull(vm.uiState.value.outline)
+            vm.onAction(CameraAction.Shutter)
+            val review = assertNotNull(vm.uiState.value.review)
+            assertEquals(outline, review.startOutline)
+            assertEquals(
+                sessions.state.value
+                    ?.pages
+                    ?.single()
+                    ?.id,
+                review.pageId,
+            )
+            assertNull(vm.uiState.value.outline, "outline hidden during review")
+        }
+
+    @Test
+    fun theLargePreviewIsLoadedWhenThePageIsReady() =
+        runTest {
+            val vm = runningViewModel()
+            vm.onAction(CameraAction.Shutter)
+            val page = assertNotNull(sessions.state.value).pages.single()
+            val review = assertNotNull(vm.uiState.value.review)
+            assertFalse(review.processing, "the fake engine finished the page")
+            assertFalse(review.failed)
+            assertEquals(OutputStyle.ColorDocument, review.style)
+            assertTrue(assertNotNull(page.pagePath) in thumbnails.requested)
+        }
+
+    @Test
+    fun aFailedPageIsFlaggedInTheReview() =
+        runTest {
+            val vm = runningViewModel()
+            files.failWrites = true
+            vm.onAction(CameraAction.Shutter)
+            val review = assertNotNull(vm.uiState.value.review)
+            assertTrue(review.failed)
+            assertFalse(review.processing)
+        }
+
+    @Test
+    fun lookRotateAndFlipGoToTheProcessor() =
+        runTest {
+            val vm = runningViewModel()
+            vm.onAction(CameraAction.Shutter)
+            val id = assertNotNull(vm.uiState.value.review).pageId
+            vm.onAction(CameraAction.ReviewLook(OutputStyle.Scan))
+            assertEquals(OutputStyle.Scan, assertNotNull(sessions.state.value?.page(id)).style)
+            assertEquals(
+                OutputStyle.Scan,
+                vm.uiState.value.review
+                    ?.style,
+            )
+            vm.onAction(CameraAction.ReviewRotate)
+            var stored = assertNotNull(sessions.state.value?.page(id))
+            assertEquals(Triple(90, false, 1), Triple(stored.rotation, stored.mirrored, stored.revision))
+            vm.onAction(CameraAction.ReviewFlip)
+            stored = assertNotNull(sessions.state.value?.page(id))
+            assertEquals(Triple(270, true, 2), Triple(stored.rotation, stored.mirrored, stored.revision))
+            assertEquals(
+                Triple(270, true, false),
+                vm.uiState.value.review
+                    ?.let { Triple(it.rotation, it.mirrored, it.processing) },
+            )
+            assertEquals(270 to true, files.transforms[stored.pagePath])
+        }
+
+    @Test
+    fun retakeRemovesThePageAndReturnsToTheCamera() =
+        runTest {
+            val vm = runningViewModel()
+            vm.onAction(CameraAction.Shutter)
+            val id = assertNotNull(vm.uiState.value.review).pageId
+            vm.onAction(CameraAction.ReviewRetake)
+            assertNull(vm.uiState.value.review)
+            assertEquals(listOf(id), sessions.removedPages)
+            assertEquals(0, vm.uiState.value.pageCount)
+        }
+
+    @Test
+    fun retakingTheFrontOfACardAsksForTheFrontAgain() =
+        runTest {
+            val vm = runningViewModel()
+            vm.onAction(CameraAction.SelectMode(CaptureMode.IdCard))
+            vm.onAction(CameraAction.Shutter)
+            assertEquals(HintKind.BackOfCard, vm.uiState.value.hint)
+            vm.onAction(CameraAction.ReviewRetake)
+            assertEquals(HintKind.FrontOfCard, vm.uiState.value.hint)
+        }
+
+    @Test
+    fun saveKeepsThePageAndArmsTheCooldown() =
+        runTest {
+            val vm = runningViewModel()
+            detected()
+            frames(0, 100)
+            vm.onAction(CameraAction.Shutter)
+            advanceTimeBy(400)
+            vm.onAction(CameraAction.ReviewSave)
+            assertNull(vm.uiState.value.review)
+            assertEquals(1, vm.uiState.value.pageCount)
+            // The same page is still in front of the camera: no second capture.
+            frames(1_000, 3_000)
+            assertEquals(1, camera.captures.size)
+            assertEquals(GateState.Cooldown, vm.uiState.value.gate)
+        }
+
+    @Test
+    fun framesDuringTheReviewDoNotCapture() =
+        runTest {
+            val vm = runningViewModel()
+            detected()
+            vm.onAction(CameraAction.Shutter)
+            advanceTimeBy(400)
+            frames(1_000, 3_000)
+            assertEquals(1, camera.captures.size)
+            assertNull(vm.uiState.value.outline)
+            vm.onAction(CameraAction.Shutter)
+            assertEquals(1, camera.captures.size, "the shutter is ignored while reviewing")
+        }
+
+    @Test
+    fun doneWhileReviewingSavesAndHandsOver() =
+        runTest {
+            val vm = runningViewModel()
+            vm.onAction(CameraAction.Shutter)
+            vm.effects.test {
+                vm.onAction(CameraAction.Done)
+                assertEquals(CameraEffect.NavigateToHandoff(vm.uiState.value.sessionId!!), awaitItem())
+            }
+            assertNull(vm.uiState.value.review)
+            assertEquals(1, sessions.state.value?.pageCount)
         }
 }

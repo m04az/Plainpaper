@@ -58,6 +58,10 @@ sealed interface HandoffAction {
     ) : HandoffAction
 
     data object ApplyLookToAll : HandoffAction
+
+    data object RotatePage : HandoffAction
+
+    data object FlipPage : HandoffAction
 }
 
 sealed interface HandoffEffect {
@@ -106,6 +110,14 @@ class HandoffViewModel(
 
             is HandoffAction.ChooseLook -> {
                 uiState.value.currentPage?.let { processor.restyle(sessionId, listOf(it.id), action.style) }
+            }
+
+            HandoffAction.RotatePage -> {
+                uiState.value.currentPage?.let { processor.transform(sessionId, it.id, rotateClockwise = true) }
+            }
+
+            HandoffAction.FlipPage -> {
+                uiState.value.currentPage?.let { processor.transform(sessionId, it.id, flip = true) }
             }
 
             HandoffAction.ApplyLookToAll -> {

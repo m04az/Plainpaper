@@ -145,4 +145,11 @@
     <string name="handoff_look_grayscale">رمادي</string>
     <string name="handoff_look_bw">أبيض وأسود</string>
     <string name="handoff_apply_all">تطبيق على كل الصفحات</string>
+    <string name="review_rotate">تدوير</string>
+    <string name="review_flip">قلب</string>
+    <string name="review_retake">إعادة التصوير</string>
+    <string name="review_save">حفظ</string>
+    <string name="review_processing">جارٍ معالجة الصفحة…</string>
+    <string name="review_failed">تعذّرت معالجة هذه الصفحة. أعد تصويرها.</string>
+    <string name="review_preview_cd">معاينة الصفحة</string>
 </resources>
