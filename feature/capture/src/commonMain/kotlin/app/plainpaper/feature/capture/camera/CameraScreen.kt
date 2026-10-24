@@ -186,7 +186,12 @@ fun CameraScreen(
                 )
                 PpOutline(corners = state.outline, flash = state.capturing, modifier = Modifier.fillMaxSize())
                 if (state.mode == CaptureMode.IdCard) CardGuide(modifier = Modifier.fillMaxSize())
-                CameraChrome(state, onAction)
+                val review = state.review
+                if (review == null) {
+                    CameraChrome(state, onAction)
+                } else {
+                    ReviewOverlay(state, review, onAction)
+                }
             }
 
             CameraPermissionState.NotAsked -> {

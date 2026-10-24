@@ -109,4 +109,11 @@
     <string name="handoff_look_grayscale">Grayscale</string>
     <string name="handoff_look_bw">Black &amp; white</string>
     <string name="handoff_apply_all">Apply to all pages</string>
+    <string name="review_rotate">Rotate</string>
+    <string name="review_flip">Flip</string>
+    <string name="review_retake">Retake</string>
+    <string name="review_save">Save</string>
+    <string name="review_processing">Processing page…</string>
+    <string name="review_failed">This page could not be processed. Retake it.</string>
+    <string name="review_preview_cd">Page preview</string>
 </resources>

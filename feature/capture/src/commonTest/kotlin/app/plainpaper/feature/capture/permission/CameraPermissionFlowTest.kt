@@ -9,6 +9,7 @@ import app.plainpaper.core.domain.usecase.capture.AddCapturedPageUseCase
 import app.plainpaper.core.domain.usecase.capture.DiscardSessionUseCase
 import app.plainpaper.core.domain.usecase.capture.FinishSessionUseCase
 import app.plainpaper.core.domain.usecase.capture.ObserveActiveSessionUseCase
+import app.plainpaper.core.domain.usecase.capture.RemovePageUseCase
 import app.plainpaper.core.domain.usecase.capture.ResolveDefaultPageSizeUseCase
 import app.plainpaper.core.domain.usecase.capture.SessionDirectoryUseCase
 import app.plainpaper.core.domain.usecase.capture.StartSessionUseCase
@@ -83,6 +84,7 @@ class CameraPermissionFlowTest {
                 ),
             startSession = StartSessionUseCase(sessions),
             addPage = AddCapturedPageUseCase(sessions),
+            removePage = RemovePageUseCase(sessions),
             finishSession = FinishSessionUseCase(sessions),
             discardSession = DiscardSessionUseCase(sessions),
             observeSession = ObserveActiveSessionUseCase(sessions),
