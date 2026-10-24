@@ -7,6 +7,11 @@
  * PP_ERR_INTERNAL. On failure the engine keeps using the classic detector. */
 PP_EXPORT pp_status pp_engine_load_detector(pp_engine* engine, const uint8_t* bytes, size_t length);
 
+/* Performance policy switch: 0 makes pp_detect/pp_analyze ignore the loaded model (classic detector),
+ * 1 (default) uses it again. Safe between calls; the model stays loaded. Used by DefaultScanEngine
+ * when the first 5 model passes on a Simplified device have a median above 120 ms. */
+PP_EXPORT void pp_engine_set_detector_enabled(pp_engine* engine, int32_t enabled);
+
 /* Which detector produced the last result (diagnostics). */
 typedef enum { PP_DETECTOR_CLASSIC = 0, PP_DETECTOR_MODEL = 1 } pp_detector;
 ```

@@ -46,9 +46,9 @@
 
 - [ ] T011 [US1] Native `src/model.hpp/.cpp`: load from memory, input checks, letterbox to 256, forward (mutex), sigmoid, mask → largest component → quad (existing `quadFromContour`/`maxAreaQuad`), scale back; presence; IoU mask/quad; confidence rules from data-model.md
 - [ ] T012 [US1] Native `detect.cpp`/`engine.cpp`: model first in `pp_detect` and `pp_analyze` (full photo: model quad at 256 → working resolution → edge snapping), fallback rules (presence < 0.2 → NotFound; presence ≥ 0.2 without quad → classic), `keep_orientation`, `pp_detector`/`presence` in info structs, API version + 1; `clang-format`; scansuite green
-- [ ] T013 [US1] Bridges: JNI (`plainpaper_jni.cpp`, `JniScanBridge`, Android/JVM bridges), cinterop (`CinteropNativeBridge`), `NativeBridge` + fakes in `:core:testing`: `loadDetector(bytes)`, `keepOrientation`, `detector`/`presence` fields
-- [ ] T014 [US1] `:core:scanengine` commonMain: `DetectorModelSource`, `ScanEngine.loadDetector`, `AnalyzeOptions.keepOrientation`, `DetectorKind` on results; `:composeApp`: `ComposeResourceDetectorModelSource` (`Res.readBytes("files/detector.ppdm")`), Koin binding, load at app start off the main thread
-- [ ] T015 [US1] Scansuite: load the model from the repo path; `--cluttered` report; `--photos` prints detector kind and presence
+- [X] T013 [US1] Bridges: JNI (`plainpaper_jni.cpp`, `JniScanBridge`, Android/JVM bridges), cinterop (`CinteropNativeBridge`), `NativeBridge` + fakes in `:core:testing`: `loadDetector(bytes)`, `keepOrientation`, `detector`/`presence` fields
+- [X] T014 [US1] `:core:scanengine` commonMain: `DetectorModelSource`, `ScanEngine.loadDetector`, `AnalyzeOptions.keepOrientation`, `DetectorKind` on results; `:composeApp`: `ComposeResourceDetectorModelSource` (`Res.readBytes("files/detector.ppdm")`), Koin binding, load at app start off the main thread
+- [ ] T015 [US1] (model loading done: `DetectorModelFile`, `--no-model`, `--photos` prints detector and presence; cluttered set open) Scansuite: load the model from the repo path; `--cluttered` report; `--photos` prints detector kind and presence
 - [ ] T016 [US1] `CameraViewModel` hint: presence < 0.2 for 3 s → MoveCloser (test first in `CameraViewModelTest`)
 
 **Checkpoint**: cluttered gate passes on host; outline locks on a hand-held card on the phone.
@@ -76,7 +76,7 @@
 
 ## Phase 5: User Story 3 — detection keeps working on every phone (P3)
 
-- [ ] T024 [US3] Tests first, then the detector policy (data-model.md): Simplified capability + median of first 5 model passes > 120 ms → classic; model load failure → classic; no error surfaced (engine host test + `DefaultScanEngine` test with the fake bridge)
+- [X] T024 [US3] Tests first, then the detector policy (data-model.md): Simplified capability + median of first 5 model passes > 120 ms → classic; model load failure → classic; no error surfaced (engine host test + `DefaultScanEngine` test with the fake bridge)
 - [ ] T025 [US3] Low-end emulator check (Feature 002 low-end profile): outline ≥ 5 Hz, no crash; record in results.md
 
 ---
