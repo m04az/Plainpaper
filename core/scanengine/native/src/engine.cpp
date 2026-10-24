@@ -60,7 +60,11 @@ void validateInput(const pp_image_rgba* photo, const pp_analyze_options* options
         throw Error{PP_ERR_INVALID_INPUT, "null input"};
     }
     const int longEdge = std::max(photo->width, photo->height);
-    if (photo->width <= 0 || photo->height <= 0 || longEdge < params::kMinInputLongEdge) {
+    // Pages from the phone's own scanner arrive cropped and upright (keep_orientation) and may
+    // be small (an ID card); they need no detection, so a smaller floor applies.
+    const int minLongEdge =
+        options->keep_orientation != 0 ? params::kMinKeptInputLongEdge : params::kMinInputLongEdge;
+    if (photo->width <= 0 || photo->height <= 0 || longEdge < minLongEdge) {
         throw Error{PP_ERR_INVALID_INPUT, "image too small"};
     }
     if (longEdge > params::kMaxInputLongEdge) {

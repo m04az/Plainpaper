@@ -75,6 +75,32 @@ class DetectorModelTest {
             }
         }
 
+    @Test
+    fun smallPreCroppedPagesAreAcceptedOnlyWithKeptOrientation() =
+        runBlocking {
+            // The phone's own scanner can return a small, already-cropped card (388 x 329 seen).
+            val file = File.createTempFile("quickscan-small", ".jpg")
+            val image = java.awt.image.BufferedImage(388, 329, java.awt.image.BufferedImage.TYPE_INT_RGB)
+            val g = image.createGraphics()
+            g.color = java.awt.Color(235, 235, 230)
+            g.fillRect(0, 0, 388, 329)
+            g.color = java.awt.Color.DARK_GRAY
+            for (y in 40 until 300 step 24) g.fillRect(30, y, 320, 6)
+            g.dispose()
+            javax.imageio.ImageIO.write(image, "jpg", file)
+            val engine = SuiteRunner(outputDir, useModel = false).engine
+            val decoded =
+                assertIs<DecodeResult.Ready>(ImageIoPhotoDecoder(HostDispatchers()).decode(file.path)).photo
+            val frame = Quad(Point(0f, 0f), Point(388f, 0f), Point(388f, 329f), Point(0f, 329f))
+            assertIs<AnalyzeResult.Failed>(engine.analyze(decoded, AnalyzeOptions(userCorners = frame)))
+            val kept =
+                assertIs<AnalyzeResult.Ready>(
+                    engine.analyze(decoded, AnalyzeOptions(userCorners = frame, keepOrientation = true)),
+                ).analysis
+            kept.use { assertEquals(0, it.rotationApplied) }
+            file.delete()
+        }
+
     // Parity with PyTorch: detector.ppdm and vectors.vec of a tools/detector-training run.
     @Test
     fun nativeInferenceMatchesTheTrainingVectors() {

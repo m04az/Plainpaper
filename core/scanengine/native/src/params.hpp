@@ -6,6 +6,8 @@ namespace pp::params {
 
 /** Smallest accepted long edge of an input photo (FR-001 validation). */
 constexpr int kMinInputLongEdge = 640;
+/** Smallest accepted long edge for pre-cropped pages analysed with keep_orientation (specs/004). */
+constexpr int kMinKeptInputLongEdge = 200;
 /** Largest accepted long edge of an input photo; decoders cap at 12 MP (research R12). */
 constexpr int kMaxInputLongEdge = 6000;
 /** Working resolution bounds accepted from the caller. */
