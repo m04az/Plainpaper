@@ -168,7 +168,12 @@ internal class CameraXController(
     override suspend fun capture(): CaptureResult {
         val capture = imageCapture ?: return CaptureResult.Failed(CaptureFailure.NotRunning)
         val directory = outputDirectory ?: return CaptureResult.Failed(CaptureFailure.NotRunning)
-        val file = File(directory, "original-${frameCounter.toString().padStart(INDEX_DIGITS, '0')}.jpg")
+        // Quick scan may have added originals to this folder meanwhile: never overwrite one.
+        var file = File(directory, "original-${frameCounter.toString().padStart(INDEX_DIGITS, '0')}.jpg")
+        while (file.exists()) {
+            frameCounter++
+            file = File(directory, "original-${frameCounter.toString().padStart(INDEX_DIGITS, '0')}.jpg")
+        }
         frameCounter++
         return suspendCancellableCoroutine { continuation ->
             capture.takePicture(

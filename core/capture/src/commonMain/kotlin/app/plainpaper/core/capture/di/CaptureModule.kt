@@ -5,7 +5,8 @@ import org.koin.dsl.module
 
 /**
  * Platform capture services: `RegionProvider`, `BackgroundTask`, `ImageFiles`,
- * `CameraControllerFactory`, `CameraPreviewRenderer`, `CameraPermissionFactory`, `PhotoPickerFactory`.
+ * `CameraControllerFactory`, `CameraPreviewRenderer`, `CameraPermissionFactory`, `PhotoPickerFactory`,
+ * `DocumentScannerFactory`.
  */
 public val captureModule: Module =
     module {

@@ -15,6 +15,8 @@ import app.plainpaper.core.capture.permission.CameraPermissionFactory
 import app.plainpaper.core.capture.picker.AndroidPhotoPickerFactory
 import app.plainpaper.core.capture.picker.PhotoPickerFactory
 import app.plainpaper.core.capture.region.AndroidRegionProvider
+import app.plainpaper.core.capture.scanner.DocumentScannerFactory
+import app.plainpaper.core.capture.scanner.MlKitDocumentScannerFactory
 import app.plainpaper.core.domain.platform.RegionProvider
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.Module
@@ -30,4 +32,5 @@ public actual val capturePlatformModule: Module =
         single<CameraPreviewRenderer> { CameraXPreviewRenderer() }
         single<CameraPermissionFactory> { AndroidCameraPermissionFactory() }
         single<PhotoPickerFactory> { AndroidPhotoPickerFactory() }
+        single<DocumentScannerFactory> { MlKitDocumentScannerFactory() }
     }

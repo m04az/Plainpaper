@@ -45,6 +45,7 @@ import platform.CoreVideo.CVPixelBufferUnlockBaseAddress
 import platform.CoreVideo.kCVPixelFormatType_32BGRA
 import platform.Foundation.NSDate
 import platform.Foundation.NSError
+import platform.Foundation.NSFileManager
 import platform.Foundation.timeIntervalSince1970
 import platform.Foundation.writeToFile
 import platform.darwin.NSObject
@@ -144,7 +145,12 @@ internal class AvCameraController(
             }
         if (failure != null || directory == null) return CaptureResult.Failed(failure ?: CaptureFailure.NotRunning)
         busy = true
-        val path = "$directory/original-${counter.toString().padStart(INDEX_DIGITS, '0')}.jpg"
+        // Quick scan may have added originals to this folder meanwhile: never overwrite one.
+        var path = "$directory/original-${counter.toString().padStart(INDEX_DIGITS, '0')}.jpg"
+        while (NSFileManager.defaultManager.fileExistsAtPath(path)) {
+            counter++
+            path = "$directory/original-${counter.toString().padStart(INDEX_DIGITS, '0')}.jpg"
+        }
         counter++
         return try {
             suspendCancellableCoroutine { continuation ->
