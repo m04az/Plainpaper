@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -281,7 +280,7 @@ private fun CameraChrome(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(modifier = Modifier.size(SideSlot), contentAlignment = Alignment.CenterStart) {
+                Box(modifier = Modifier.weight(1f).size(SideSlot), contentAlignment = Alignment.CenterStart) {
                     if (state.pageCount > 0) {
                         PpPageCounter(
                             count = state.pageCount,
@@ -300,7 +299,7 @@ private fun CameraChrome(
                     contentDescription = stringResource(Res.string.camera_shutter_cd),
                     enabled = state.isRunning && !state.storageFull,
                 )
-                Box(modifier = Modifier.width(SideSlot), contentAlignment = Alignment.CenterEnd) {
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
                     if (state.pageCount > 0) {
                         PpCameraPrimaryPill(
                             text = stringResource(Res.string.camera_done),
