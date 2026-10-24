@@ -103,6 +103,7 @@ class CameraViewModel(
         }
     }
 
+    @Suppress("CyclomaticComplexMethod") // one branch per user action; each delegates to a handler
     fun onAction(action: CameraAction) {
         when (action) {
             is CameraAction.PermissionStatus -> {

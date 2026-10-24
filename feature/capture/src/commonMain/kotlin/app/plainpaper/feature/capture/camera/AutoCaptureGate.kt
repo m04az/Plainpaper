@@ -61,37 +61,62 @@ public class AutoCaptureGate(
     private var noPageSince: Long? = null
 
     fun onSample(sample: DetectionSample): GateState {
-        if (sample.meanLuma < darkLuma) {
-            clearAnchor()
-            return GateState.TooDark
-        }
         val corners = sample.corners
-        if (corners == null) {
-            clearAnchor()
-            if (cooldownCorners != null) pageLostDuringCooldown = true
-            val since = noPageSince ?: sample.timestampMillis.also { noPageSince = it }
-            return GateState.NoPage(prolonged = sample.timestampMillis - since >= prolongedNoPageMillis)
-        }
-        noPageSince = null
-        cooldownCorners?.let { captured ->
-            if (pageLostDuringCooldown || drift(captured, corners) > cooldownDriftFraction) {
-                cooldownCorners = null
-                pageLostDuringCooldown = false
-            } else {
-                return GateState.Cooldown
+        return when {
+            sample.meanLuma < darkLuma -> {
+                clearAnchor()
+                GateState.TooDark
+            }
+
+            corners == null -> {
+                noPage(sample.timestampMillis)
+            }
+
+            inCooldown(corners) -> {
+                GateState.Cooldown
+            }
+
+            sample.confidence != Confidence.High || sample.fillFraction < minFill -> {
+                clearAnchor()
+                GateState.LowConfidence
+            }
+
+            else -> {
+                track(sample.timestampMillis, corners)
             }
         }
-        if (sample.confidence != Confidence.High || sample.fillFraction < minFill) {
-            clearAnchor()
-            return GateState.LowConfidence
+    }
+
+    private fun noPage(timestampMillis: Long): GateState {
+        clearAnchor()
+        if (cooldownCorners != null) pageLostDuringCooldown = true
+        val since = noPageSince ?: timestampMillis.also { noPageSince = it }
+        return GateState.NoPage(prolonged = timestampMillis - since >= prolongedNoPageMillis)
+    }
+
+    /** True while the captured page is still (almost) where it was; clears the cooldown otherwise. */
+    private fun inCooldown(corners: Quad): Boolean {
+        noPageSince = null
+        val captured = cooldownCorners ?: return false
+        if (pageLostDuringCooldown || drift(captured, corners) > cooldownDriftFraction) {
+            cooldownCorners = null
+            pageLostDuringCooldown = false
+            return false
         }
+        return true
+    }
+
+    private fun track(
+        timestampMillis: Long,
+        corners: Quad,
+    ): GateState {
         val anchor = anchorCorners
         if (anchor == null || drift(anchor, corners) > maxDriftFraction) {
             anchorCorners = corners
-            anchorTime = sample.timestampMillis
+            anchorTime = timestampMillis
             return GateState.Tracking(0f)
         }
-        val progress = ((sample.timestampMillis - anchorTime).toFloat() / steadyWindowMillis).coerceIn(0f, 1f)
+        val progress = ((timestampMillis - anchorTime).toFloat() / steadyWindowMillis).coerceIn(0f, 1f)
         if (progress >= 1f && enabled) {
             enterCooldown(corners)
             return GateState.Capture
