@@ -28,6 +28,8 @@ kotlin {
             implementation(libs.androidx.compose.ui.test.manifest)
             implementation(libs.androidx.test.espresso.core)
             implementation(projects.core.testing)
+            implementation(projects.core.data)
+            implementation(libs.okio)
             implementation(libs.kotlinx.serialization.json)
         }
     }

@@ -115,3 +115,9 @@ internal class AndroidImageFiles(
         return YuvImage(nv21, ImageFormat.NV21, width, height, intArrayOf(width, width))
     }
 }
+
+/** The production [ImageFiles] for Android; exposed for device tests of other modules. */
+public fun androidImageFiles(
+    context: Context,
+    dispatchers: DispatcherProvider,
+): ImageFiles = AndroidImageFiles(context, dispatchers)

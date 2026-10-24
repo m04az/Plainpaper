@@ -5,6 +5,7 @@ import app.plainpaper.core.scanengine.ByteArrayPreviewFrame
 import app.plainpaper.core.scanengine.PixelFormat
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.useContents
 import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -29,11 +30,10 @@ import platform.AVFoundation.AVCaptureSessionPreset640x480
 import platform.AVFoundation.AVCaptureVideoDataOutput
 import platform.AVFoundation.AVCaptureVideoDataOutputSampleBufferDelegateProtocol
 import platform.AVFoundation.AVMediaTypeVideo
+import platform.AVFoundation.defaultDeviceWithDeviceType
 import platform.AVFoundation.fileDataRepresentation
+import platform.AVFoundation.flashAvailable
 import platform.AVFoundation.hasFlash
-import platform.AVFoundation.highResolutionCaptureEnabled
-import platform.AVFoundation.highResolutionPhotoEnabled
-import platform.AVFoundation.isFlashAvailable
 import platform.CoreMedia.CMSampleBufferGetImageBuffer
 import platform.CoreMedia.CMSampleBufferRef
 import platform.CoreVideo.CVPixelBufferGetBaseAddress
@@ -122,7 +122,7 @@ internal class AvCameraController(
             configured = true
         }
         withContext(dispatchers.io) { session.startRunning() }
-        stateFlow.value = CameraState.Running(hasFlash = camera.hasFlash && camera.isFlashAvailable())
+        stateFlow.value = CameraState.Running(hasFlash = camera.hasFlash && camera.flashAvailable)
     }
 
     override fun stop() {
@@ -165,7 +165,7 @@ internal class AvCameraController(
         val settings = AVCapturePhotoSettings.photoSettings()
         settings.highResolutionPhotoEnabled = true
         val camera = device
-        if (camera != null && camera.hasFlash && photoOutput.supportedFlashModes.contains(AVCaptureFlashModeOn)) {
+        if (camera != null && camera.hasFlash) {
             settings.flashMode = if (flashEnabled) AVCaptureFlashModeOn else AVCaptureFlashModeOff
         }
         return settings
@@ -220,8 +220,12 @@ internal class AvCameraController(
                 onResult(CaptureResult.Failed(if (error == null) CaptureFailure.Storage else CaptureFailure.Internal))
                 return
             }
-            val size = didFinishProcessingPhoto.resolvedSettings.photoDimensions
-            onResult(CaptureResult.Ready(path, size.width, size.height))
+            val (width, height) =
+                didFinishProcessingPhoto.resolvedSettings.photoDimensions.useContents {
+                    width to
+                        height
+                }
+            onResult(CaptureResult.Ready(path, width, height))
         }
     }
 }

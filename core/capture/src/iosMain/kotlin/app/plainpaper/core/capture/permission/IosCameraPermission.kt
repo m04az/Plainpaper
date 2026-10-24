@@ -11,6 +11,7 @@ import platform.AVFoundation.AVCaptureDevicePositionBack
 import platform.AVFoundation.AVCaptureDeviceTypeBuiltInWideAngleCamera
 import platform.AVFoundation.AVMediaTypeVideo
 import platform.AVFoundation.authorizationStatusForMediaType
+import platform.AVFoundation.defaultDeviceWithDeviceType
 import platform.AVFoundation.requestAccessForMediaType
 import platform.Foundation.NSURL
 import platform.UIKit.UIApplication
