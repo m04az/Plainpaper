@@ -8,14 +8,14 @@ import androidx.navigation.toRoute
 import app.plainpaper.composeapp.resources.Res
 import app.plainpaper.composeapp.resources.placeholder_folders_body
 import app.plainpaper.composeapp.resources.placeholder_folders_title
-import app.plainpaper.composeapp.resources.placeholder_import_body
-import app.plainpaper.composeapp.resources.placeholder_import_title
 import app.plainpaper.composeapp.resources.placeholder_pro_body
 import app.plainpaper.composeapp.resources.placeholder_pro_title
 import app.plainpaper.feature.capture.CameraRoute
 import app.plainpaper.feature.capture.HandoffRoute
+import app.plainpaper.feature.capture.ImportRoute
 import app.plainpaper.feature.capture.camera.CameraRoute
 import app.plainpaper.feature.capture.handoff.HandoffRoute
+import app.plainpaper.feature.capture.import.ImportRoute
 import app.plainpaper.feature.home.HomeRoute
 import app.plainpaper.feature.settings.SettingsRoute
 import app.plainpaper.placeholder.PlaceholderScreen
@@ -27,7 +27,7 @@ fun AppNavHost(navController: NavHostController) {
         composable<Home> {
             HomeRoute(
                 onNavigateToScan = { navController.navigate(CameraRoute) },
-                onNavigateToImport = { navController.navigate(ImportPlaceholder) },
+                onNavigateToImport = { navController.navigate(ImportRoute) },
             )
         }
         composable<Folders> {
@@ -51,7 +51,7 @@ fun AppNavHost(navController: NavHostController) {
                         }
                     }
                 },
-                onImport = { navController.navigate(ImportPlaceholder) { popUpTo<CameraRoute> { inclusive = true } } },
+                onImport = { navController.navigate(ImportRoute) { popUpTo<CameraRoute> { inclusive = true } } },
             )
         }
         composable<HandoffRoute> { entry ->
@@ -60,11 +60,19 @@ fun AppNavHost(navController: NavHostController) {
                 onHome = { navController.navigateToTab(Home) },
             )
         }
-        composable<ImportPlaceholder> {
-            PlaceholderScreen(
-                title = stringResource(Res.string.placeholder_import_title),
-                body = stringResource(Res.string.placeholder_import_body),
+        composable<ImportRoute> {
+            ImportRoute(
                 onBack = { navController.popBackStack() },
+                onHome = { navController.navigateToTab(Home) },
+                onHandoff = { sessionId ->
+                    navController.navigate(HandoffRoute(sessionId)) {
+                        popUpTo<ImportRoute> {
+                            inclusive =
+                                true
+                        }
+                    }
+                },
+                onPro = { navController.navigate(ProPlaceholder) },
             )
         }
         composable<ProPlaceholder> {

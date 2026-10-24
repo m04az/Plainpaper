@@ -12,6 +12,8 @@ import app.plainpaper.core.capture.files.ImageFiles
 import app.plainpaper.core.capture.files.ThumbnailLoader
 import app.plainpaper.core.capture.permission.AndroidCameraPermissionFactory
 import app.plainpaper.core.capture.permission.CameraPermissionFactory
+import app.plainpaper.core.capture.picker.AndroidPhotoPickerFactory
+import app.plainpaper.core.capture.picker.PhotoPickerFactory
 import app.plainpaper.core.capture.region.AndroidRegionProvider
 import app.plainpaper.core.domain.platform.RegionProvider
 import org.koin.android.ext.koin.androidContext
@@ -27,4 +29,5 @@ public actual val capturePlatformModule: Module =
         single<CameraControllerFactory> { CameraXControllerFactory(androidContext(), get()) }
         single<CameraPreviewRenderer> { CameraXPreviewRenderer() }
         single<CameraPermissionFactory> { AndroidCameraPermissionFactory() }
+        single<PhotoPickerFactory> { AndroidPhotoPickerFactory() }
     }

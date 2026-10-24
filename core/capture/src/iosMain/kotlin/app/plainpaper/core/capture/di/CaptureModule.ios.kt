@@ -6,6 +6,8 @@ import app.plainpaper.core.capture.files.ImageFiles
 import app.plainpaper.core.capture.files.IosImageFiles
 import app.plainpaper.core.capture.files.IosThumbnailLoader
 import app.plainpaper.core.capture.files.ThumbnailLoader
+import app.plainpaper.core.capture.picker.PhPhotoPickerFactory
+import app.plainpaper.core.capture.picker.PhotoPickerFactory
 import app.plainpaper.core.capture.region.IosRegionProvider
 import app.plainpaper.core.domain.platform.RegionProvider
 import org.koin.core.module.Module
@@ -17,4 +19,5 @@ public actual val capturePlatformModule: Module =
         single<BackgroundTask> { IosBackgroundTask() }
         single<ImageFiles> { IosImageFiles(get()) }
         single<ThumbnailLoader> { IosThumbnailLoader(get()) }
+        single<PhotoPickerFactory> { PhPhotoPickerFactory() }
     }
