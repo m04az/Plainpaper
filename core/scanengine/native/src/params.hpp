@@ -48,6 +48,15 @@ constexpr double kModelLowPresence = 0.5;
 constexpr double kModelLowIoU = 0.75;
 /** Edge snapping of the model quad may move a corner at most this fraction of the diagonal. */
 constexpr double kModelSnapMaxShift = 0.03;
+/** Hybrid: an edge quad replaces the model quad when it is well supported, lies inside the
+ * model's region, covers at least this share of the model quad's area and differs from a thin
+ * ring around it by kHullMinContrast. */
+/** Classic and model quads overlapping this much are the same document (classic edges kept). */
+constexpr double kModelAgreeIoU = 0.85;
+constexpr double kHybridMinSupport = 0.5;
+constexpr double kHybridMinMeanSupport = 0.75;
+constexpr double kHybridMinCoverage = 0.9;
+constexpr double kHybridMinAreaRatio = 0.3;
 
 // ---- detection (research R5 step 2) ----
 /** Auto-Canny thresholds as factors of the median luminance. */
