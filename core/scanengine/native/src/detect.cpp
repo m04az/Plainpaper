@@ -1134,9 +1134,16 @@ DetectResult detectPage(AnalyzeContext& ctx) {
         return classic;
     }
     const Quad* chosen = &modelBest.quad;
+    bool agreed = false;
     if (classicFound &&
         quadPairIoU(classicQuad, modelBest.quad, gray.size()) >= params::kModelAgreeIoU) {
         chosen = &classicQuad; // same document: keep the classic detector's exact edges
+        agreed = true;
+    }
+    // A mask alone can spill onto cloth or a hand next to the page; only an outline the edges
+    // confirm may be High (auto-capture on the shorter steady window).
+    if (!agreed && modelConfidence == PP_CONF_HIGH) {
+        modelConfidence = PP_CONF_LOW;
     }
     for (int i = 0; i < 4; ++i) {
         result.quad[i] = (*chosen)[i] * static_cast<float>(1.0 / ctx.workingScale);
