@@ -7,8 +7,8 @@
 ## Summary
 
 Make page finding reliable in cluttered scenes in two ways. (1) A small document-segmentation
-model, trained by the project on synthetic composites, runs inside the C++ scan engine through
-OpenCV's `dnn` module for both live preview frames and the full photo; its mask is fitted to a
+model, trained by the project on synthetic composites, runs inside the C++ scan engine with its
+own small inference code on OpenCV core (research R1) for both live preview frames and the full photo; its mask is fitted to a
 quad by the existing geometry code, and the classic detector remains the fallback. (2) Quick scan
 opens the phone's built-in scanner (ML Kit document scanner on Android, VisionKit on iOS) and adds
 the returned, already-cropped pages to the capture session without re-cropping.
@@ -17,8 +17,7 @@ the returned, already-cropped pages to the capture session without re-cropping.
 
 **Language/Version**: Kotlin 2.4.21 (KMP), C++17 (scan engine), Python 3.12 (training tool only)
 
-**Primary Dependencies**: existing (Compose MP, Koin, CameraX, OpenCV 4.13); new: OpenCV `dnn`
-module (already in the shipped Android SDK and iOS xcframework; added to the host build),
+**Primary Dependencies**: existing (Compose MP, Koin, CameraX, OpenCV 4.13 core/imgproc); new:
 `play-services-mlkit-document-scanner` 16.0.0 (Android), VisionKit (iOS system framework);
 training only: PyTorch, numpy, opencv-python, onnx (not shipped)
 
@@ -80,9 +79,10 @@ specs/004-smart-detection/
 ```text
 core/scanengine/native/
 ├── include/plainpaper_scan.h        # + pp_engine_load_detector, pp_analyze_options.keep_orientation
-├── src/model.cpp, model.hpp         # dnn net, letterbox, forward, mask → quad
+├── src/model.cpp, model.hpp         # .ppdm loader, inference, mask → quad
+├── tests/model_parity.cpp           # host parity vs PyTorch vectors
 ├── src/detect.cpp                   # model path first, classic fallback
-└── CMakeLists.txt                   # link opencv_dnn
+└── CMakeLists.txt                   # model.cpp, PP_BUILD_TESTS
 core/scanengine/src/commonMain/.../  # DetectorModelSource, AnalyzeOptions.keepOrientation, engine wiring
 core/scanengine/src/{jvmCommonMain,androidMain,iosMain}/.../bridge/  # new calls
 core/capture/src/commonMain/.../scanner/DocumentScanner.kt          # interface + factory
@@ -92,11 +92,10 @@ core/domain/.../model/capture/CapturedPage.kt                       # + source
 core/data/.../SessionIndex                                          # persist source
 feature/capture/.../quickscan/                                      # QuickScan flow (ViewModel + route)
 feature/home/...                                                    # Quick scan entry
-composeApp/src/commonMain/composeResources/files/detector.onnx
+composeApp/src/commonMain/composeResources/files/detector.ppdm
 composeApp/src/commonMain/.../DetectorModelSource impl + Koin
 androidApp/src/main/AndroidManifest.xml                             # tools:node="remove" network perms
 scripts/check-no-network-permission.sh                              # CI
-scripts/build-opencv-host.sh                                        # BUILD_LIST += dnn
 tools/detector-training/                                            # generator, train, export, eval (Python)
 tools/scansuite/.../cluttered/                                      # cluttered-scene set + metrics + gate
 ```
@@ -122,6 +121,6 @@ under `tools/` (not part of the Gradle build). No new Gradle module.
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| OpenCV `dnn` linked into the engine | Runs the detection model on both platforms and the host suite with one code path | TFLite/ONNX Runtime add a second runtime per platform; hand-written CNN is slow and costly to maintain |
+| Own CNN inference in the engine (~300 lines) | Runs the model on both platforms and the host suite with +0.1 MB | OpenCV `dnn` measured +4.25 MB (over the 5 MB gate with the model); TFLite/ONNX Runtime add a runtime per platform |
 | ML Kit document scanner (Play services) | Owner asked for Quick scan with the phone's own scanner | Building our own full scanner UI is this feature's part (1); Quick scan is the platform option by definition |
 | Python training tool in the repo | The model must be ours and reproducible | Third-party weights have no clear licence (research R2) |

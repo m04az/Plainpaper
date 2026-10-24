@@ -2,23 +2,26 @@
 
 ## R1 — Where the model runs
 
-- **Decision**: inside the C++ scan engine with OpenCV's `dnn` module (`cv::dnn::readNetFromONNX`
-  from a memory buffer), CPU backend, one forward pass per detection call.
-- **Rationale**: one implementation for Android, iOS and the host JVM test suite; no new runtime
-  dependency on either platform. The OpenCV Android SDK 4.13 already contains
-  `libopencv_dnn.a` (all ABIs) and the iOS `opencv2.xcframework` already contains the dnn
-  headers and code; only the host build (`scripts/build-opencv-host.sh`, `BUILD_LIST=core,imgproc`)
-  needs `dnn` added. Static linking with `--gc-sections`/`-dead_strip` keeps only what the ONNX
-  importer and the used layers need.
-- **Size risk**: the linked size of `dnn` (ONNX importer + protobuf + layers) is not known; the
-  current `libplainpaper_scan.so` is 5.6 MB (arm64-v8a). **First task is a spike** that links
-  dnn, loads a stub model and measures the per-ABI growth. Gate: engine growth + model ≤ 5 MB per
-  platform (spec FR-006/SC-005).
-- **Alternatives considered**: TensorFlow Lite / LiteRT (separate Android and iOS integrations,
-  CocoaPods in a KMP build, two code paths); ONNX Runtime Mobile (≈ 1.5–3 MB per ABI per platform,
-  separate C API wiring on both bridges); a hand-written CNN in C++ (smallest, but slow without
-  per-arch SIMD work and a maintenance burden). Fallback if the spike fails the size gate:
-  ONNX Runtime minimal build with only the operators the model uses.
+- **Decision**: inside the C++ scan engine, with **our own inference code** on OpenCV core
+  (`src/model.cpp`, ~300 lines): direct 1×1 convolutions (vectorised axpy, threaded by output
+  channel), direct 3×3 convolutions (stride-aware), bilinear ×2 upsampling (`cv::resize`,
+  half-pixel like PyTorch), concat, global average pool, linear. Weights come in a small
+  project format, `.ppdm` (BatchNorm folded, tensors by name), written by
+  `tools/detector-training/detector/ppdm.py`.
+- **Spike results (T001, 2026-10-24)**:
+
+  | Option | arm64 `.so` (stripped) | Download (gzip) | Model | Pass (M-series, 4 threads) |
+  |--------|------------------------|-----------------|-------|----------------------------|
+  | Before | 5.33 MB | 2.07 MB | — | — |
+  | OpenCV `dnn` (ONNX) | 9.58 MB (+4.25) | 3.57 MB (+1.5) | 2.03 MB ONNX | 5.6 ms |
+  | Own inference | 5.43 MB (+0.10) | — | 2.01 MB `.ppdm` | 12.5 ms |
+
+  `dnn` registers every layer and the protobuf ONNX parser statically, so `--gc-sections`
+  cannot drop them; with the model it exceeds the 5 MB gate. Our inference matches PyTorch to
+  9e-8 (`native/tests/model_parity.cpp`), adds 0.1 MB and needs no extra OpenCV module on any
+  platform (host build unchanged). Expected phone time ≈ 25–35 ms per pass.
+- **Alternatives considered**: OpenCV `dnn` (measured above, over budget); TFLite/LiteRT and
+  ONNX Runtime Mobile (a second runtime per platform, 1.5–3 MB each, separate bridge wiring).
 
 ## R2 — Model design
 
@@ -69,8 +72,8 @@
 - **Decision**: PyTorch on the Mac (MPS backend), environment managed by `uv` with a pinned
   `pyproject.toml` in `tools/detector-training/`; ~200 k generated samples (generated on the fly,
   seeded), loss = BCE + Dice on the mask + BCE on presence; AdamW, cosine schedule, ~30 epochs.
-  Export with `torch.onnx.export` (opset 13, static 1×3×256×256), then verify the ONNX file loads
-  and matches PyTorch outputs in OpenCV's Python `cv2.dnn` (same importer as the engine).
+  Export with `detector.ppdm` (BatchNorm folded) plus test vectors; the engine's parity test
+  (`model_parity`) must match PyTorch within 1e-4. ONNX export stays available for inspection.
 - **Reproducibility**: the generator seed, the training config and the exported model's SHA-256
   are recorded in `tools/detector-training/MODEL_CARD.md`; the model file lives in the repo
   (≈ 2 MB, via Git LFS if the repo policy prefers).
@@ -81,7 +84,7 @@
 ## R5 — Shipping and loading the model
 
 - **Decision**: the ONNX file is a Compose Multiplatform resource of `:composeApp`
-  (`composeResources/files/detector.onnx`; `:core:scanengine` has no Compose resources). A
+  (`composeResources/files/detector.ppdm`; `:core:scanengine` has no Compose resources). A
   `DetectorModelSource` interface in `:core:scanengine` commonMain (`suspend fun bytes(): ByteArray?`)
   is implemented in `:composeApp` with `Res.readBytes` and bound in Koin; the scansuite reads the
   same file from the repository. The engine receives the bytes once through a new C API call
@@ -94,7 +97,7 @@
 
 ## R6 — Performance and fallback
 
-- **Decision**: preview frames are already ≤ 800 px; the model input is 256×256 (letterboxed).
+- **Decision**: preview frames are already ≤ 800 px; the model input is the frame resized to 256×256 (aspect not kept; training renders scenes at 3:4, 4:3, 9:16 and 1:1 and resizes the same way).
   Target ≤ 25 ms per forward pass on the reference phone (≈ 60–80 MFLOPs). The ViewModel already
   drops frames while detection runs, so the outline rate is bounded by detection time.
 - **Fallback**: classic detector when the model failed to load, when the capability is

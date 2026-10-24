@@ -23,7 +23,7 @@ QuickScan pages: `corners` = full frame of the returned image, `confidence` = Hi
 
 | Field | Type | Rule |
 |-------|------|------|
-| bytes | ONNX file | ≤ 3 MB; input 1×3×256×256 float RGB in 0..1; outputs `mask` 1×1×128×128 (logits) and `presence` 1×1 (logit) |
+| bytes | .ppdm file | ≤ 3 MB; input 1×3×256×256 float RGB in 0..1; outputs `mask` 1×1×128×128 (logits) and `presence` 1×1 (logit) |
 | sha256 | String | Recorded in the model card and checked by the scansuite |
 | state (engine) | NotLoaded → Loaded \| Failed | Failed and NotLoaded use the classic detector |
 

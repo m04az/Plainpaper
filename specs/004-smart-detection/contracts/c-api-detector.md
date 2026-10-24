@@ -1,7 +1,7 @@
 # C API: detector model (plainpaper_scan.h, API version + 1)
 
 ```c
-/* Load the document-detection model (ONNX bytes, copied). May be called once per engine, before
+/* Load the document-detection model (.ppdm bytes, copied). May be called once per engine, before
  * or after other calls; safe to call while no pp_analyze/pp_detect runs on this engine.
  * Returns PP_OK, PP_ERR_INVALID_INPUT (not a usable model: wrong input/output shapes) or
  * PP_ERR_INTERNAL. On failure the engine keeps using the classic detector. */

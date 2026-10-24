@@ -17,7 +17,7 @@
 
 ## Phase 1: Setup
 
-- [ ] T001 Spike + size gate: add `dnn` to `BUILD_LIST` in `scripts/build-opencv-host.sh`; link `opencv_dnn` in `core/scanengine/native/CMakeLists.txt` (host, Android, iOS); a throwaway `pp_engine_load_detector` that calls `cv::dnn::readNetFromONNX(buffer)` on a 2-layer stub ONNX; measure `libplainpaper_scan.so` growth per ABI (`:androidApp:assembleRelease`) and the iOS static lib growth in CI; record in `research.md` R1. Stop and report if growth + 2 MB > 5 MB.
+- [X] T001 Spike + size gate (result: OpenCV dnn +4.25 MB → own inference on OpenCV core, +0.1 MB; research R1): add `dnn` to `BUILD_LIST` in `scripts/build-opencv-host.sh`; link `opencv_dnn` in `core/scanengine/native/CMakeLists.txt` (host, Android, iOS); a throwaway `pp_engine_load_detector` that calls `cv::dnn::readNetFromONNX(buffer)` on a 2-layer stub ONNX; measure `libplainpaper_scan.so` growth per ABI (`:androidApp:assembleRelease`) and the iOS static lib growth in CI; record in `research.md` R1. Stop and report if growth + 2 MB > 5 MB.
 - [ ] T002 [P] Create `tools/detector-training/` with `pyproject.toml` (uv; torch, numpy, opencv-python, onnx, pyyaml, pytest pinned), `README.md`, `.gitignore` (runs/, cache/), package `detector/`
 - [X] T003 [P] Add `.github/workflows/pr.yml` step + `scripts/check-no-network-permission.sh`: process the release manifest (`:androidApp:processReleaseMainManifest`) and fail if it contains `android.permission.INTERNET` or `ACCESS_NETWORK_STATE`
 
@@ -29,7 +29,7 @@
 - [ ] T005 Generator `detector/generate.py`: documents (scansuite-style pages rendered in Python with Latin + Arabic text, drawings, colour; ID-card and receipt layouts; book spreads; dark covers), perspective/curl, procedural backgrounds (wood, tiles, fabric, floor, paper-coloured desks, noise) + optional local backgrounds from `~/.cache/plainpaper/detector/backgrounds/`, occluders (hands over edges/corners, cables across, pens, other papers), photometry (light gradients, shadows, glare, white balance, blur, noise, JPEG, low light), 15% negatives; `--preview N --out DIR` writes PNG grids
 - [ ] T006 Model `detector/model.py` (MobileNetV2-style encoder ×0.5, ReLU6, 3-stage decoder with skips, mask 128×128 logits + presence logit) and `detector/train.py` (MPS, AdamW, cosine, BCE+Dice+presence BCE, seeded, checkpoints, validation on a fixed seed set with IoU and corner error after quad fit)
 - [ ] T007 `detector/export.py` (ONNX opset 13, static 1×3×256×256, output names `mask`, `presence`) and `detector/check.py` (load with `cv2.dnn.readNetFromONNX`, compare to PyTorch, max abs diff < 1e-3; print SHA-256); `MODEL_CARD.md` with data recipe, seeds, metrics, SHA-256, licence (project-owned)
-- [ ] T008 Train v1, export to `composeApp/src/commonMain/composeResources/files/detector.onnx` (≤ 3 MB), update MODEL_CARD.md
+- [ ] T008 Train v1, export to `composeApp/src/commonMain/composeResources/files/detector.ppdm` (≤ 3 MB), update MODEL_CARD.md
 
 **Checkpoint**: an ONNX model that loads in OpenCV and reaches ≥ 0.9 mean IoU on the synthetic validation set.
 
@@ -47,7 +47,7 @@
 - [ ] T011 [US1] Native `src/model.hpp/.cpp`: load from memory, input checks, letterbox to 256, forward (mutex), sigmoid, mask → largest component → quad (existing `quadFromContour`/`maxAreaQuad`), scale back; presence; IoU mask/quad; confidence rules from data-model.md
 - [ ] T012 [US1] Native `detect.cpp`/`engine.cpp`: model first in `pp_detect` and `pp_analyze` (full photo: model quad at 256 → working resolution → edge snapping), fallback rules (presence < 0.2 → NotFound; presence ≥ 0.2 without quad → classic), `keep_orientation`, `pp_detector`/`presence` in info structs, API version + 1; `clang-format`; scansuite green
 - [ ] T013 [US1] Bridges: JNI (`plainpaper_jni.cpp`, `JniScanBridge`, Android/JVM bridges), cinterop (`CinteropNativeBridge`), `NativeBridge` + fakes in `:core:testing`: `loadDetector(bytes)`, `keepOrientation`, `detector`/`presence` fields
-- [ ] T014 [US1] `:core:scanengine` commonMain: `DetectorModelSource`, `ScanEngine.loadDetector`, `AnalyzeOptions.keepOrientation`, `DetectorKind` on results; `:composeApp`: `ComposeResourceDetectorModelSource` (`Res.readBytes("files/detector.onnx")`), Koin binding, load at app start off the main thread
+- [ ] T014 [US1] `:core:scanengine` commonMain: `DetectorModelSource`, `ScanEngine.loadDetector`, `AnalyzeOptions.keepOrientation`, `DetectorKind` on results; `:composeApp`: `ComposeResourceDetectorModelSource` (`Res.readBytes("files/detector.ppdm")`), Koin binding, load at app start off the main thread
 - [ ] T015 [US1] Scansuite: load the model from the repo path; `--cluttered` report; `--photos` prints detector kind and presence
 - [ ] T016 [US1] `CameraViewModel` hint: presence < 0.2 for 3 s → MoveCloser (test first in `CameraViewModelTest`)
 
