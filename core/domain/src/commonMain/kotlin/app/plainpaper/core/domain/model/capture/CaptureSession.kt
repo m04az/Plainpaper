@@ -34,6 +34,10 @@ public data class CaptureSession(
     /** Appends [page] with the next position. */
     public fun withPage(page: CapturedPage): CaptureSession = copy(pages = pages + page.copy(position = pages.size))
 
+    /** Drops the page with [id] and closes the gap so `position` equals the list index. */
+    public fun withoutPage(id: String): CaptureSession =
+        copy(pages = pages.filter { it.id != id }.mapIndexed { index, page -> page.copy(position = index) })
+
     /** Replaces the page with the same id; unknown ids are ignored. */
     public fun withUpdatedPage(page: CapturedPage): CaptureSession =
         copy(pages = pages.map { if (it.id == page.id) page.copy(position = it.position) else it })

@@ -43,6 +43,9 @@ internal data class PageIndex(
     val pageSize: String = "A4",
     val rotationApplied: Int = 0,
     val style: String? = null,
+    val rotation: Int = 0,
+    val mirrored: Boolean = false,
+    val revision: Int = 0,
 )
 
 @Serializable
@@ -96,6 +99,9 @@ private fun CapturedPage.toIndex(directory: Path): PageIndex =
         pageSize = pageSize.name,
         rotationApplied = rotationApplied,
         style = style.name,
+        rotation = rotation,
+        mirrored = mirrored,
+        revision = revision,
     )
 
 private fun PageIndex.toPage(directory: Path): CapturedPage =
@@ -116,6 +122,9 @@ private fun PageIndex.toPage(directory: Path): CapturedPage =
         confidence = confidence?.let { name -> Confidence.entries.firstOrNull { it.name == name } },
         rotationApplied = rotationApplied,
         style = enumOrDefault(style, CapturedPage.DEFAULT_STYLE),
+        rotation = rotation,
+        mirrored = mirrored,
+        revision = revision,
     )
 
 private const val QUAD_VALUES = 8

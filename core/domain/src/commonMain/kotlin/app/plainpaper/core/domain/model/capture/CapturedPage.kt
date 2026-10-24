@@ -21,6 +21,12 @@ public data class CapturedPage(
     val rotationApplied: Int = 0,
     /** The look the page is rendered in (spec 003 FR-024); new pages use the enhanced look. */
     val style: OutputStyle = DEFAULT_STYLE,
+    /** User rotation, clockwise, 0/90/180/270 (spec 003 FR-029). Applied after the mirror. */
+    val rotation: Int = 0,
+    /** Mirrored left to right (spec 003 FR-029). */
+    val mirrored: Boolean = false,
+    /** Bumped on every rotate / flip so a re-render writes new file names. */
+    val revision: Int = 0,
 ) {
     public companion object {
         public val DEFAULT_STYLE: OutputStyle = OutputStyle.ColorDocument

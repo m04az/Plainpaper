@@ -74,8 +74,8 @@ class PageProcessorTest {
             advanceUntilIdle()
             val result = stored(page.id)
             assertEquals(PageState.Ready, result.state)
-            assertEquals("/fake/capture/$sessionId/page-000-colordocument.jpg", result.pagePath)
-            assertEquals("/fake/capture/$sessionId/thumb-000-colordocument.jpg", result.thumbnailPath)
+            assertEquals("/fake/capture/$sessionId/page-p1-r0-colordocument.jpg", result.pagePath)
+            assertEquals("/fake/capture/$sessionId/thumb-p1-r0-colordocument.jpg", result.thumbnailPath)
             assertEquals(OutputStyle.ColorDocument, result.style)
             assertEquals(
                 OutputStyle.ColorDocument,
@@ -267,7 +267,7 @@ class PageProcessorTest {
             advanceUntilIdle()
             val restyled = stored(page.id)
             assertEquals(OutputStyle.Scan, restyled.style)
-            assertEquals("/fake/capture/$sessionId/page-000-scan.jpg", restyled.pagePath)
+            assertEquals("/fake/capture/$sessionId/page-p1-r0-scan.jpg", restyled.pagePath)
             assertEquals(PageState.NeedsAttention(AttentionReason.LowConfidence), restyled.state, "first verdict kept")
             assertEquals(first.corners, bridge.calls.last().userCorners, "same crop")
             assertEquals(
@@ -293,7 +293,7 @@ class PageProcessorTest {
             processor.restyle(sessionId, listOf(page.id), OutputStyle.ColorDocument)
             advanceUntilIdle()
             assertEquals(analyses, bridge.calls.size, "no new engine run")
-            assertEquals("/fake/capture/$sessionId/page-000-colordocument.jpg", stored(page.id).pagePath)
+            assertEquals("/fake/capture/$sessionId/page-p1-r0-colordocument.jpg", stored(page.id).pagePath)
             assertEquals(OutputStyle.ColorDocument, stored(page.id).style)
         }
 
@@ -313,5 +313,48 @@ class PageProcessorTest {
                 listOf(stored(a.id).style, stored(b.id).style),
             )
             assertEquals(PageState.Ready, stored(b.id).state)
+        }
+
+    @Test
+    fun rotateAndFlipComposeAndReRenderIntoNewFiles() =
+        runTest {
+            val processor = processor()
+            val (sessionId, page) = page()
+            processor.enqueue(sessionId, page.id)
+            advanceUntilIdle()
+            val first = stored(page.id)
+            processor.transform(sessionId, page.id, rotateClockwise = true)
+            advanceUntilIdle()
+            val rotated = stored(page.id)
+            assertEquals(Triple(90, false, 1), Triple(rotated.rotation, rotated.mirrored, rotated.revision))
+            assertEquals("/fake/capture/$sessionId/page-p1-r1-colordocument.jpg", rotated.pagePath)
+            assertEquals(90 to false, files.transforms[rotated.pagePath])
+            assertEquals(first.corners, bridge.calls.last().userCorners, "same crop")
+            assertEquals(PageState.Ready, rotated.state)
+
+            // Mirroring what is on screen: mirrored toggles and the turn is reversed (90 -> 270).
+            processor.transform(sessionId, page.id, flip = true)
+            advanceUntilIdle()
+            val flipped = stored(page.id)
+            assertEquals(Triple(270, true, 2), Triple(flipped.rotation, flipped.mirrored, flipped.revision))
+            assertEquals(270 to true, files.transforms[flipped.pagePath])
+
+            processor.transform(sessionId, page.id, rotateClockwise = true)
+            advanceUntilIdle()
+            assertEquals(Triple(0, true, 3), stored(page.id).let { Triple(it.rotation, it.mirrored, it.revision) })
+            processor.transform(sessionId, page.id, flip = true)
+            advanceUntilIdle()
+            assertEquals(Triple(0, false, 4), stored(page.id).let { Triple(it.rotation, it.mirrored, it.revision) })
+        }
+
+    @Test
+    fun transformIgnoresPagesThatAreStillProcessing() =
+        runTest {
+            val processor = processor()
+            val (sessionId, page) = page()
+            processor.transform(sessionId, page.id, rotateClockwise = true)
+            advanceUntilIdle()
+            assertEquals(0, stored(page.id).revision)
+            assertEquals(PageState.Pending, stored(page.id).state)
         }
 }
