@@ -53,10 +53,16 @@ class SuiteRunner(
     private val capability: DeviceCapability = HostCapabilityProvider().current(),
     private val styles: Set<OutputStyle> = setOf(OutputStyle.Scan),
     private val legibility: LegibilityScorer? = null,
+    useModel: Boolean = true,
 ) {
     private val dispatchers = HostDispatchers()
     val engine: ScanEngine = DefaultScanEngine(platformNativeBridge(), HostCapabilityProvider(), dispatchers)
     private val decoder = ImageIoPhotoDecoder(dispatchers)
+
+    /** True when the detection model file exists and loaded into this runner's engine. */
+    val modelLoaded: Boolean =
+        useModel &&
+            DetectorModelFile.source()?.let { source -> runBlocking { engine.loadDetector(source) } } == true
 
     fun run(sources: List<ManifestSource>): QualityReport {
         val rows = mutableListOf<MetricRow>()

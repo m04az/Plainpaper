@@ -24,8 +24,10 @@ object AdHoc {
         photosDir: File,
         outputDir: File,
         capability: DeviceCapability,
+        useModel: Boolean = true,
     ) = runBlocking {
-        val runner = SuiteRunner(outputDir, capability)
+        val runner = SuiteRunner(outputDir, capability, useModel = useModel)
+        println("detection model: ${if (runner.modelLoaded) "loaded" else "not loaded (classic detector)"}")
         val decoder = ImageIoPhotoDecoder(HostDispatchers())
         outputDir.mkdirs()
         val photos =
@@ -51,7 +53,9 @@ object AdHoc {
                         val corners = analysis.corners.points.joinToString { "(${it.x.toInt()},${it.y.toInt()})" }
                         println(
                             "${file.name}: ${analysis.confidence} ${analysis.cornerSource} " +
-                                "rot=${analysis.rotationApplied} aspect=${"%.3f".format(analysis.detectedAspect)} " +
+                                "detector=${analysis.detector} presence=${"%.2f".format(
+                                    analysis.presence,
+                                )} rot=${analysis.rotationApplied} aspect=${"%.3f".format(analysis.detectedAspect)} " +
                                 "outcome=${analysis.outcome} ${ms}ms corners=$corners",
                         )
                         for (style in OutputStyle.entries) {
