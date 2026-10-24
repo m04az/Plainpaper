@@ -63,6 +63,13 @@ creates it): outline still updates (≥ 6/s), steady window 1 s, pages process o
 All six required checks green; the `scan-quality` job now includes the detect test;
 `build-android` assembles the device-test APKs; `build-ios` compiles the AVFoundation code.
 
+## 5a. Verified 2026-10-24
+
+Sections 1–3 ran on the Pixel 10a AVD (API 37, virtual-scene camera); results and the SC
+table are in `results.md`. The emulator ignores `-virtualscene-poster`, so step 2
+(auto-capture on a steady page) is covered by `AutoCaptureGateTest` until the owner runs it
+on a phone. Section 4 (low-end AVD) and the iPhone checks are pending the owner.
+
 ## 6. Done criteria
 
 Spec SC-001…SC-010 recorded in `specs/003-capture-import/results.md` with the device and
