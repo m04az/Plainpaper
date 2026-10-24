@@ -162,6 +162,13 @@ PP_EXPORT void pp_engine_destroy(pp_engine* engine);
 PP_EXPORT pp_status pp_engine_load_detector(pp_engine* engine, const uint8_t* bytes, size_t length);
 
 /*
+ * Enables (1, default) or disables (0) use of the loaded model by pp_detect / pp_analyze; the
+ * classic detector is used while disabled. Used by the engine's performance policy on slow
+ * devices (specs/004 data-model.md "Detector policy"). Safe between calls.
+ */
+PP_EXPORT void pp_engine_set_detector_enabled(pp_engine* engine, int32_t enabled);
+
+/*
  * Diagnostics for the parity test: runs the loaded model on a planar RGB input (3 x 256 x 256
  * floats in 0..1) and writes the mask probabilities (128 x 128) and the presence probability.
  */

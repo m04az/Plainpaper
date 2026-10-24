@@ -9,6 +9,7 @@ import app.plainpaper.core.scanengine.ScanOutput
 import app.plainpaper.core.scanengine.ScanPhoto
 import app.plainpaper.core.scanengine.model.Confidence
 import app.plainpaper.core.scanengine.model.CornerSource
+import app.plainpaper.core.scanengine.model.DetectorKind
 import app.plainpaper.core.scanengine.model.FitMode
 import app.plainpaper.core.scanengine.model.OrientationConfidence
 import app.plainpaper.core.scanengine.model.Quad
@@ -43,6 +44,8 @@ public data class NativeAnalysisInfo(
     val specularHighlight: Boolean,
     val steps: List<StepTiming>,
     val peakBytes: Long,
+    val detector: DetectorKind = DetectorKind.Classic,
+    val presence: Float = 0f,
 )
 
 public sealed interface NativeAnalyzeResult {
@@ -78,9 +81,11 @@ public data class NativeDetectResult(
     val meanLuma: Float,
     val micros: Long,
     val detail: String = "",
+    val detector: DetectorKind = DetectorKind.Classic,
+    val presence: Float = 0f,
 ) {
     public companion object {
-        /** Unpacks the 12 doubles written by the JNI/cinterop transport. */
+        /** Unpacks the 14 doubles written by the JNI/cinterop transport. */
         public fun decode(
             status: NativeStatus,
             values: DoubleArray,
@@ -94,9 +99,11 @@ public data class NativeDetectResult(
                 fillFraction = values[10].toFloat(),
                 micros = values[11].toLong(),
                 detail = detail,
+                detector = DetectorKind.entries[values[12].toInt().coerceIn(0, 1)],
+                presence = values[13].toFloat(),
             )
 
-        public const val VALUES: Int = 12
+        public const val VALUES: Int = 14
     }
 }
 
@@ -128,11 +135,13 @@ public interface NativeBridge {
 
     public fun createCancelFlag(): NativeCancelFlag
 
+    @Suppress("LongParameterList") // mirrors pp_analyze_options
     public fun analyze(
         photo: ScanPhoto,
         capability: DeviceCapability,
         workingLongEdge: Int,
         allowFlatten: Boolean,
+        keepOrientation: Boolean,
         userCorners: Quad?,
         cancel: NativeCancelFlag,
     ): NativeAnalyzeResult
@@ -142,6 +151,15 @@ public interface NativeBridge {
         frame: PreviewFrame,
         cancel: NativeCancelFlag,
     ): NativeDetectResult
+
+    /**
+     * Loads the detection model (.ppdm bytes, copied natively). False when the bytes are not a
+     * usable model; the classic detector then stays in use.
+     */
+    public fun loadDetector(bytes: ByteArray): Boolean
+
+    /** Switches use of the loaded model on or off (performance policy); the classic detector runs while off. */
+    public fun setDetectorEnabled(enabled: Boolean)
 
     public companion object {
         /** Must equal `PP_API_VERSION` in plainpaper_scan.h. */

@@ -3,6 +3,7 @@
 #include "plainpaper_scan.h"
 #include "timing.hpp"
 
+#include <atomic>
 #include <memory>
 #include <opencv2/core.hpp>
 
@@ -29,4 +30,6 @@ struct pp_engine {
     int apiVersion = PP_API_VERSION;
     /** Document-detection model; null or not loaded means the classic detector (specs/004). */
     std::shared_ptr<pp::DetectorModel> detector;
+    /** Cleared by the performance policy: the loaded model stays but is not used. */
+    std::atomic<bool> detectorEnabled{true};
 };

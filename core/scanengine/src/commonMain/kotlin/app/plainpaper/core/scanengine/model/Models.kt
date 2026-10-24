@@ -21,9 +21,12 @@ public data class AnalyzeOptions(
     val workingLongEdge: Int? = null,
     /** Allows curl flattening on Full capability. */
     val allowFlatten: Boolean = true,
-    /** Corners used in the given order, no automatic rotation; engine support lands with T012. */
+    /** Corners used in the given order: no automatic rotation, deskew or flattening (Quick scan pages). */
     val keepOrientation: Boolean = false,
 )
+
+/** Which detector produced the corners (specs/004). */
+public enum class DetectorKind { Classic, Model }
 
 public enum class CornerSource { Detected, User, FullFrame }
 

@@ -51,14 +51,15 @@ void setStatus(JNIEnv* env, jintArray outStatus, pp_status status) {
 
 pp_status analyzePixels(JNIEnv* env, jlong engine, const uint8_t* pixels, jint width, jint height,
                         jint strideBytes, jint capability, jint workingLongEdge,
-                        jboolean allowFlatten, jfloatArray userCorners, jlong cancel,
-                        pp_session** outSession) {
+                        jboolean allowFlatten, jboolean keepOrientation, jfloatArray userCorners,
+                        jlong cancel, pp_session** outSession) {
     pp_image_rgba photo{pixels, width, height, strideBytes};
     pp_quad quad{};
     pp_analyze_options options{};
     options.capability = capability == 0 ? PP_CAP_FULL : PP_CAP_SIMPLIFIED;
     options.working_long_edge = workingLongEdge;
     options.allow_flatten = allowFlatten == JNI_TRUE ? 1 : 0;
+    options.keep_orientation = keepOrientation == JNI_TRUE ? 1 : 0;
     options.user_corners = nullptr;
     if (userCorners != nullptr && env->GetArrayLength(userCorners) >= 8) {
         jfloat values[8];
@@ -72,7 +73,8 @@ pp_status analyzePixels(JNIEnv* env, jlong engine, const uint8_t* pixels, jint w
                       outSession);
 }
 
-constexpr jsize kDetectValues = 12; // 8 corner coordinates, confidence, mean luma, fill, micros
+// 8 corner coordinates, confidence, mean luma, fill, micros, detector, presence
+constexpr jsize kDetectValues = 14;
 
 pp_status detectPixels(JNIEnv* env, jlong engine, const uint8_t* pixels, jint width, jint height,
                        jint strideBytes, jint flags, jlong cancel, jdoubleArray out) {
@@ -90,6 +92,8 @@ pp_status detectPixels(JNIEnv* env, jlong engine, const uint8_t* pixels, jint wi
         packed[9] = info.mean_luma;
         packed[10] = info.fill_fraction;
         packed[11] = static_cast<jdouble>(info.micros);
+        packed[12] = info.detector;
+        packed[13] = info.presence;
         const jsize count = std::min<jsize>(env->GetArrayLength(out), kDetectValues);
         env->SetDoubleArrayRegion(out, 0, count, packed);
     }
@@ -127,8 +131,8 @@ void nativeCancelFlagDestroy(JNIEnv*, jclass, jlong handle) {
 
 jlong nativeAnalyzeBytes(JNIEnv* env, jclass, jlong engine, jbyteArray pixels, jint width,
                          jint height, jint strideBytes, jint capability, jint workingLongEdge,
-                         jboolean allowFlatten, jfloatArray userCorners, jlong cancel,
-                         jintArray outStatus) {
+                         jboolean allowFlatten, jboolean keepOrientation, jfloatArray userCorners,
+                         jlong cancel, jintArray outStatus) {
     if (pixels == nullptr) {
         setStatus(env, outStatus, PP_ERR_INVALID_INPUT);
         return 0;
@@ -146,7 +150,7 @@ jlong nativeAnalyzeBytes(JNIEnv* env, jclass, jlong engine, jbyteArray pixels, j
     pp_session* session = nullptr;
     pp_status status = analyzePixels(env, engine, reinterpret_cast<const uint8_t*>(data), width,
                                      height, strideBytes, capability, workingLongEdge, allowFlatten,
-                                     userCorners, cancel, &session);
+                                     keepOrientation, userCorners, cancel, &session);
     env->ReleaseByteArrayElements(pixels, data, JNI_ABORT);
     setStatus(env, outStatus, status);
     return toHandle(session);
@@ -154,8 +158,8 @@ jlong nativeAnalyzeBytes(JNIEnv* env, jclass, jlong engine, jbyteArray pixels, j
 
 #if defined(PP_ANDROID)
 jlong nativeAnalyzeBitmap(JNIEnv* env, jclass, jlong engine, jobject bitmap, jint capability,
-                          jint workingLongEdge, jboolean allowFlatten, jfloatArray userCorners,
-                          jlong cancel, jintArray outStatus) {
+                          jint workingLongEdge, jboolean allowFlatten, jboolean keepOrientation,
+                          jfloatArray userCorners, jlong cancel, jintArray outStatus) {
     AndroidBitmapInfo info{};
     if (bitmap == nullptr ||
         AndroidBitmap_getInfo(env, bitmap, &info) != ANDROID_BITMAP_RESULT_SUCCESS ||
@@ -172,7 +176,7 @@ jlong nativeAnalyzeBitmap(JNIEnv* env, jclass, jlong engine, jobject bitmap, jin
     pp_status status = analyzePixels(env, engine, static_cast<const uint8_t*>(pixels),
                                      static_cast<jint>(info.width), static_cast<jint>(info.height),
                                      static_cast<jint>(info.stride), capability, workingLongEdge,
-                                     allowFlatten, userCorners, cancel, &session);
+                                     allowFlatten, keepOrientation, userCorners, cancel, &session);
     AndroidBitmap_unlockPixels(env, bitmap);
     setStatus(env, outStatus, status);
     return toHandle(session);
@@ -217,9 +221,9 @@ void nativeSessionInfo(JNIEnv* env, jclass, jlong session, jlongArray longs, jdo
     pp_analysis_info info{};
     pp_session_info(handle, &info);
     // longs: source, confidence, rotation, orientation confidence, flags, step count, peak bytes,
-    //        then (step, status, micros) x PP_STEP_COUNT
+    //        detector, then (step, status, micros) x PP_STEP_COUNT
     std::vector<jlong> packedLongs;
-    packedLongs.reserve(7 + 3 * PP_STEP_COUNT);
+    packedLongs.reserve(8 + 3 * PP_STEP_COUNT);
     packedLongs.push_back(info.corner_source);
     packedLongs.push_back(info.confidence);
     packedLongs.push_back(info.rotation_applied);
@@ -227,6 +231,7 @@ void nativeSessionInfo(JNIEnv* env, jclass, jlong session, jlongArray longs, jdo
     packedLongs.push_back(static_cast<jlong>(info.flags));
     packedLongs.push_back(info.step_count);
     packedLongs.push_back(info.peak_bytes);
+    packedLongs.push_back(info.detector);
     for (int i = 0; i < PP_STEP_COUNT; ++i) {
         packedLongs.push_back(info.steps[i].step);
         packedLongs.push_back(info.steps[i].status);
@@ -235,14 +240,15 @@ void nativeSessionInfo(JNIEnv* env, jclass, jlong session, jlongArray longs, jdo
     const jsize longCount =
         std::min<jsize>(env->GetArrayLength(longs), static_cast<jsize>(packedLongs.size()));
     env->SetLongArrayRegion(longs, 0, longCount, packedLongs.data());
-    // doubles: 8 corner coordinates (TL, TR, BR, BL), detected aspect
-    jdouble packedDoubles[9];
+    // doubles: 8 corner coordinates (TL, TR, BR, BL), detected aspect, presence
+    jdouble packedDoubles[10];
     for (int i = 0; i < 4; ++i) {
         packedDoubles[i * 2] = info.corners.c[i].x;
         packedDoubles[i * 2 + 1] = info.corners.c[i].y;
     }
     packedDoubles[8] = info.detected_aspect;
-    const jsize doubleCount = std::min<jsize>(env->GetArrayLength(doubles), 9);
+    packedDoubles[9] = info.presence;
+    const jsize doubleCount = std::min<jsize>(env->GetArrayLength(doubles), 10);
     env->SetDoubleArrayRegion(doubles, 0, doubleCount, packedDoubles);
 }
 
@@ -317,6 +323,49 @@ jint nativeRenderToBitmap(JNIEnv* env, jclass, jlong session, jint style, jint f
 }
 #endif
 
+jint nativeLoadDetector(JNIEnv* env, jclass, jlong engine, jbyteArray bytes) {
+    if (bytes == nullptr) {
+        return PP_ERR_INVALID_INPUT;
+    }
+    const jsize length = env->GetArrayLength(bytes);
+    jbyte* data = env->GetByteArrayElements(bytes, nullptr);
+    if (data == nullptr) {
+        return PP_ERR_OUT_OF_MEMORY;
+    }
+    const pp_status status = pp_engine_load_detector(fromHandle<pp_engine>(engine),
+                                                     reinterpret_cast<const uint8_t*>(data),
+                                                     static_cast<size_t>(length));
+    env->ReleaseByteArrayElements(bytes, data, JNI_ABORT);
+    return status;
+}
+
+void nativeSetDetectorEnabled(JNIEnv*, jclass, jlong engine, jboolean enabled) {
+    pp_engine_set_detector_enabled(fromHandle<pp_engine>(engine), enabled == JNI_TRUE ? 1 : 0);
+}
+
+/** Diagnostics: input 3x256x256 floats, maskOut 128x128, presenceOut 1. */
+jint nativeDetectorRun(JNIEnv* env, jclass, jlong engine, jfloatArray input, jfloatArray maskOut,
+                       jfloatArray presenceOut) {
+    constexpr jsize kInput = 3 * 256 * 256;
+    constexpr jsize kMask = 128 * 128;
+    if (input == nullptr || maskOut == nullptr || presenceOut == nullptr ||
+        env->GetArrayLength(input) < kInput || env->GetArrayLength(maskOut) < kMask ||
+        env->GetArrayLength(presenceOut) < 1) {
+        return PP_ERR_INVALID_INPUT;
+    }
+    std::vector<float> in(kInput);
+    std::vector<float> mask(kMask);
+    float presence = 0;
+    env->GetFloatArrayRegion(input, 0, kInput, in.data());
+    const pp_status status =
+        pp_detector_run(fromHandle<pp_engine>(engine), in.data(), mask.data(), &presence);
+    if (status == PP_OK) {
+        env->SetFloatArrayRegion(maskOut, 0, kMask, mask.data());
+        env->SetFloatArrayRegion(presenceOut, 0, 1, &presence);
+    }
+    return status;
+}
+
 void nativeSessionDestroy(JNIEnv*, jclass, jlong session) {
     pp_session_destroy(fromHandle<pp_session>(session));
 }
@@ -344,9 +393,9 @@ const JNINativeMethod kMethods[] = {
     method("nativeCancelFlagCreate", "()J", reinterpret_cast<void*>(nativeCancelFlagCreate)),
     method("nativeCancelFlagSet", "(J)V", reinterpret_cast<void*>(nativeCancelFlagSet)),
     method("nativeCancelFlagDestroy", "(J)V", reinterpret_cast<void*>(nativeCancelFlagDestroy)),
-    method("nativeAnalyzeBytes", "(J[BIIIIIZ[FJ[I)J", reinterpret_cast<void*>(nativeAnalyzeBytes)),
+    method("nativeAnalyzeBytes", "(J[BIIIIIZZ[FJ[I)J", reinterpret_cast<void*>(nativeAnalyzeBytes)),
 #if defined(PP_ANDROID)
-    method("nativeAnalyzeBitmap", "(JLjava/lang/Object;IIZ[FJ[I)J",
+    method("nativeAnalyzeBitmap", "(JLjava/lang/Object;IIZZ[FJ[I)J",
            reinterpret_cast<void*>(nativeAnalyzeBitmap)),
     method("nativeRenderToBitmap", "(JIIIIJLjava/lang/Object;[J)I",
            reinterpret_cast<void*>(nativeRenderToBitmap)),
@@ -356,6 +405,9 @@ const JNINativeMethod kMethods[] = {
            reinterpret_cast<void*>(nativeDetectBuffer)),
     method("nativeSessionInfo", "(J[J[D)V", reinterpret_cast<void*>(nativeSessionInfo)),
     method("nativeRenderToBytes", "(JIIIIJ[J)[B", reinterpret_cast<void*>(nativeRenderToBytes)),
+    method("nativeLoadDetector", "(J[B)I", reinterpret_cast<void*>(nativeLoadDetector)),
+    method("nativeSetDetectorEnabled", "(JZ)V", reinterpret_cast<void*>(nativeSetDetectorEnabled)),
+    method("nativeDetectorRun", "(J[F[F[F)I", reinterpret_cast<void*>(nativeDetectorRun)),
     method("nativeSessionDestroy", "(J)V", reinterpret_cast<void*>(nativeSessionDestroy)),
     method("nativeLastError", "()Ljava/lang/String;", reinterpret_cast<void*>(nativeLastError)),
 #if defined(PP_HOST)

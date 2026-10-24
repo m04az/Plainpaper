@@ -2,6 +2,7 @@ package app.plainpaper.core.testing
 
 import app.plainpaper.core.domain.model.DeviceCapability
 import app.plainpaper.core.scanengine.AnalyzeResult
+import app.plainpaper.core.scanengine.DetectorModelSource
 import app.plainpaper.core.scanengine.PreviewFrame
 import app.plainpaper.core.scanengine.RenderResult
 import app.plainpaper.core.scanengine.ScanAnalysis
@@ -20,9 +21,16 @@ class FakeScanEngine(
     var nextAnalyzeResult: (suspend (ScanPhoto, AnalyzeOptions) -> AnalyzeResult)? = null
     var nextRenderResult: (suspend (ScanAnalysis, RenderOptions) -> RenderResult)? = null
     val detectCalls = mutableListOf<PreviewFrame>()
+    var loadDetectorResult: Boolean = false
+    var loadDetectorCalls: Int = 0
 
     /** Defaults to "no page" so camera tests only script the frames they care about. */
     var nextDetectResult: (suspend (PreviewFrame) -> DetectResult)? = null
+
+    override suspend fun loadDetector(source: DetectorModelSource): Boolean {
+        loadDetectorCalls++
+        return loadDetectorResult
+    }
 
     override suspend fun detect(frame: PreviewFrame): DetectResult {
         detectCalls += frame

@@ -153,7 +153,7 @@ pp_status runDetect(pp_engine* engine, const pp_image_rgba* frame, uint32_t flag
     ctx.options = &options;
     ctx.cancel = cancel;
     ctx.fullCapability = true;
-    ctx.detector = engine->detector.get();
+    ctx.detector = engine->detectorEnabled.load() ? engine->detector.get() : nullptr;
     prepareWorking(ctx, (flags & PP_FRAME_BGRA) != 0);
 
     cv::Mat gray;
@@ -217,7 +217,7 @@ pp_status runAnalysis(pp_engine* engine, const pp_image_rgba* photo,
     ctx.options = options;
     ctx.cancel = cancel;
     ctx.fullCapability = options->capability == PP_CAP_FULL;
-    ctx.detector = engine->detector.get();
+    ctx.detector = engine->detectorEnabled.load() ? engine->detector.get() : nullptr;
     prepareWorking(ctx);
 
     const bool tooDark = isTooDark(ctx.working);
@@ -491,6 +491,12 @@ PP_EXPORT pp_status pp_engine_load_detector(pp_engine* engine, const uint8_t* by
     }
     engine->detector = model;
     return PP_OK;
+}
+
+PP_EXPORT void pp_engine_set_detector_enabled(pp_engine* engine, int32_t enabled) {
+    if (engine != nullptr) {
+        engine->detectorEnabled.store(enabled != 0);
+    }
 }
 
 PP_EXPORT pp_status pp_detector_run(pp_engine* engine, const float* rgb_planar, float* mask_out,

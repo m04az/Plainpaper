@@ -8,6 +8,7 @@ import app.plainpaper.core.scanengine.bridge.NativeCancelFlag
 import app.plainpaper.core.scanengine.bridge.NativeDetectResult
 import app.plainpaper.core.scanengine.bridge.NativeRenderResult
 import app.plainpaper.core.scanengine.bridge.NativeStatus
+import app.plainpaper.core.scanengine.decision.DetectorPolicy
 import app.plainpaper.core.scanengine.decision.ExecutionPlan
 import app.plainpaper.core.scanengine.decision.PageFraming
 import app.plainpaper.core.scanengine.decision.RetryPolicy
@@ -18,10 +19,13 @@ import app.plainpaper.core.scanengine.model.AnalysisFlag
 import app.plainpaper.core.scanengine.model.AnalyzeOptions
 import app.plainpaper.core.scanengine.model.Confidence
 import app.plainpaper.core.scanengine.model.DetectResult
+import app.plainpaper.core.scanengine.model.DetectorKind
 import app.plainpaper.core.scanengine.model.Outcome
 import app.plainpaper.core.scanengine.model.RenderOptions
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -35,8 +39,36 @@ public class DefaultScanEngine(
     private val capabilityProvider: CapabilityProvider,
     private val dispatchers: DispatcherProvider,
 ) : ScanEngine {
+    private val policy = DetectorPolicy()
+    private val policyLock = Mutex()
+    private var modelLoaded = false
+
     override val capability: DeviceCapability
         get() = capabilityProvider.current()
+
+    override suspend fun loadDetector(source: DetectorModelSource): Boolean =
+        withContext(dispatchers.io) {
+            if (policyLock.withLock { modelLoaded }) return@withContext true
+            val bytes =
+                try {
+                    source.bytes()
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (
+                    @Suppress("TooGenericExceptionCaught") _: Exception,
+                ) {
+                    null
+                }
+            val loaded = bytes != null && bytes.isNotEmpty() && bridge.loadDetector(bytes)
+            policyLock.withLock {
+                modelLoaded = loaded
+                if (loaded) {
+                    policy.reset()
+                    bridge.setDetectorEnabled(true)
+                }
+            }
+            loaded
+        }
 
     override suspend fun analyze(
         photo: ScanPhoto,
@@ -84,6 +116,7 @@ public class DefaultScanEngine(
                     capability = plan.capability,
                     workingLongEdge = plan.workingLongEdge,
                     allowFlatten = options.allowFlatten && plan.capability == DeviceCapability.Full,
+                    keepOrientation = options.keepOrientation,
                     userCorners = options.userCorners,
                     cancel = flag,
                 )
@@ -115,6 +148,8 @@ public class DefaultScanEngine(
                         steps = info.steps,
                         peakNativeBytes = info.peakBytes,
                         outcome = if (native.status == NativeStatus.TooDark) Outcome.TooDark else Outcome.Success,
+                        detector = info.detector,
+                        presence = info.presence,
                     ),
                 )
             }
@@ -122,8 +157,25 @@ public class DefaultScanEngine(
 
     override suspend fun detect(frame: PreviewFrame): DetectResult =
         withContext(dispatchers.default) {
-            withCancelFlag { flag -> bridge.detect(frame, flag) }.toDetectResult()
+            val native = withCancelFlag { flag -> bridge.detect(frame, flag) }
+            applyDetectorPolicy(native)
+            native.toDetectResult()
         }
+
+    /**
+     * Simplified devices keep the model only when its first five preview passes have a median of at
+     * most 120 ms (data-model.md "Detector policy"); otherwise it is switched off for this engine.
+     */
+    private suspend fun applyDetectorPolicy(native: NativeDetectResult) {
+        if (native.status != NativeStatus.Ok || native.detector != DetectorKind.Model) return
+        if (capability != DeviceCapability.Simplified) return
+        policyLock.withLock {
+            if (!modelLoaded || policy.decided) return
+            if (policy.record(native.micros) == false) {
+                bridge.setDetectorEnabled(false)
+            }
+        }
+    }
 
     private fun NativeDetectResult.toDetectResult(): DetectResult =
         when (status) {
@@ -134,6 +186,8 @@ public class DefaultScanEngine(
                     fillFraction = fillFraction,
                     meanLuma = meanLuma,
                     micros = micros,
+                    detector = detector,
+                    presence = presence,
                 )
             }
 
