@@ -21,3 +21,7 @@ data object ScanPlaceholder : AppRoute
 
 @Serializable
 data object ImportPlaceholder : AppRoute
+
+/** "See Pro" destination until the Pro purchase feature exists. */
+@Serializable
+data object ProPlaceholder : AppRoute

@@ -9,6 +9,8 @@ import app.plainpaper.composeapp.resources.placeholder_folders_body
 import app.plainpaper.composeapp.resources.placeholder_folders_title
 import app.plainpaper.composeapp.resources.placeholder_import_body
 import app.plainpaper.composeapp.resources.placeholder_import_title
+import app.plainpaper.composeapp.resources.placeholder_pro_body
+import app.plainpaper.composeapp.resources.placeholder_pro_title
 import app.plainpaper.composeapp.resources.placeholder_scan_body
 import app.plainpaper.composeapp.resources.placeholder_scan_title
 import app.plainpaper.feature.home.HomeRoute
@@ -46,6 +48,13 @@ fun AppNavHost(navController: NavHostController) {
             PlaceholderScreen(
                 title = stringResource(Res.string.placeholder_import_title),
                 body = stringResource(Res.string.placeholder_import_body),
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable<ProPlaceholder> {
+            PlaceholderScreen(
+                title = stringResource(Res.string.placeholder_pro_title),
+                body = stringResource(Res.string.placeholder_pro_body),
                 onBack = { navController.popBackStack() },
             )
         }

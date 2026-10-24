@@ -12,4 +12,6 @@
     <string name="placeholder_import_body">Importing photos from your gallery is coming soon.</string>
     <string name="placeholder_folders_title">Folders</string>
     <string name="placeholder_folders_body">Folders will arrive together with the document library.</string>
+    <string name="placeholder_pro_title">Plainpaper Pro</string>
+    <string name="placeholder_pro_body">A single one-time purchase that adds text recognition, unlimited batch import, password-protected PDFs and app lock. Coming in a later update.</string>
 </resources>

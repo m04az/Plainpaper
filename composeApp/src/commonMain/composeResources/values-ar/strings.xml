@@ -12,4 +12,6 @@
     <string name="placeholder_import_body">استيراد الصور من المعرض قادم قريبًا.</string>
     <string name="placeholder_folders_title">المجلدات</string>
     <string name="placeholder_folders_body">ستتوفر المجلدات مع مكتبة المستندات.</string>
+    <string name="placeholder_pro_title">Plainpaper Pro</string>
+    <string name="placeholder_pro_body">شراء واحد لمرة واحدة يضيف التعرف على النصوص، والاستيراد الجماعي غير المحدود، وملفات PDF محمية بكلمة مرور، وقفل التطبيق. قادم في تحديث لاحق.</string>
 </resources>
