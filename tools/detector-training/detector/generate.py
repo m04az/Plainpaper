@@ -365,6 +365,78 @@ def add_hand(rng, img, quad):
     return img * (1 - layer[..., None]) + (color * shade) * layer[..., None]
 
 
+def organic_mask(rng, h, w, centre, size) -> np.ndarray:
+    """A soft, irregular region (cloth fold, knee, bag, laptop) around `centre`."""
+    m = np.zeros((h, w), np.float32)
+    for _ in range(int(rng.integers(2, 6))):
+        c = centre + rng.normal(0, size * 0.35, 2)
+        axes = (int(size * rng.uniform(0.3, 0.8)), int(size * rng.uniform(0.2, 0.6)))
+        cv2.ellipse(m, (int(c[0]), int(c[1])), axes, float(rng.uniform(0, 180)), 0, 360, 1.0, -1)
+    if rng.random() < 0.3:  # straight-edged object (laptop, box, book)
+        r = cv2.boxPoints(((float(centre[0]), float(centre[1])), (size * rng.uniform(0.8, 1.6), size * rng.uniform(0.5, 1.2)), float(rng.uniform(0, 90))))
+        cv2.fillPoly(m, [r.astype(np.int32)], 1.0)
+    noise = smooth_noise(rng, h, w, max(8.0, size / 6))
+    m = np.clip(m * (0.75 + 0.5 * noise) - 0.25, 0, 1) * 1.6
+    return cv2.GaussianBlur(np.clip(m, 0, 1), (0, 0), rng.uniform(1.5, 6))
+
+
+def object_texture(rng, h, w) -> np.ndarray:
+    kind = rng.integers(0, 4)
+    if kind == 0:
+        return bg_fabric(rng, h, w)
+    if kind == 1:  # skin (knee, leg, arm)
+        return np.array(SKIN[int(rng.integers(len(SKIN)))], np.float32) * (0.7 + 0.4 * smooth_noise(rng, h, w, 60)[..., None])
+    if kind == 2:  # dark plastic / laptop / phone
+        return np.array(rand_color(rng, 10, 70), np.float32) * (0.8 + 0.4 * smooth_noise(rng, h, w, 120)[..., None])
+    return bg_wood(rng, h, w) if rng.random() < 0.5 else bg_tiles(rng, h, w)
+
+
+def add_object(rng, img, quad):
+    """A large object next to or under the document (the outline must not spill onto it)."""
+    h, w = img.shape[:2]
+    if quad is not None and rng.random() < 0.7:
+        centre = quad.mean(0) + rng.normal(0, 0.35, 2) * np.array([w, h]) * 0.5
+    else:
+        centre = rng.uniform([0, 0], [w, h])
+    m = organic_mask(rng, h, w, centre, rng.uniform(0.25, 0.7) * min(h, w))
+    tex = object_texture(rng, h, w)
+    shade = 1 - 0.3 * cv2.GaussianBlur(m, (0, 0), 12)[..., None]  # contact shadow
+    return img * shade * (1 - m[..., None]) + tex * m[..., None]
+
+
+def add_arm(rng, img, quad):
+    """A hand holding the document from one side, with the forearm reaching the frame edge."""
+    h, w = img.shape[:2]
+    if quad is None:
+        return add_hand(rng, img, None)
+    i = int(rng.integers(0, 4))
+    grip = quad[i] + (quad[(i + 1) % 4] - quad[i]) * rng.uniform(0.2, 0.8)
+    centre = quad.mean(0)
+    out = grip - centre
+    out /= np.linalg.norm(out) + 1e-6
+    # arm runs from the grip to the frame edge in the outward direction
+    t = 0.0
+    end = grip.copy()
+    while 0 <= end[0] < w and 0 <= end[1] < h and t < 3 * max(h, w):
+        t += 4
+        end = grip + out * t
+    width = rng.uniform(0.12, 0.25) * min(h, w)
+    layer = np.zeros((h, w), np.float32)
+    cv2.line(layer, (int(grip[0]), int(grip[1])), (int(end[0]), int(end[1])), 1.0, int(width))
+    perp = np.array([-out[1], out[0]])
+    thumb = grip - out * width * 0.6 + perp * width * 0.3
+    cv2.line(layer, (int(grip[0]), int(grip[1])), (int(thumb[0]), int(thumb[1])), 1.0, int(width * 0.35))
+    layer = cv2.GaussianBlur(layer, (0, 0), 2)
+    color = np.array(SKIN[int(rng.integers(len(SKIN)))], np.float32)
+    tex = color * (0.65 + 0.45 * smooth_noise(rng, h, w, 50)[..., None])
+    if rng.random() < 0.4:  # sleeve
+        sleeve = np.array(rand_color(rng, 20, 200), np.float32)
+        far = np.zeros((h, w), np.float32)
+        cv2.line(far, (int((grip + out * width * 2)[0]), int((grip + out * width * 2)[1])), (int(end[0]), int(end[1])), 1.0, int(width * 1.2))
+        tex = tex * (1 - far[..., None]) + sleeve * far[..., None]
+    return img * (1 - layer[..., None]) + tex * layer[..., None]
+
+
 def add_cable(rng, img):
     h, w = img.shape[:2]
     p = rng.uniform([-0.1, -0.1], [1.1, 1.1], (4, 2)) * [w, h]
@@ -418,10 +490,15 @@ def sample(rng: np.random.Generator) -> Sample:
     img = background(rng, fh, fw)
     mask = np.zeros((fh, fw), np.float32)
     quad = None
-    if rng.random() >= NEGATIVE_RATE:
+    present = rng.random() >= NEGATIVE_RATE
+    for _ in range(int(rng.choice([0, 1, 1, 2]))):  # objects lying under/near the document
+        img = add_object(rng, img, None)
+    if present:
         tex, radius = document(rng)
         th, tw = tex.shape[:2]
         quad = place_quad(rng, tw, th, fw, fh)
+        if rng.random() < 0.4:  # something big under the document, touching its sides
+            img = add_object(rng, img, quad)
         src = np.array([[0, 0], [tw, 0], [tw, th], [0, th]], np.float32)
         H = cv2.getPerspectiveTransform(src, quad)
         warped = cv2.warpPerspective(tex, H, (fw, fh), flags=cv2.INTER_AREA, borderMode=cv2.BORDER_CONSTANT)
@@ -437,6 +514,8 @@ def sample(rng: np.random.Generator) -> Sample:
         img = add_shadow(rng, img)
     if rng.random() < 0.25:
         img = add_glare(rng, img)
+    if rng.random() < 0.3:
+        img = add_arm(rng, img, quad)
     for _ in range(int(rng.choice([0, 0, 1, 1, 2]))):
         img = add_hand(rng, img, quad)
     for _ in range(int(rng.choice([0, 0, 0, 1, 2]))):
