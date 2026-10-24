@@ -13,6 +13,7 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.core.SurfaceRequest
+import androidx.camera.core.resolutionselector.AspectRatioStrategy
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -34,6 +35,8 @@ import java.util.concurrent.Executors
 import kotlin.coroutines.resume
 
 private const val ANALYSIS_WIDTH = 640
+private const val PREVIEW_WIDTH = 1440
+private const val PREVIEW_HEIGHT = 1080
 private const val ANALYSIS_HEIGHT = 480
 private const val CAPTURE_WIDTH = 4000
 private const val CAPTURE_HEIGHT = 3000
@@ -78,12 +81,20 @@ internal class CameraXController(
                         ?: ProcessCameraProvider.awaitInstance(context).also { this@CameraXController.provider = it }
                 registry.currentState = Lifecycle.State.RESUMED
                 val preview =
-                    Preview.Builder().build().apply {
-                        setSurfaceProvider { request ->
-                            surfaceRequests.value =
-                                request
+                    Preview
+                        .Builder()
+                        .setResolutionSelector(
+                            selector(
+                                Size(PREVIEW_WIDTH, PREVIEW_HEIGHT),
+                                ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER,
+                            ),
+                        ).build()
+                        .apply {
+                            setSurfaceProvider { request ->
+                                surfaceRequests.value =
+                                    request
+                            }
                         }
-                    }
                 val analysis =
                     ImageAnalysis
                         .Builder()
@@ -210,10 +221,19 @@ internal class CameraXController(
         }
     }
 
+    /**
+     * Every use case asks for the sensor's 4:3 aspect: the analysis frame then covers exactly the
+     * field of view of the preview, so outline corners map onto the preview without an offset.
+     */
     private fun selector(
         size: Size,
         rule: Int,
-    ): ResolutionSelector = ResolutionSelector.Builder().setResolutionStrategy(ResolutionStrategy(size, rule)).build()
+    ): ResolutionSelector =
+        ResolutionSelector
+            .Builder()
+            .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
+            .setResolutionStrategy(ResolutionStrategy(size, rule))
+            .build()
 
     private companion object {
         const val INDEX_DIGITS = 3

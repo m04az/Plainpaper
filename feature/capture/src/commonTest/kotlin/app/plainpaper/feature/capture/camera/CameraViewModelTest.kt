@@ -166,6 +166,8 @@ class CameraViewModelTest {
             val vm = runningViewModel()
             detected()
             camera.emitFrame(FakeCameraController.frame(timestampMillis = 0))
+            assertNull(vm.uiState.value.outline, "one frame is not enough to show an outline")
+            camera.emitFrame(FakeCameraController.frame(timestampMillis = 33))
             val outline = assertNotNull(vm.uiState.value.outline)
             assertEquals(4, outline.size)
             assertTrue(outline.all { it.x in -200f..600f && it.y in 0f..844f })
@@ -173,6 +175,8 @@ class CameraViewModelTest {
             assertIs<GateState.Tracking>(vm.uiState.value.gate)
             detected(null)
             camera.emitFrame(FakeCameraController.frame(timestampMillis = 100))
+            assertNotNull(vm.uiState.value.outline, "a short miss keeps the outline")
+            camera.emitFrame(FakeCameraController.frame(timestampMillis = 600))
             assertNull(vm.uiState.value.outline)
         }
 

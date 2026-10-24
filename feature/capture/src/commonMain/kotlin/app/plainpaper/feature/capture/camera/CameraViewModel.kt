@@ -77,6 +77,7 @@ class CameraViewModel(
     private val sequencer = ModeSequencer()
     private var gate: AutoCaptureGate? = null
     private var gateDiagonal = 0f
+    private var stabilizer: OutlineStabilizer? = null
     private var viewWidth = 0
     private var viewHeight = 0
     private var lastCorners: Quad? = null
@@ -248,13 +249,19 @@ class CameraViewModel(
             )
         val gateState = gate.onSample(sample)
         lastCorners = result.corners
+        // The gate decides on raw detections; the screen shows a stabilised outline (no flicker).
+        val shown = stabilizerFor(geometry.frameDiagonal).onFrame(frame.timestampMillis, result.corners)
         val outline =
-            result.corners?.takeIf { viewWidth > 0 && viewHeight > 0 }?.let { quad ->
+            shown?.takeIf { viewWidth > 0 && viewHeight > 0 }?.let { quad ->
                 geometry.frameToView(quad).points.map { Offset(it.x, it.y) }
             }
         mutableState.update { it.copy(outline = outline, gate = gateState).withHint() }
         if (gateState == GateState.Capture) capture(manual = false)
     }
+
+    private fun stabilizerFor(diagonal: Float): OutlineStabilizer =
+        stabilizer?.takeIf { gateDiagonal == diagonal }
+            ?: OutlineStabilizer(frameDiagonal = diagonal).also { stabilizer = it }
 
     private fun gateFor(diagonal: Float): AutoCaptureGate {
         val current = gate
