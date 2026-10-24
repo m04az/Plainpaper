@@ -27,8 +27,9 @@ Kotlin Multiplatform + Compose Multiplatform, Android and iOS from one codebase.
 | `:core:designsystem` | `PlainpaperTheme`, tokens, fonts, `Pp*` components, `PpIcons` |
 | `:core:scanengine` | `ScanEngine` façade (commonMain), native C++ core in `native/` (OpenCV 4.13, C API `plainpaper_scan.h`), JNI bridge (Android + host JVM), cinterop bridge (iOS), photo decoders, capability detection, `scanEngineModule` |
 | `:core:scanengine-android` | `com.android.library` that runs the NDK/CMake build of the C++ core (the KMP plugin cannot) |
-| `:core:testing` | `TestDispatcherProvider`, `FakePreferencesRepository`, `FakeScanEngine`, `FakeNativeBridge` |
-| `:feature:home`, `:feature:settings` | ViewModel + UiState + Action + Effect + screens + Koin module per feature |
+| `:core:capture` | Platform capture services behind commonMain interfaces: `CameraController` (CameraX / AVFoundation), `CameraPreviewRenderer`, `CameraPermission`, `PhotoPicker` (system pickers), `ImageFiles`, `ThumbnailLoader`, `BackgroundTask`, region; `captureModule` |
+| `:core:testing` | `TestDispatcherProvider`, `FakePreferencesRepository`, `FakeScanEngine`, `FakeNativeBridge`, `FakeCaptureSessionRepository`, `FakePhotoDecoder` |
+| `:feature:home`, `:feature:settings`, `:feature:capture` | ViewModel + UiState + Action + Effect + screens + Koin module per feature; `:feature:capture` holds the camera, import and hand-off screens, the auto-capture gate and the app-scoped `PageProcessor` |
 | `:tools:scansuite` | Host JVM quality suite: `reference-set/` + generated synthetic set, metrics, Tesseract legibility, `QualityGateTest` (CI gate) |
 
 Reserved (not yet created): `:core:database`.
@@ -44,6 +45,18 @@ Reserved (not yet created): `:core:database`.
   dumps PGM stages and prints `[pp]` logs from the native code.
 - Native formatting: `clang-format` (`scripts/check-native-format.sh`), enforced in CI.
 
+## Capture rules
+
+- Camera, picker, permission and image-file code lives only in `:core:capture` (androidMain /
+  iosMain actuals); `:feature:capture` is commonMain and host-testable with the fakes in its
+  `commonTest/fakes`. Decisions (steadiness gate, mode tags, import limit, batch progress) are
+  pure Kotlin with tests.
+- Capture sessions are files under `<app files>/capture/<sessionId>/` with a `session.json`
+  index (`FileCaptureSessionRepository`); review (Feature 4) consumes the same session.
+- Only the CAMERA permission is declared; the system photo pickers need none.
+- The emulator ignores `-virtualscene-poster`, so auto-capture on a real page is verified on a
+  phone; the gate itself is unit-tested.
+
 ## Commands
 
 ```sh
@@ -57,6 +70,8 @@ Reserved (not yet created): `:core:database`.
 ./gradlew :tools:scansuite:test                # scan-engine quality gate (host OpenCV + tesseract)
 ./gradlew :tools:scansuite:run --args="--styles scan,colordocument"   # full report in build/scansuite/
 scripts/bench-android.sh [--low-end]           # device benchmark -> reference-set/benchmarks/
+scripts/camera-smoke-android.sh [--create]     # CameraX smoke test on a device / virtual-scene emulator
+adb shell am instrument -w -e class app.plainpaper.feature.capture.CaptureSemanticsTest app.plainpaper.feature.capture.test/androidx.test.runner.AndroidJUnitRunner   # after :feature:capture:assembleAndroidDeviceTest + install
 ```
 
 ## Environment notes

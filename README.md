@@ -39,3 +39,16 @@ Arabic and Latin text without OCR, curl flattening on capable devices, illuminat
 normalisation and four output styles at 300 DPI. It runs on Android (JNI), iOS (cinterop) and
 the host JVM, where `tools/scansuite` gates every pull request against a synthetic reference
 set and the real photos in `reference-set/`. See `specs/002-scan-engine/`.
+
+## Capture & import (feature 003)
+
+Camera screen with a live page outline (`pp_detect`), steadiness-gated auto-capture, manual
+shutter, flash/Auto toggles and Document / ID card / Receipt modes; gallery import through the
+system photo picker (free users: 10 photos per import) with a progress screen; a file-backed
+capture session that survives backgrounding and process death and is handed to review.
+Camera permission is requested only on first use; import never needs one.
+
+```sh
+scripts/camera-smoke-android.sh      # CameraX plumbing on a device or a virtual-scene emulator
+./gradlew :feature:capture:testAndroidHostTest   # gate, modes, import, processor, ViewModels
+```
