@@ -21,6 +21,7 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.bundles.camerax)
             implementation(libs.androidx.activity.compose)
+            implementation(libs.koin.android)
         }
         commonTest.dependencies {
             implementation(projects.core.testing)
