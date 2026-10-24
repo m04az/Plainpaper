@@ -102,8 +102,8 @@ jobs:
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;30.0.16248370" "cmake;3.22.1" > /dev/null
-      - name: Assemble debug APK
-        run: ./gradlew :androidApp:assembleDebug
+      - name: Assemble debug APK and device-test APKs
+        run: ./gradlew :androidApp:assembleDebug :core:capture:assembleAndroidDeviceTest :feature:capture:assembleAndroidDeviceTest
       - uses: actions/upload-artifact@v7
         with:
           name: androidApp-debug
