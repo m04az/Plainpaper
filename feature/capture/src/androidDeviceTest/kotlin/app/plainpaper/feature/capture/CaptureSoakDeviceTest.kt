@@ -50,7 +50,7 @@ class CaptureSoakDeviceTest {
         override val default: CoroutineDispatcher = Dispatchers.Default
     }
 
-    /** Session-folder originals are copied from the bundled asset; JPEG writing uses the real Android implementation. */
+    /** Originals are copied from the bundled asset; JPEG writing uses the real Android implementation. */
     private class SoakFiles(
         private val real: ImageFiles,
         private val source: File,
@@ -87,18 +87,36 @@ class CaptureSoakDeviceTest {
             val cycles = args.getString("cycles")?.toInt() ?: DEFAULT_CYCLES
 
             val context = instrumentation.targetContext
-            val root = File(context.cacheDir, "soak").apply { deleteRecursively(); mkdirs() }
+            val root =
+                File(context.cacheDir, "soak").apply {
+                    deleteRecursively()
+                    mkdirs()
+                }
             val source = File(root, "source.jpg")
-            instrumentation.context.assets.open("soak-page.jpg").use { input -> source.outputStream().use { input.copyTo(it) } }
+            instrumentation.context.assets.open("soak-page.jpg").use { input ->
+                source.outputStream().use { input.copyTo(it) }
+            }
 
             val dispatchers = DeviceDispatchers()
             val repository =
-                FileCaptureSessionRepository(FileSystem.SYSTEM, File(root, "capture").path, now = { System.currentTimeMillis() })
+                FileCaptureSessionRepository(
+                    FileSystem.SYSTEM,
+                    File(root, "capture").path,
+                    now = { System.currentTimeMillis() },
+                )
             val engine = DefaultScanEngine(platformNativeBridge(), AndroidCapabilityProvider(context), dispatchers)
             val files = SoakFiles(androidImageFiles(context, dispatchers), source)
             val scope = CoroutineScope(SupervisorJob() + dispatchers.default)
             val processor =
-                PageProcessor(engine, AndroidPhotoDecoder(dispatchers), files, repository, NoBackground, dispatchers, scope)
+                PageProcessor(
+                    engine,
+                    AndroidPhotoDecoder(dispatchers),
+                    files,
+                    repository,
+                    NoBackground,
+                    dispatchers,
+                    scope,
+                )
 
             var failures = 0
             var pagesTotal = 0
@@ -116,7 +134,8 @@ class CaptureSoakDeviceTest {
                             files.copyOriginal("asset", original)
                             val page = repository.addPage(session.id, original, PageTag.Document, PageSize.A4)
                             processor.enqueue(session.id, page.id)
-                            if (cycles > 0 && index % maxOf(1, count / cycles) == 0) processor.resume() // foreground cycle
+                            // A simulated return to the foreground re-queues pending pages.
+                            if (cycles > 0 && index % maxOf(1, count / cycles) == 0) processor.resume()
                         }
                         val finished =
                             withTimeout(SESSION_TIMEOUT_MILLIS) {
@@ -126,7 +145,7 @@ class CaptureSoakDeviceTest {
                             }
                         pagesTotal += finished.pageCount
                         failures += finished.pages.count { it.state is PageState.Failed }
-                        assertEquals("session $run must keep every page", count, finished.pageCount)
+                        assertEquals("run $run must keep every page", count, finished.pageCount)
                         finished.pages.forEach { page ->
                             val bytes = page.pagePath?.let { File(it).length() } ?: 0L
                             assertTrue("page ${page.id} must have an image", bytes > 0)
@@ -138,8 +157,8 @@ class CaptureSoakDeviceTest {
             }
             scope.cancel()
             println(
-                "soak: $sessions sessions x $pagesPerSession + $imports imports x $photosPerImport = $pagesTotal pages, " +
-                    "failures=$failures, import ms=$importMillis",
+                "soak: $sessions sessions x $pagesPerSession pages + $imports imports x $photosPerImport photos" +
+                    " = $pagesTotal pages, failures=$failures, import ms=$importMillis",
             )
             assertEquals(0, failures)
             assertEquals(sessions * pagesPerSession + imports * photosPerImport, pagesTotal)
