@@ -28,6 +28,7 @@ fun AppNavHost(navController: NavHostController) {
             HomeRoute(
                 onNavigateToScan = { navController.navigate(CameraRoute) },
                 onNavigateToImport = { navController.navigate(ImportRoute) },
+                onNavigateToHandoff = { sessionId -> navController.navigate(HandoffRoute(sessionId)) },
             )
         }
         composable<Folders> {

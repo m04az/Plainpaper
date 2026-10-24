@@ -133,9 +133,18 @@ class FileCaptureSessionRepositoryTest {
             repository.start(SessionSource.Import) // id4 (page id3 consumed an id)
             assertTrue(fs.exists("$root/id2".toPath()))
             val fresh = FileCaptureSessionRepository(fs, root, now = { clock })
-            // The newest session is empty; recovery still finds the one with pages first? No:
-            // recoverable returns the most recent stored session that is not discarded.
-            assertEquals("id4", fresh.recoverable()?.id)
+            // The newest session is empty: only sessions with pages are worth recovering.
+            assertEquals("id2", fresh.recoverable()?.id)
+        }
+
+    @Test
+    fun startDeletesStaleEmptySessionsOfEarlierRuns() =
+        runTest {
+            repository.start(SessionSource.Camera) // id1, empty, left behind by a previous run
+            val fresh = FileCaptureSessionRepository(fs, root, now = { clock }, newId = { "fresh" })
+            fresh.start(SessionSource.Camera)
+            assertFalse(fs.exists("$root/id1".toPath()))
+            assertTrue(fs.exists("$root/fresh".toPath()))
         }
 
     @Test
@@ -153,6 +162,7 @@ class FileCaptureSessionRepositoryTest {
     fun handedOffStatusIsStored() =
         runTest {
             val session = repository.start(SessionSource.Camera)
+            repository.addPage(session.id, "$root/id1/o.jpg", PageTag.Document, PageSize.A4)
             repository.markHandedOff(session.id)
             assertEquals(
                 SessionStatus.HandedOff,

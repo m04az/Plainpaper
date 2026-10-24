@@ -12,6 +12,7 @@ import androidx.navigation.compose.rememberNavController
 import app.plainpaper.core.designsystem.theme.PlainpaperTheme
 import app.plainpaper.core.domain.model.AppPreferences
 import app.plainpaper.core.domain.usecase.ObservePreferencesUseCase
+import app.plainpaper.feature.capture.CaptureResume
 import app.plainpaper.locale.AppEnvironment
 import app.plainpaper.locale.systemLanguageTag
 import app.plainpaper.navigation.AppNavHost
@@ -36,6 +37,7 @@ fun PlainpaperApp() {
     val shell = loaded.toShellState(systemTag = systemLanguageTag(), systemDark = isSystemInDarkTheme())
 
     SystemBarsAppearance(isDark = shell.isDark)
+    CaptureResume()
     PlainpaperTheme(darkTheme = shell.isDark, useArabicTypeface = shell.useArabicTypeface) {
         AppEnvironment(language = shell.language, layoutDirection = shell.layoutDirection) {
             AppScaffold(navController = navController) {

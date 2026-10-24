@@ -49,6 +49,8 @@ public class FileCaptureSessionRepository(
     override suspend fun start(source: SessionSource): CaptureSession =
         mutex.withLock {
             state.value?.takeIf { it.pageCount == 0 }?.let { deleteSession(it.id) }
+            // Folders of earlier runs that never got a page are noise, not something to recover.
+            loadAll().filter { it.pageCount == 0 }.forEach { deleteSession(it.id) }
             val session = CaptureSession(id = newId(), source = source, createdAtEpochMillis = now())
             fileSystem.createDirectories(directory(session.id))
             write(session)
@@ -138,14 +140,13 @@ public class FileCaptureSessionRepository(
             null // malformed JSON or schema mismatch: not recoverable
         }
 
-    private fun loadMostRecent(): CaptureSession? {
-        if (!fileSystem.exists(root)) return null
-        return fileSystem
-            .list(root)
-            .mapNotNull { read(it) }
-            .filter { it.status != SessionStatus.Discarded }
+    private fun loadAll(): List<CaptureSession> =
+        if (fileSystem.exists(root)) fileSystem.list(root).mapNotNull { read(it) } else emptyList()
+
+    private fun loadMostRecent(): CaptureSession? =
+        loadAll()
+            .filter { it.status != SessionStatus.Discarded && it.pageCount > 0 }
             .maxByOrNull { it.createdAtEpochMillis }
-    }
 
     private fun deleteSession(sessionId: String) {
         try {
