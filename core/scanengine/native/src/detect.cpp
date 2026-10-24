@@ -1,5 +1,6 @@
 #include "cancel.hpp"
 #include "debug.hpp"
+#include "model.hpp"
 #include "params.hpp"
 #include "stages.hpp"
 
@@ -837,6 +838,79 @@ bool brightRegionCandidate(const cv::Mat& gray, double frameArea, Candidate& out
     return true;
 }
 
+/** Outcome of the model path (specs/004 data-model.md, detector policy). */
+enum class ModelVerdict { Found, Absent, Unsure };
+
+/**
+ * Model path: the document mask's largest region is fitted with the hull quad, then snapped to
+ * the image edges when that improves their support. "Absent" (low presence) skips the classic
+ * detector so clutter never produces an outline; "Unsure" falls back to it.
+ */
+ModelVerdict modelCandidate(DetectorModel& model, const cv::Mat& working, const cv::Mat& edges,
+                            double frameArea, Candidate& out, pp_confidence& confidence,
+                            float& presence) {
+    cv::Mat probability;
+    if (!model.infer(working, probability, presence)) {
+        return ModelVerdict::Unsure;
+    }
+    debugLog("model: presence", presence, 0, 0);
+    if (presence < params::kModelAbsentPresence) {
+        return ModelVerdict::Absent;
+    }
+    cv::Mat upscaled;
+    cv::resize(probability, upscaled, working.size(), 0, 0, cv::INTER_LINEAR);
+    cv::Mat region = upscaled > params::kModelMaskThreshold;
+    debugDump("model-mask", region);
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(region, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    const std::vector<cv::Point>* largest = nullptr;
+    double largestArea = 0;
+    for (const auto& c : contours) {
+        const double a = cv::contourArea(c);
+        if (a > largestArea) {
+            largestArea = a;
+            largest = &c;
+        }
+    }
+    if (largest == nullptr || largestArea < params::kMinSmallPageAreaFraction * frameArea) {
+        return ModelVerdict::Unsure;
+    }
+    Quad quad;
+    if (!quadFromContour(*largest, quad)) {
+        return ModelVerdict::Unsure;
+    }
+    Candidate c = scoreQuad(quad, edges, frameArea);
+    Quad refined;
+    if (refineQuad(edges, quad, refined)) {
+        double shift = 0;
+        for (int i = 0; i < 4; ++i) {
+            shift = std::max(shift, static_cast<double>(cv::norm(refined[i] - quad[i])));
+        }
+        Candidate r = scoreQuad(refined, edges, frameArea);
+        const double diagonal = std::hypot(working.cols, working.rows);
+        if (r.meanSupport > c.meanSupport && shift <= params::kModelSnapMaxShift * diagonal) {
+            c = r;
+        }
+    }
+    cv::Mat component = cv::Mat::zeros(region.size(), CV_8U);
+    cv::drawContours(component, std::vector<std::vector<cv::Point>>{*largest}, 0, cv::Scalar(255),
+                     cv::FILLED);
+    const double iou = quadIoU(c.quad, component);
+    debugLog("model quad: area iou support", c.areaFraction, iou, c.meanSupport);
+    if (c.areaFraction > params::kMaxPageAreaFraction + 0.01) {
+        return ModelVerdict::Unsure;
+    }
+    if (presence >= params::kModelHighPresence && iou >= params::kModelHighIoU &&
+        c.areaFraction >= params::kMinSmallPageAreaFraction) {
+        confidence = PP_CONF_HIGH;
+    } else if (presence >= params::kModelLowPresence && iou >= params::kModelLowIoU) {
+        confidence = PP_CONF_LOW;
+    } else {
+        return ModelVerdict::Unsure;
+    }
+    out = c;
+    return ModelVerdict::Found;
+}
 } // namespace
 
 Quad fullFrameQuad(const pp_image_rgba& photo) {
@@ -859,6 +933,27 @@ DetectResult detectPage(AnalyzeContext& ctx) {
     debugDump("working", ctx.working);
     debugDump("edges-primary", edges);
     checkCancel(ctx.cancel);
+
+    if (ctx.detector != nullptr) {
+        Candidate modelBest;
+        pp_confidence modelConfidence = PP_CONF_NOT_FOUND;
+        const ModelVerdict verdict = modelCandidate(*ctx.detector, ctx.working, edges, frameArea,
+                                                    modelBest, modelConfidence, result.presence);
+        checkCancel(ctx.cancel);
+        if (verdict == ModelVerdict::Absent) {
+            result.detector = PP_DETECTOR_MODEL;
+            return result;
+        }
+        if (verdict == ModelVerdict::Found) {
+            for (int i = 0; i < 4; ++i) {
+                result.quad[i] = modelBest.quad[i] * static_cast<float>(1.0 / ctx.workingScale);
+            }
+            result.confidence = modelConfidence;
+            result.source = PP_SRC_DETECTED;
+            result.detector = PP_DETECTOR_MODEL;
+            return result;
+        }
+    }
 
     Candidate best;
     bool found = fromContours(edges, edges, gray, frameArea, cv::RETR_LIST, best);

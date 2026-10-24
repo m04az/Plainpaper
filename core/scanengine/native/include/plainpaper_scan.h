@@ -81,6 +81,9 @@ typedef enum {
 
 typedef enum { PP_FALLBACK_NONE = 0, PP_FALLBACK_INVERTED = 1 } pp_fallback_reason;
 
+/* Which detector produced the corners (specs/004). */
+typedef enum { PP_DETECTOR_CLASSIC = 0, PP_DETECTOR_MODEL = 1 } pp_detector;
+
 typedef struct {
     float x, y;
 } pp_point;
@@ -106,6 +109,8 @@ typedef struct {
     int32_t working_long_edge;   /* 800..3000 */
     int32_t allow_flatten;       /* 0/1 */
     const pp_quad* user_corners; /* nullable */
+    int32_t keep_orientation;    /* 1: user_corners used in the given TL,TR,BR,BL order; no
+                                    rotation, deskew, up/down vote or flattening (specs/004) */
 } pp_analyze_options;
 
 typedef struct {
@@ -118,7 +123,9 @@ typedef struct {
     uint32_t flags;                                   /* PP_FLAG_* */
     pp_step_timing steps[PP_STEP_COUNT];
     int32_t step_count;
-    int64_t peak_bytes; /* allocator high-water mark during analyze */
+    int64_t peak_bytes;   /* allocator high-water mark during analyze */
+    pp_detector detector; /* model or classic */
+    float presence;       /* model's document-present probability; 0 for classic */
 } pp_analysis_info;
 
 typedef struct {
@@ -139,6 +146,8 @@ typedef struct {
     float mean_luma;          /* 0..255 mean luminance of the frame */
     float fill_fraction;      /* quad area / frame area, 0 when not found */
     int64_t micros;           /* wall time of the call */
+    pp_detector detector;     /* model or classic */
+    float presence;           /* model's document-present probability; 0 for classic */
 } pp_detect_info;
 
 PP_EXPORT int pp_api_version(void);

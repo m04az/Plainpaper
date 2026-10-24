@@ -77,6 +77,9 @@ void validateInput(const pp_image_rgba* photo, const pp_analyze_options* options
         !validQuad(*options->user_corners, photo->width, photo->height)) {
         throw Error{PP_ERR_INVALID_INPUT, "corners"};
     }
+    if (options->keep_orientation != 0 && options->user_corners == nullptr) {
+        throw Error{PP_ERR_INVALID_INPUT, "keep_orientation needs user_corners"};
+    }
 }
 
 void configureThreads(pp_capability capability) {
@@ -134,8 +137,8 @@ double quadArea(const Quad& quad) {
 }
 
 /** Detection only (specs/003 contracts/c-api-detect.md): reuses detectPage on a small frame. */
-pp_status runDetect(const pp_image_rgba* frame, uint32_t flags, volatile int32_t* cancel,
-                    pp_detect_info* out) {
+pp_status runDetect(pp_engine* engine, const pp_image_rgba* frame, uint32_t flags,
+                    volatile int32_t* cancel, pp_detect_info* out) {
     const auto start = std::chrono::steady_clock::now();
     validateFrame(frame, out);
     pp_analyze_options options{};
@@ -150,6 +153,7 @@ pp_status runDetect(const pp_image_rgba* frame, uint32_t flags, volatile int32_t
     ctx.options = &options;
     ctx.cancel = cancel;
     ctx.fullCapability = true;
+    ctx.detector = engine->detector.get();
     prepareWorking(ctx, (flags & PP_FRAME_BGRA) != 0);
 
     cv::Mat gray;
@@ -163,6 +167,8 @@ pp_status runDetect(const pp_image_rgba* frame, uint32_t flags, volatile int32_t
         out->corners.c[i] = pp_point{detected.quad[i].x, detected.quad[i].y};
     }
     out->confidence = detected.confidence;
+    out->detector = detected.detector;
+    out->presence = detected.presence;
     out->mean_luma = static_cast<float>(meanLuma);
     const double frameArea = static_cast<double>(frame->width) * frame->height;
     out->fill_fraction = detected.confidence == PP_CONF_NOT_FOUND
@@ -198,7 +204,7 @@ bool isTooDark(const cv::Mat& workingBgr) {
     return median < params::kTooDarkMedianLuminance * 255.0;
 }
 
-pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
+pp_status runAnalysis(pp_engine* engine, const pp_image_rgba* photo,
                       const pp_analyze_options* options, volatile int32_t* cancel,
                       pp_session** outSession) {
     validateInput(photo, options);
@@ -211,6 +217,7 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
     ctx.options = options;
     ctx.cancel = cancel;
     ctx.fullCapability = options->capability == PP_CAP_FULL;
+    ctx.detector = engine->detector.get();
     prepareWorking(ctx);
 
     const bool tooDark = isTooDark(ctx.working);
@@ -228,7 +235,9 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
                 detected.quad[i] =
                     cv::Point2f(options->user_corners->c[i].x, options->user_corners->c[i].y);
             }
-            detected.quad = orderCorners(detected.quad);
+            if (options->keep_orientation == 0) {
+                detected.quad = orderCorners(detected.quad);
+            }
             detected.confidence = PP_CONF_HIGH;
             detected.source = PP_SRC_USER;
             timer.setStatus(PP_STEP_SKIPPED_USER_CORNERS);
@@ -262,12 +271,13 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
         // measured on the axis-corrected preview, where text lines run horizontally. Rotations
         // about the page centre commute, so the angle applies unchanged to the warp. Up/down
         // waits until the page is flattened, when the row profiles are clean.
-        geometry.rotation = estimateAxisRotation(previewGray);
+        const bool keepOrientation = options->keep_orientation != 0;
+        geometry.rotation = keepOrientation ? 0 : estimateAxisRotation(previewGray);
         cv::Mat axisGray = previewGray;
         if (geometry.rotation == 90) {
             cv::rotate(previewGray, axisGray, cv::ROTATE_90_CLOCKWISE);
         }
-        geometry.deskewDeg = estimateDeskewDegrees(axisGray, cancel);
+        geometry.deskewDeg = keepOrientation ? 0.0 : estimateDeskewDegrees(axisGray, cancel);
         debugLog("deskew: preview degrees", geometry.deskewDeg, geometry.rotation, 0);
         if (std::abs(geometry.deskewDeg) < 0.3) {
             geometry.deskewDeg = 0.0;
@@ -308,7 +318,7 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
         // Without a page outline the frame is mostly desk and clutter, whose "lines" make the
         // up/down vote unreliable (an upright card was turned over on a phone photo).
         const bool upsideDown =
-            detected.source != PP_SRC_FULL_FRAME &&
+            detected.source != PP_SRC_FULL_FRAME && options->keep_orientation == 0 &&
             estimateUpsideDown(gray, orientationConfidence, params::kOrientStrips, cancel);
         debugLog("orient: upside-down / confidence", upsideDown ? 1 : 0, orientationConfidence, 0);
         geometry.orientationConfidence = orientationConfidence;
@@ -328,7 +338,7 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
     //    flattened page gets a second, residual deskew.
     {
         StepTimer timer(ctx.timings, PP_STEP_FLATTEN);
-        if (!ctx.fullCapability || options->allow_flatten == 0) {
+        if (!ctx.fullCapability || options->allow_flatten == 0 || options->keep_orientation != 0) {
             timer.setStatus(PP_STEP_SKIPPED_CAPABILITY);
         } else {
             const pp_step_status status = flattenPage(session->page, cancel);
@@ -398,6 +408,8 @@ pp_status runAnalysis(pp_engine* /*engine*/, const pp_image_rgba* photo,
     info.corner_source = detected.source;
     info.confidence = detected.confidence;
     info.rotation_applied = geometry.rotation;
+    info.detector = detected.detector;
+    info.presence = detected.presence;
     info.orientation_confidence = geometry.orientationConfidence;
     info.detected_aspect =
         static_cast<double>(session->page.cols) / static_cast<double>(session->page.rows);
@@ -523,7 +535,7 @@ PP_EXPORT pp_status pp_detect(pp_engine* engine, const pp_image_rgba* frame, uin
         pp::setLastError("null engine");
         return PP_ERR_INVALID_INPUT;
     }
-    return pp::guarded([&] { return pp::runDetect(frame, flags, cancel_flag, out); });
+    return pp::guarded([&] { return pp::runDetect(engine, frame, flags, cancel_flag, out); });
 }
 
 PP_EXPORT void pp_session_info(const pp_session* session, pp_analysis_info* out) {

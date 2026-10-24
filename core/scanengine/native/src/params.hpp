@@ -37,6 +37,17 @@ namespace pp::params {
 /** Model input side (frame resized, aspect not kept) and output mask side. */
 constexpr int kModelInput = 256;
 constexpr int kModelMask = 128;
+/** Presence below this: no document (no outline, classic detector not consulted). */
+constexpr double kModelAbsentPresence = 0.2;
+/** Mask probability threshold for the document region. */
+constexpr double kModelMaskThreshold = 0.5;
+/** Confidence: High needs presence and mask/quad IoU at least these; Low the second pair. */
+constexpr double kModelHighPresence = 0.8;
+constexpr double kModelHighIoU = 0.9;
+constexpr double kModelLowPresence = 0.5;
+constexpr double kModelLowIoU = 0.75;
+/** Edge snapping of the model quad may move a corner at most this fraction of the diagonal. */
+constexpr double kModelSnapMaxShift = 0.03;
 
 // ---- detection (research R5 step 2) ----
 /** Auto-Canny thresholds as factors of the median luminance. */

@@ -27,12 +27,16 @@ struct AnalyzeContext {
     Timings timings;
     uint32_t flags = 0;
     bool fullCapability = true;
+    /** Document-detection model, null when not loaded (classic detector only). */
+    class DetectorModel* detector = nullptr;
 };
 
 struct DetectResult {
     Quad quad; // photo coordinates
     pp_confidence confidence = PP_CONF_NOT_FOUND;
     pp_corner_source source = PP_SRC_FULL_FRAME;
+    pp_detector detector = PP_DETECTOR_CLASSIC;
+    float presence = 0.f;
 };
 
 struct Geometry {
