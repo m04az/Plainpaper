@@ -6,6 +6,7 @@
 #ifndef PLAINPAPER_SCAN_H
 #define PLAINPAPER_SCAN_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -143,6 +144,20 @@ typedef struct {
 PP_EXPORT int pp_api_version(void);
 PP_EXPORT pp_engine* pp_engine_create(void);
 PP_EXPORT void pp_engine_destroy(pp_engine* engine);
+
+/*
+ * Loads the document-detection model (.ppdm bytes, copied; specs/004 contracts/c-api-detector.md).
+ * Call before analysing; returns PP_OK or PP_ERR_INVALID_INPUT (unusable model, see
+ * pp_last_error). Without a model the classic detector is used.
+ */
+PP_EXPORT pp_status pp_engine_load_detector(pp_engine* engine, const uint8_t* bytes, size_t length);
+
+/*
+ * Diagnostics for the parity test: runs the loaded model on a planar RGB input (3 x 256 x 256
+ * floats in 0..1) and writes the mask probabilities (128 x 128) and the presence probability.
+ */
+PP_EXPORT pp_status pp_detector_run(pp_engine* engine, const float* rgb_planar, float* mask_out,
+                                    float* presence_out);
 
 /*
  * Analyse one photo. On PP_OK or PP_ERR_TOO_DARK *out_session is set (TOO_DARK still yields

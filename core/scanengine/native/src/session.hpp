@@ -3,7 +3,12 @@
 #include "plainpaper_scan.h"
 #include "timing.hpp"
 
+#include <memory>
 #include <opencv2/core.hpp>
+
+namespace pp {
+class DetectorModel;
+}
 
 /** Analysis of one photo. Owns the corrected page; rendering reuses it (FR-009). */
 struct pp_session {
@@ -22,4 +27,6 @@ struct pp_session {
 /** Immutable engine configuration. */
 struct pp_engine {
     int apiVersion = PP_API_VERSION;
+    /** Document-detection model; null or not loaded means the classic detector (specs/004). */
+    std::shared_ptr<pp::DetectorModel> detector;
 };

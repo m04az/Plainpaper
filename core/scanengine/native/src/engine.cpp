@@ -2,6 +2,7 @@
 #include "debug.hpp"
 #include "errors.hpp"
 #include "memory.hpp"
+#include "model.hpp"
 #include "params.hpp"
 #include "session.hpp"
 #include "stages.hpp"
@@ -462,6 +463,39 @@ PP_EXPORT int pp_api_version(void) {
 
 PP_EXPORT pp_engine* pp_engine_create(void) {
     return new (std::nothrow) pp_engine();
+}
+
+PP_EXPORT pp_status pp_engine_load_detector(pp_engine* engine, const uint8_t* bytes,
+                                            size_t length) {
+    if (engine == nullptr) {
+        pp::setLastError("null engine");
+        return PP_ERR_INVALID_INPUT;
+    }
+    auto model = std::make_shared<pp::DetectorModel>();
+    std::string error;
+    if (!model->load(bytes, length, error)) {
+        pp::setLastError(error.c_str());
+        return PP_ERR_INVALID_INPUT;
+    }
+    engine->detector = model;
+    return PP_OK;
+}
+
+PP_EXPORT pp_status pp_detector_run(pp_engine* engine, const float* rgb_planar, float* mask_out,
+                                    float* presence_out) {
+    if (engine == nullptr || engine->detector == nullptr || rgb_planar == nullptr ||
+        mask_out == nullptr || presence_out == nullptr) {
+        pp::setLastError("detector not loaded");
+        return PP_ERR_INVALID_INPUT;
+    }
+    cv::Mat mask;
+    float presence = 0;
+    if (!engine->detector->inferPlanar(rgb_planar, mask, presence)) {
+        return PP_ERR_INVALID_INPUT;
+    }
+    std::memcpy(mask_out, mask.ptr<float>(), mask.total() * sizeof(float));
+    *presence_out = presence;
+    return PP_OK;
 }
 
 PP_EXPORT void pp_engine_destroy(pp_engine* engine) {

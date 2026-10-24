@@ -33,6 +33,11 @@ constexpr int kThreadsFullMax = 4;
 
 namespace pp::params {
 
+// ---- detection model (specs/004 research R2) ----
+/** Model input side (frame resized, aspect not kept) and output mask side. */
+constexpr int kModelInput = 256;
+constexpr int kModelMask = 128;
+
 // ---- detection (research R5 step 2) ----
 /** Auto-Canny thresholds as factors of the median luminance. */
 constexpr double kCannyLowFactor = 0.66;
