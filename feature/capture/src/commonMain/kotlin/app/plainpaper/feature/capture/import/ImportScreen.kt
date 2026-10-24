@@ -136,6 +136,11 @@ fun ImportScreen(
             )
             Spacer(Modifier.width(CancelWidth))
         }
+        if (state.phase == ImportPhase.Picking) {
+            Spacer(modifier = Modifier.weight(1f))
+            Footer(state, onAction)
+            return@Column
+        }
         Heading(state)
         LazyVerticalGrid(
             columns = GridCells.Fixed(COLUMNS),
