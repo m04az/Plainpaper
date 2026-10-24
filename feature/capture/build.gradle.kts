@@ -17,6 +17,7 @@ kotlin {
             implementation(projects.core.scanengine)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.compose.ui.backhandler)
         }
         getByName("androidDeviceTest").dependencies {
             implementation(libs.androidx.test.runner)

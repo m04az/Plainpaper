@@ -6,8 +6,6 @@
     <string name="tab_settings">الإعدادات</string>
     <string name="scan_fab_cd">مسح مستند</string>
     <string name="back_cd">رجوع</string>
-    <string name="placeholder_scan_title">مسح صفحة</string>
-    <string name="placeholder_scan_body">ماسح الكاميرا قادم في التحديث التالي.</string>
     <string name="placeholder_import_title">استيراد صور</string>
     <string name="placeholder_import_body">استيراد الصور من المعرض قادم قريبًا.</string>
     <string name="placeholder_folders_title">المجلدات</string>

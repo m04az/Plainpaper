@@ -5,7 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.plainpaper.core.capture.camera.CameraController
 import app.plainpaper.core.capture.camera.CameraControllerFactory
+import app.plainpaper.core.capture.camera.CameraError
 import app.plainpaper.core.capture.camera.CameraFrame
+import app.plainpaper.core.capture.camera.CameraState
 import app.plainpaper.core.capture.camera.CaptureResult
 import app.plainpaper.core.capture.camera.PreviewGeometry
 import app.plainpaper.core.capture.files.ImageFiles
@@ -64,7 +66,8 @@ class CameraViewModel(
     private val thumbnails: ThumbnailLoader,
     private val dispatchers: DispatcherProvider,
 ) : ViewModel() {
-    private val camera: CameraController = cameraFactory.create()
+    /** The platform camera; the screen hands it to the preview renderer. */
+    val camera: CameraController = cameraFactory.create()
     private val mutableState = MutableStateFlow(CameraUiState())
     val uiState: StateFlow<CameraUiState> = mutableState.asStateFlow()
 
@@ -88,7 +91,12 @@ class CameraViewModel(
             settings.settings.collect { applySettings(it) }
         }
         viewModelScope.launch {
-            camera.state.collect { state -> mutableState.update { it.copy(camera = state) } }
+            camera.state.collect { state ->
+                mutableState.update { it.copy(camera = state) }
+                if (state == CameraState.Error(CameraError.Unavailable)) {
+                    effectChannel.send(CameraEffect.NavigateToImport(noCamera = true))
+                }
+            }
         }
         viewModelScope.launch {
             observeSession().collect { session -> onSession(session) }

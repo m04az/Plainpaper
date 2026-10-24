@@ -22,6 +22,7 @@ kotlin {
             implementation(libs.bundles.camerax)
             implementation(libs.androidx.activity.compose)
             implementation(libs.koin.android)
+            implementation(libs.androidx.core.ktx)
         }
         commonTest.dependencies {
             implementation(projects.core.testing)
