@@ -17,6 +17,7 @@ import app.plainpaper.core.scanengine.PhotoDecoder
 import app.plainpaper.core.scanengine.RenderResult
 import app.plainpaper.core.scanengine.ScanAnalysis
 import app.plainpaper.core.scanengine.ScanEngine
+import app.plainpaper.core.scanengine.ScanPhoto
 import app.plainpaper.core.scanengine.model.Outcome
 import app.plainpaper.core.scanengine.model.RenderOptions
 import kotlinx.coroutines.CancellationException
@@ -136,22 +137,26 @@ internal class PageProcessor(
     }
 
     private suspend fun process(work: PageWork) {
-        val session = sessions.activeSession.first()?.takeIf { it.id == work.sessionId } ?: return
-        val page = session.page(work.pageId) ?: return
-        if (page.state !is PageState.Pending) return
+        val page = pendingPage(work) ?: return
         sessions.updatePage(work.sessionId, page.copy(state = PageState.Processing))
+        when (val decoded = decoder.decode(page.originalPath)) {
+            is DecodeResult.Failed -> finish(work, page) { it.copy(state = PageState.Failed(PageFailure.Unreadable)) }
+            is DecodeResult.Ready -> analyzeAndStore(work, page, decoded.photo)
+        }
+    }
 
-        val photo =
-            when (val decoded = decoder.decode(page.originalPath)) {
-                is DecodeResult.Ready -> {
-                    decoded.photo
-                }
+    private suspend fun pendingPage(work: PageWork): CapturedPage? =
+        sessions.activeSession
+            .first()
+            ?.takeIf { it.id == work.sessionId }
+            ?.page(work.pageId)
+            ?.takeIf { it.state is PageState.Pending }
 
-                is DecodeResult.Failed -> {
-                    finish(work, page) { it.copy(state = PageState.Failed(PageFailure.Unreadable)) }
-                    return
-                }
-            }
+    private suspend fun analyzeAndStore(
+        work: PageWork,
+        page: CapturedPage,
+        photo: ScanPhoto,
+    ) {
         when (val analyzed = engine.analyze(photo)) {
             is AnalyzeResult.Failed -> {
                 finish(

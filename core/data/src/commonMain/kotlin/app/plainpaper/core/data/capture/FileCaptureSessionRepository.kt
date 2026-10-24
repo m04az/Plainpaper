@@ -21,6 +21,9 @@ import kotlin.random.Random
 internal const val SESSION_INDEX_FILE = "session.json"
 private const val SESSION_INDEX_TEMP = "session.json.tmp"
 private const val ID_BYTES = 8
+private const val BYTE_MASK = 0xFF
+private const val HEX_RADIX = 16
+private const val HEX_WIDTH = 2
 
 /**
  * One session folder per capture run under [rootPath] with an atomically rewritten
@@ -155,9 +158,8 @@ public class FileCaptureSessionRepository(
 
     private companion object {
         fun randomId(): String =
-            Random
-                .nextBytes(
-                    ID_BYTES,
-                ).joinToString("") { b -> (b.toInt() and 0xFF).toString(16).padStart(2, '0') }
+            Random.nextBytes(ID_BYTES).joinToString("") { b ->
+                (b.toInt() and BYTE_MASK).toString(HEX_RADIX).padStart(HEX_WIDTH, '0')
+            }
     }
 }

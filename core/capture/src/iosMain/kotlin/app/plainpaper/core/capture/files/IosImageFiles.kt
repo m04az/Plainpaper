@@ -29,6 +29,7 @@ import platform.Foundation.writeToFile
 import platform.ImageIO.CGImageSourceCreateThumbnailAtIndex
 import platform.ImageIO.CGImageSourceCreateWithURL
 import platform.ImageIO.CGImageSourceGetCount
+import platform.ImageIO.CGImageSourceRef
 import platform.ImageIO.kCGImageSourceCreateThumbnailFromImageAlways
 import platform.ImageIO.kCGImageSourceCreateThumbnailWithTransform
 import platform.ImageIO.kCGImageSourceThumbnailMaxPixelSize
@@ -37,6 +38,8 @@ import platform.UIKit.UIImageJPEGRepresentation
 
 private const val THUMBNAIL_QUALITY = 0.85
 private const val PERCENT = 100.0
+
+private const val THUMBNAIL_OPTIONS = 3
 
 /** Shared ImageIO thumbnail decode (honours EXIF orientation through the transform option). */
 @OptIn(ExperimentalForeignApi::class)
@@ -47,9 +50,21 @@ internal fun thumbnailImage(
     val url: CFURLRef = CFBridgingRetain(NSURL.fileURLWithPath(path))?.reinterpret() ?: return null
     val source = CGImageSourceCreateWithURL(url, null)
     CFRelease(url)
-    if (source == null) return null
+    return source?.let { decodeThumbnail(it, maxEdge) }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun decodeThumbnail(
+    source: CGImageSourceRef,
+    maxEdge: Int,
+): UIImage? {
     val options =
-        CFDictionaryCreateMutable(null, 3, kCFTypeDictionaryKeyCallBacks.ptr, kCFTypeDictionaryValueCallBacks.ptr)
+        CFDictionaryCreateMutable(
+            null,
+            THUMBNAIL_OPTIONS.toLong(),
+            kCFTypeDictionaryKeyCallBacks.ptr,
+            kCFTypeDictionaryValueCallBacks.ptr,
+        )
     val edge = intArrayOf(maxEdge)
     val number = edge.usePinned { CFNumberCreate(null, kCFNumberIntType, it.addressOf(0)) }
     CFDictionarySetValue(options, kCGImageSourceCreateThumbnailFromImageAlways, kCFBooleanTrue)
@@ -59,9 +74,8 @@ internal fun thumbnailImage(
     CFRelease(number)
     CFRelease(options)
     CFRelease(source)
-    if (cgImage == null) return null
-    val image = UIImage(cGImage = cgImage)
-    CGImageRelease(cgImage)
+    val image = cgImage?.let { UIImage(cGImage = it) }
+    if (cgImage != null) CGImageRelease(cgImage)
     return image
 }
 

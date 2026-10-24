@@ -18,6 +18,7 @@ private val StrokeWidth = 3.dp
 private val CornerRadius = 7.dp
 private val CornerRing = 3.dp
 private const val CORNERS = 4
+private const val FLASH_ANIMATION = "captureFlash"
 
 /**
  * The detected page outline over the preview: translucent fill, primary stroke, white corner
@@ -30,7 +31,7 @@ public fun PpOutline(
     flash: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val flashAlpha by animateFloatAsState(targetValue = if (flash) 1f else 0f, label = "captureFlash")
+    val flashAlpha by animateFloatAsState(targetValue = if (flash) 1f else 0f, label = FLASH_ANIMATION)
     Canvas(modifier = modifier.semantics { invisibleToUser() }) {
         if (corners != null && corners.size == CORNERS) {
             val path =

@@ -4,6 +4,7 @@ package app.plainpaper.core.scanengine.bridge
  * JNI entry points registered by `JNI_OnLoad` in native/jni/plainpaper_jni.cpp. The method names
  * and signatures are the contract; keep them in sync with the C++ table.
  */
+@Suppress("TooManyFunctions") // one entry per C function; the table in plainpaper_jni.cpp mirrors it
 public object JniScanBridge {
     @JvmStatic
     public external fun nativeApiVersion(): Int

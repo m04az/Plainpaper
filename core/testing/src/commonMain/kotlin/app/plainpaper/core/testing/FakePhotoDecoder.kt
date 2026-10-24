@@ -20,7 +20,7 @@ class FakePhotoDecoder : PhotoDecoder {
         return if (path.contains("unreadable")) {
             DecodeResult.Failed(DecodeFailure.Corrupt)
         } else {
-            DecodeResult.Ready(FakeScanPhoto(4000, 3000))
+            DecodeResult.Ready(FakeScanPhoto(PHOTO_WIDTH, PHOTO_HEIGHT))
         }
     }
 
@@ -32,5 +32,10 @@ class FakePhotoDecoder : PhotoDecoder {
 
     fun releaseAll() {
         gates.keys.toList().forEach(::release)
+    }
+
+    private companion object {
+        const val PHOTO_WIDTH = 4000
+        const val PHOTO_HEIGHT = 3000
     }
 }
