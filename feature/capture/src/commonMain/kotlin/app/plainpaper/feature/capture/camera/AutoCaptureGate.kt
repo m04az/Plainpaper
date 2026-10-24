@@ -5,7 +5,7 @@ import app.plainpaper.core.domain.model.Quad
 import kotlin.math.hypot
 
 /** One detection result with its frame time (data-model.md). */
-internal data class DetectionSample(
+public data class DetectionSample(
     val timestampMillis: Long,
     val corners: Quad?,
     val confidence: Confidence,
@@ -13,7 +13,7 @@ internal data class DetectionSample(
     val meanLuma: Float,
 )
 
-internal sealed interface GateState {
+public sealed interface GateState {
     /** No page in view; [prolonged] after [AutoCaptureGate.prolongedNoPageMillis] without one. */
     data class NoPage(
         val prolonged: Boolean = false,
@@ -42,7 +42,7 @@ internal sealed interface GateState {
  * for [steadyWindowMillis]. After a capture it stays in [GateState.Cooldown] until the page
  * moves more than [cooldownDriftFraction] of the diagonal or disappears and comes back.
  */
-internal class AutoCaptureGate(
+public class AutoCaptureGate(
     private val frameDiagonal: Float,
     private val steadyWindowMillis: Long = DEFAULT_STEADY_WINDOW_MILLIS,
     private val maxDriftFraction: Float = DEFAULT_MAX_DRIFT,

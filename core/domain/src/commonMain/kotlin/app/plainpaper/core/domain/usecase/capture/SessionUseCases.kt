@@ -50,3 +50,9 @@ public class RecoverSessionUseCase(
     /** The session left over from a previous run when it still has pages, otherwise null. */
     public suspend operator fun invoke(): CaptureSession? = repository.recoverable()?.takeIf { it.pageCount > 0 }
 }
+
+public class SessionDirectoryUseCase(
+    private val repository: CaptureSessionRepository,
+) {
+    public operator fun invoke(sessionId: String): String = repository.sessionDirectory(sessionId)
+}

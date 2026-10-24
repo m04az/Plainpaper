@@ -25,6 +25,7 @@ import app.plainpaper.core.domain.usecase.capture.FinishSessionUseCase
 import app.plainpaper.core.domain.usecase.capture.ObserveActiveSessionUseCase
 import app.plainpaper.core.domain.usecase.capture.RecoverSessionUseCase
 import app.plainpaper.core.domain.usecase.capture.ResolveDefaultPageSizeUseCase
+import app.plainpaper.core.domain.usecase.capture.SessionDirectoryUseCase
 import app.plainpaper.core.domain.usecase.capture.StartSessionUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -77,4 +78,5 @@ public val dataModule: Module =
         factory { RecoverSessionUseCase(get()) }
         factory { EvaluateImportLimitUseCase(get()) }
         factory { ResolveDefaultPageSizeUseCase(get()) }
+        factory { SessionDirectoryUseCase(get()) }
     }

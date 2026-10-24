@@ -34,11 +34,19 @@ public sealed interface CaptureResult {
     ) : CaptureResult
 }
 
-/** One analysis frame with the rotation that makes it upright on screen (CameraX semantics). */
+/**
+ * One analysis frame with the rotation that makes it upright on screen (CameraX semantics).
+ * The collector calls [release] once it is done reading the pixels so the buffer can be reused.
+ */
 public class CameraFrame(
     public val frame: PreviewFrame,
     public val rotationDegrees: Int,
-)
+    private val onRelease: () -> Unit = {},
+) {
+    public fun release() {
+        onRelease()
+    }
+}
 
 /**
  * The platform camera behind one interface (research R1/R2). Frames are valid only inside the

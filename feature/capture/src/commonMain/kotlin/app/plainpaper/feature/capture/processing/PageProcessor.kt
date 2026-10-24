@@ -34,7 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** Processing jobs (pages) never surface exceptions to the UI; their outcome is the page state. */
-internal data class PageWork(
+data class PageWork(
     val sessionId: String,
     val pageId: String,
 )
@@ -44,7 +44,7 @@ internal data class PageWork(
  * JPEG + thumbnail → session update (research R8). One page at a time on Simplified devices,
  * two on Full. Survives screen changes; `resume()` re-queues pending pages after a restart.
  */
-internal class PageProcessor(
+class PageProcessor(
     private val engine: ScanEngine,
     private val decoder: PhotoDecoder,
     private val files: ImageFiles,
