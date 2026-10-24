@@ -17,6 +17,15 @@ auto-capture never fires and the crop is wrong. This feature makes detection rel
 complementary ways: a document-finding model that runs on the phone inside Plainpaper's own
 camera, and an optional Quick scan that hands capture to the phone's built-in scanner.
 
+## Clarifications
+
+### Session 2026-10-24
+
+- Q: Quick scan runs the phone maker's scanner (Google Play services on Android, Apple's on iOS),
+  which may log usage on its own; is that acceptable? → A: Yes, on both platforms, opt-in and
+  labelled as the phone's own scanner; Plainpaper adds no network permission; recorded as an
+  accepted deviation in the plan's Constitution Check.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - The outline finds the document in a cluttered scene (Priority: P1)
@@ -192,8 +201,8 @@ the camera works, the outline comes from the existing detector, and no error is 
   and Apple's document camera on iOS. On Android it may need a one-time download handled by the
   phone itself; Plainpaper does not download anything.
 - The built-in scanner runs outside Plainpaper under the phone maker's own terms; Plainpaper
-  receives only the finished page images. This is presented to the owner as a deviation to accept
-  in the plan's Constitution Check.
+  receives only the finished page images. The owner accepted this (Clarifications 2026-10-24);
+  the plan records it as a deviation in its Constitution Check.
 - Review and edit of corners by hand (Feature "Review & edit") is a separate feature; this feature
   only improves automatic detection.
 - The reference mid-range phone is the owner's phone used in Feature 003 testing; the low-end
