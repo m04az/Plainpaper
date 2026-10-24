@@ -203,6 +203,32 @@ permission in system settings and confirm the camera works on return.
 
 ---
 
+### User Story 6 - Choose how each page looks (Priority: P2)
+
+*Added 2026-10-24 after the first phone test: the owner found black-and-white output too bright
+and detail-poor as the only result and asked for CamScanner-style choices after capture.*
+
+After capture or import the person sees each page large, with a row of looks: Original (the
+straightened photo), Enhanced (white paper, crisp and rich ink — the default), Grayscale and
+Black & white. Tapping a look re-renders that page in a moment; "Apply to all pages" uses it for
+the whole session. The choice is kept with the page.
+
+**Why this priority**: the default look decides whether the first result feels like a scanner
+app or a photocopy; different documents need different looks.
+
+**Independent Test**: capture a page with coloured ink, open it, switch through the four looks,
+apply one to all pages, and confirm each page is re-rendered with the same crop.
+
+**Acceptance Scenarios**:
+
+1. **Given** a new page, **When** it is processed, **Then** it uses the Enhanced look.
+2. **Given** a processed page, **When** the person picks another look, **Then** the page is
+   re-rendered from the original photo with the same corners and the choice is shown as selected.
+3. **Given** several pages, **When** "Apply to all pages" is tapped, **Then** every page is
+   re-rendered in that look.
+4. **Given** handwriting in red or blue ink, **When** Black & white is chosen, **Then** the strokes
+   are solid black and complete.
+
 ### Edge Cases
 
 - The device has no camera (some tablets, emulators): the Scan action goes straight to the
@@ -308,6 +334,14 @@ permission in system settings and confirm the camera works on return.
   screen reader.
 - **FR-022**: All processing MUST happen on the device; the feature MUST add no network
   access and no new permission other than the camera.
+- **FR-024**: Every page MUST record its look (Original, Enhanced, Grayscale, Black & white);
+  new pages use Enhanced. The page view MUST let the person change the look of one page or of all
+  pages; a change MUST re-render from the original photo with the page's stored corners.
+- **FR-025**: Black & white and Grayscale MUST keep coloured ink (red, blue, green pen) as dark,
+  complete strokes; Enhanced MUST keep paper white and ink colour visible and crisp.
+- **FR-026**: Page detection MUST find a page whose outline is cut by the photo border, joined to
+  an open book's other page or touched by another object, and the live outline MUST NOT flicker
+  (it appears after two agreeing frames and survives a single missed frame).
 - **FR-023**: Capture, import, session and permission decisions MUST be covered by unit tests
   (steadiness decision, auto-capture gating, free-limit rule, batch progress and cancellation,
   session ordering and recovery, permission state machine, mode tagging).

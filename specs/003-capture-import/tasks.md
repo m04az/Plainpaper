@@ -237,3 +237,18 @@
 2. Keep the draft PR open from T032 so both platforms compile on every push (iOS only compiles in CI).
 3. Inner loop = host tests with fakes (seconds); emulator for camera plumbing and walkthroughs; the low-end AVD for SC-008 samples.
 4. Small commits: one per task or per screen, message `type: subject` (`capture:`, `scanengine:`, `domain:`, `data:`, `designsystem:`, `app:`, `ci:`, `specs:`).
+
+---
+
+## Phase 9: Phone feedback (2026-10-24)
+
+**Purpose**: fixes from the first real-phone test (no page found on notebook photos, flickering
+outline, bright and detail-poor black-and-white output) and User Story 6 (choose a look).
+
+- [X] T074 [P] `OutlineStabilizer` + tests: two agreeing frames to show, EMA smoothing, 400 ms hold, ignore one-frame jumps; wire into `CameraViewModel`
+- [X] T075 [P] CameraX: 4:3 aspect for preview, analysis and capture so the outline lines up with the preview
+- [X] T076 Native detection: border sides count as supported (≤ 2), progressive approximation + max-area quad fit, bright-region fallback with IoU/contrast and ≤ 1 border side; `--photos` ad-hoc mode in `:tools:scansuite`; synthetic gate unchanged
+- [X] T077 Native render: darkest-channel ink for B&W and Grayscale, unsharp mask, stronger Enhanced ink (gamma 1.6, saturation × 1.35), Original lift 1.03
+- [ ] T078 [US6] Tests first: `CapturedPage.style` (default Enhanced/ColorDocument) persisted in `session.json`; `PageProcessor` renders the page's style and re-renders with the stored corners; `HandoffViewModel` selects a look per page and for all pages
+- [ ] T079 [US6] Implement the style field, `PageProcessor.restyle`, and the page viewer (pager + look chips + "Apply to all pages") in `feature/capture/.../handoff`; strings EN/AR
+- [ ] T080 Verify on the owner's phone: live outline on a notebook page, captures detected, looks switch; record in results.md
