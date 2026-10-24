@@ -1,4 +1,4 @@
-package app.plainpaper.core.scanengine.model
+package app.plainpaper.core.domain.model
 
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
