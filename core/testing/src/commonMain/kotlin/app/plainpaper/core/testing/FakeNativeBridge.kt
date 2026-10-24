@@ -4,11 +4,13 @@ package app.plainpaper.core.testing
 
 import app.plainpaper.core.domain.model.DeviceCapability
 import app.plainpaper.core.domain.model.OutputStyle
+import app.plainpaper.core.scanengine.PreviewFrame
 import app.plainpaper.core.scanengine.ScanPhoto
 import app.plainpaper.core.scanengine.bridge.NativeAnalysisInfo
 import app.plainpaper.core.scanengine.bridge.NativeAnalyzeResult
 import app.plainpaper.core.scanengine.bridge.NativeBridge
 import app.plainpaper.core.scanengine.bridge.NativeCancelFlag
+import app.plainpaper.core.scanengine.bridge.NativeDetectResult
 import app.plainpaper.core.scanengine.bridge.NativeRenderResult
 import app.plainpaper.core.scanengine.bridge.NativeSession
 import app.plainpaper.core.scanengine.bridge.NativeStatus
@@ -90,6 +92,8 @@ class FakeNativeBridge(
     }
 
     val analyzeScript = ArrayDeque<Script>()
+    val detectScript = ArrayDeque<NativeDetectResult>()
+    val detectCalls = mutableListOf<PreviewFrame>()
     val renderScript = ArrayDeque<Script.Fail>()
     val calls = mutableListOf<AnalyzeCall>()
     val flags = mutableListOf<FakeCancelFlag>()
@@ -129,7 +133,29 @@ class FakeNativeBridge(
         }
     }
 
+    override fun detect(
+        frame: PreviewFrame,
+        cancel: NativeCancelFlag,
+    ): NativeDetectResult {
+        detectCalls += frame
+        if ((cancel as FakeCancelFlag).isSet) return defaultDetect(frame).copy(status = NativeStatus.Cancelled)
+        return detectScript.removeFirstOrNull() ?: defaultDetect(frame)
+    }
+
     companion object {
+        fun defaultDetect(
+            frame: PreviewFrame,
+            confidence: Confidence = Confidence.High,
+        ): NativeDetectResult =
+            NativeDetectResult(
+                status = NativeStatus.Ok,
+                corners = Quad.fullFrame(frame.width, frame.height),
+                confidence = confidence,
+                fillFraction = 1f,
+                meanLuma = 128f,
+                micros = 5_000,
+            )
+
         fun defaultInfo(
             corners: Quad = Quad.fullFrame(4000, 3000),
             confidence: Confidence = Confidence.High,

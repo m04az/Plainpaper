@@ -4,6 +4,8 @@ package app.plainpaper.core.scanengine.bridge
 
 import app.plainpaper.core.domain.model.DeviceCapability
 import app.plainpaper.core.domain.model.OutputStyle
+import app.plainpaper.core.scanengine.ByteArrayPreviewFrame
+import app.plainpaper.core.scanengine.PreviewFrame
 import app.plainpaper.core.scanengine.ScanPhoto
 import app.plainpaper.core.scanengine.model.Confidence
 import app.plainpaper.core.scanengine.model.CornerSource
@@ -96,6 +98,44 @@ public abstract class JniNativeBridge : NativeBridge {
             NativeAnalyzeResult.Failure(nativeStatus, JniScanBridge.nativeLastError())
         }
     }
+
+    override fun detect(
+        frame: PreviewFrame,
+        cancel: NativeCancelFlag,
+    ): NativeDetectResult {
+        val out = DoubleArray(NativeDetectResult.VALUES)
+        val cancelHandle = (cancel as JniCancelFlag).handle
+        val status =
+            when (frame) {
+                is ByteArrayPreviewFrame -> {
+                    JniScanBridge.nativeDetectBytes(
+                        engine,
+                        frame.pixels,
+                        frame.width,
+                        frame.height,
+                        frame.strideBytes,
+                        frame.format.nativeFlags,
+                        cancelHandle,
+                        out,
+                    )
+                }
+
+                else -> {
+                    detectNative(engine, frame, cancelHandle, out)
+                }
+            }
+        val nativeStatus = NativeStatus.fromCode(status)
+        val detail = if (nativeStatus == NativeStatus.Ok) "" else JniScanBridge.nativeLastError()
+        return NativeDetectResult.decode(nativeStatus, out, detail)
+    }
+
+    /** Platform frame types other than [ByteArrayPreviewFrame]; returns the status code. */
+    protected open fun detectNative(
+        engine: Long,
+        frame: PreviewFrame,
+        cancel: Long,
+        out: DoubleArray,
+    ): Int = NativeStatus.InvalidInput.code
 
     @Suppress("LongParameterList")
     protected abstract fun analyzeNative(

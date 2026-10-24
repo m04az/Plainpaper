@@ -5,6 +5,8 @@ package app.plainpaper.core.scanengine.bridge
 import android.graphics.Bitmap
 import app.plainpaper.core.scanengine.BitmapScanOutput
 import app.plainpaper.core.scanengine.BitmapScanPhoto
+import app.plainpaper.core.scanengine.ByteBufferPreviewFrame
+import app.plainpaper.core.scanengine.PreviewFrame
 import app.plainpaper.core.scanengine.ScanPhoto
 
 /** JNI transport over `android.graphics.Bitmap` (read in place with `AndroidBitmap_lockPixels`). */
@@ -33,6 +35,25 @@ internal class AndroidNativeBridge : JniNativeBridge() {
             userCorners,
             cancel,
             outStatus,
+        )
+    }
+
+    override fun detectNative(
+        engine: Long,
+        frame: PreviewFrame,
+        cancel: Long,
+        out: DoubleArray,
+    ): Int {
+        val buffer = (frame as? ByteBufferPreviewFrame)?.buffer ?: return NativeStatus.InvalidInput.code
+        return JniScanBridge.nativeDetectBuffer(
+            engine,
+            buffer,
+            frame.width,
+            frame.height,
+            frame.strideBytes,
+            frame.format.nativeFlags,
+            cancel,
+            out,
         )
     }
 

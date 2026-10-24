@@ -6,6 +6,7 @@ import app.plainpaper.core.scanengine.model.AnalysisFlag
 import app.plainpaper.core.scanengine.model.AnalyzeOptions
 import app.plainpaper.core.scanengine.model.Confidence
 import app.plainpaper.core.scanengine.model.CornerSource
+import app.plainpaper.core.scanengine.model.DetectResult
 import app.plainpaper.core.scanengine.model.OrientationConfidence
 import app.plainpaper.core.scanengine.model.Outcome
 import app.plainpaper.core.scanengine.model.Quad
@@ -25,6 +26,12 @@ public interface ScanEngine {
         analysis: ScanAnalysis,
         options: RenderOptions,
     ): RenderResult
+
+    /**
+     * Detection only, for live preview frames (specs/003). Never throws except for
+     * cancellation; an internal failure reports [Confidence.NotFound].
+     */
+    public suspend fun detect(frame: PreviewFrame): DetectResult
 
     /** Capability the engine uses unless overridden per call. */
     public val capability: DeviceCapability

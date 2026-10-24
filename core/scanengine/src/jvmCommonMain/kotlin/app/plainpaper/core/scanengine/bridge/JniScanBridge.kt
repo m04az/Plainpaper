@@ -54,6 +54,34 @@ public object JniScanBridge {
         outStatus: IntArray,
     ): Long
 
+    /** `pp_detect` on RGBA/BGRA bytes; [out] gets 8 corners, confidence, mean luma, fill, micros. Returns the status. */
+    @JvmStatic
+    @Suppress("LongParameterList")
+    public external fun nativeDetectBytes(
+        engine: Long,
+        pixels: ByteArray,
+        width: Int,
+        height: Int,
+        strideBytes: Int,
+        flags: Int,
+        cancel: Long,
+        out: DoubleArray,
+    ): Int
+
+    /** `pp_detect` on a direct `java.nio.ByteBuffer` (camera analysis plane), read in place. */
+    @JvmStatic
+    @Suppress("LongParameterList")
+    public external fun nativeDetectBuffer(
+        engine: Long,
+        buffer: java.nio.ByteBuffer,
+        width: Int,
+        height: Int,
+        strideBytes: Int,
+        flags: Int,
+        cancel: Long,
+        out: DoubleArray,
+    ): Int
+
     /** Packs `pp_analysis_info` into [longs] (>= 34 entries) and [doubles] (>= 9 entries). */
     @JvmStatic
     public external fun nativeSessionInfo(
