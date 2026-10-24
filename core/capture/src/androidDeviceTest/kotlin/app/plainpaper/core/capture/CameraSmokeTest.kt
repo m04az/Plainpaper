@@ -10,8 +10,11 @@ import app.plainpaper.core.capture.camera.CameraXController
 import app.plainpaper.core.capture.camera.CameraXControllerFactory
 import app.plainpaper.core.capture.camera.CaptureResult
 import app.plainpaper.core.domain.coroutines.DispatcherProvider
+import app.plainpaper.core.scanengine.AndroidCapabilityProvider
 import app.plainpaper.core.scanengine.AndroidPhotoDecoder
 import app.plainpaper.core.scanengine.DecodeResult
+import app.plainpaper.core.scanengine.DefaultScanEngine
+import app.plainpaper.core.scanengine.bridge.platformNativeBridge
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filterNotNull
@@ -90,6 +93,21 @@ class CameraSmokeTest {
             assertEquals(MIN_FRAMES, sizes.size)
             sizes.forEach { (width, height) -> assertTrue(width >= MIN_FRAME_EDGE && height >= MIN_FRAME_EDGE) }
 
+            // SC-002 sample: pp_detect on live analysis frames (median micros printed for results.md).
+            val engine = DefaultScanEngine(platformNativeBridge(), AndroidCapabilityProvider(context), dispatchers)
+            val micros =
+                withTimeout(TIMEOUT_MILLIS) {
+                    controller.frames
+                        .map { frame -> engine.detect(frame.frame).micros.also { frame.release() } }
+                        .take(DETECT_SAMPLES)
+                        .toList()
+                        .sorted()
+                }
+            Log.i(
+                TAG,
+                "detect micros median=${micros[micros.size / 2]} max=${micros.last()} capability=${engine.capability}",
+            )
+
             val capture = withTimeout(TIMEOUT_MILLIS) { controller.capture() }
             Log.i(TAG, "capture: $capture")
             assertTrue("capture must succeed: $capture", capture is CaptureResult.Ready)
@@ -109,5 +127,6 @@ class CameraSmokeTest {
         const val TIMEOUT_MILLIS = 20_000L
         const val MIN_FRAMES = 5
         const val MIN_FRAME_EDGE = 240
+        const val DETECT_SAMPLES = 20
     }
 }
