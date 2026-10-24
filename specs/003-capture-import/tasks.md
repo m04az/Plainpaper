@@ -145,16 +145,16 @@
 
 ### Tests for User Story 3
 
-- [ ] T051 [P] [US3] Extend `CameraViewModelTest.kt` (close with pages → `showDiscardConfirm`; `ConfirmDiscard` → session discarded + `NavigateBack`; `KeepScanning` hides; close with 0 pages → `NavigateBack` directly; `Done` while 2 pages `Processing` → navigates and processing continues; lifecycle `Stopped`/`Started` → camera stopped/restarted, session untouched; 30 captures keep order and count)
-- [ ] T052 [P] [US3] Write `feature/capture/src/commonTest/kotlin/app/plainpaper/feature/capture/recovery/RecoverSessionTest.kt` (recoverable session with pages → `RecoverSession` returns it once; after `Discard` it is gone; `Continue` keeps status; `Processing` pages come back `Pending` and `PageProcessor.resume()` re-queues exactly those)
-- [ ] T053 [P] [US3] Write `feature/home/src/commonTest/kotlin/app/plainpaper/feature/home/HomeViewModelTest.kt` additions (recovery card shown when a session is recoverable; `ContinueRecovery` → `NavigateToHandoff(id)`; `DiscardRecovery` → discarded and card hidden)
+- [X] T051 [P] [US3] Extend `CameraViewModelTest.kt` (close with pages → `showDiscardConfirm`; `ConfirmDiscard` → session discarded + `NavigateBack`; `KeepScanning` hides; close with 0 pages → `NavigateBack` directly; `Done` while 2 pages `Processing` → navigates and processing continues; lifecycle `Stopped`/`Started` → camera stopped/restarted, session untouched; 30 captures keep order and count)
+- [X] T052 [P] [US3] Write `feature/capture/src/commonTest/kotlin/app/plainpaper/feature/capture/recovery/RecoverSessionTest.kt` (recoverable session with pages → `RecoverSession` returns it once; after `Discard` it is gone; `Continue` keeps status; `Processing` pages come back `Pending` and `PageProcessor.resume()` re-queues exactly those)
+- [X] T053 [P] [US3] Write `feature/home/src/commonTest/kotlin/app/plainpaper/feature/home/HomeViewModelTest.kt` additions (recovery card shown when a session is recoverable; `ContinueRecovery` → `NavigateToHandoff(id)`; `DiscardRecovery` → discarded and card hidden)
 
 ### Implementation for User Story 3
 
-- [ ] T054 [P] [US3] Extend `CameraViewModel`/`CameraScreen` with the discard confirmation dialog, lifecycle-aware start/stop (`Lifecycle.repeatOnLifecycle` from the route), re-arm within 1 s (gate `Cooldown` → preview active immediately; flash animation 300 ms), storage-full guard, Done-while-processing
-- [ ] T055 [P] [US3] Implement `core/capture/src/iosMain/.../background/IosBackgroundTask.kt` (`beginBackgroundTaskWithExpirationHandler` → cancels the block) and `AndroidBackgroundTask.kt` (pass-through); call `PageProcessor.resume()` from `PlainpaperApp` on foreground (`LifecycleEventObserver` ON_START) and at launch
-- [ ] T056 [US3] Add the recovery card to `feature/home` (`HomeUiState.recoverable`, actions `ContinueRecovery`/`DiscardRecovery`, strings EN/AR "You have an unfinished scan of %1$d pages", "Continue", "Discard"; `feature/home` gains `projects.core.domain` use cases only) and route `NavigateToHandoff` in `AppNavHost`
-- [ ] T057 [US3] Emulator: capture 6 pages, background/return, force-stop (`adb shell am force-stop`), relaunch → recovery card → Continue → 6 pages; low-end AVD: 30 pages without a crash (quickstart §4); push, CI green; commit `capture: session persistence and recovery`
+- [X] T054 [P] [US3] Extend `CameraViewModel`/`CameraScreen` with the discard confirmation dialog, lifecycle-aware start/stop (`Lifecycle.repeatOnLifecycle` from the route), re-arm within 1 s (gate `Cooldown` → preview active immediately; flash animation 300 ms), storage-full guard, Done-while-processing
+- [X] T055 [P] [US3] Implement `core/capture/src/iosMain/.../background/IosBackgroundTask.kt` (`beginBackgroundTaskWithExpirationHandler` → cancels the block) and `AndroidBackgroundTask.kt` (pass-through); call `PageProcessor.resume()` from `PlainpaperApp` on foreground (`LifecycleEventObserver` ON_START) and at launch
+- [X] T056 [US3] Add the recovery card to `feature/home` (`HomeUiState.recoverable`, actions `ContinueRecovery`/`DiscardRecovery`, strings EN/AR "You have an unfinished scan of %1$d pages", "Continue", "Discard"; `feature/home` gains `projects.core.domain` use cases only) and route `NavigateToHandoff` in `AppNavHost`
+- [X] T057 [US3] Emulator: capture 6 pages, background/return, force-stop (`adb shell am force-stop`), relaunch → recovery card → Continue → 6 pages; low-end AVD: 30 pages without a crash (quickstart §4); push, CI green; commit `capture: session persistence and recovery`
 
 **Checkpoint**: no page is lost across interruptions; a 30-page session works on the low-end profile.
 
@@ -168,14 +168,14 @@
 
 ### Tests for User Story 4
 
-- [ ] T058 [P] [US4] Write `feature/capture/src/commonTest/kotlin/app/plainpaper/feature/capture/camera/ModeSequencerTest.kt` (IdCard: captures → `IdFront(c1)`, `IdBack(c1)`, `IdFront(c2)`; switching to Document mid-card → `Document`, back to IdCard → new card; Receipt → `Receipt`; hints `FrontOfCard`/`BackOfCard`/`FitReceipt`; page size `Natural` for IdCard/Receipt, region default for Document)
-- [ ] T059 [P] [US4] Extend `CameraViewModelTest.kt` (`SelectMode` persists via settings and changes hint/guide; earlier pages keep their tags; mode restored on next start)
+- [X] T058 [P] [US4] Write `feature/capture/src/commonTest/kotlin/app/plainpaper/feature/capture/camera/ModeSequencerTest.kt` (IdCard: captures → `IdFront(c1)`, `IdBack(c1)`, `IdFront(c2)`; switching to Document mid-card → `Document`, back to IdCard → new card; Receipt → `Receipt`; hints `FrontOfCard`/`BackOfCard`/`FitReceipt`; page size `Natural` for IdCard/Receipt, region default for Document)
+- [X] T059 [P] [US4] Extend `CameraViewModelTest.kt` (`SelectMode` persists via settings and changes hint/guide; earlier pages keep their tags; mode restored on next start)
 
 ### Implementation for User Story 4
 
-- [ ] T060 [P] [US4] Create `feature/capture/.../camera/ModeSequencer.kt` to satisfy T058 and use it in `CameraViewModel` (`AddCapturedPage` with tag + page size)
-- [ ] T061 [US4] Add the `PpSegmentedControl` modes row, card-shaped guide overlay for IdCard (aspect 1.586, centred, 70 % width) and the mode hints to `CameraScreen.kt`; strings EN/AR
-- [ ] T062 [US4] Emulator walkthrough of quickstart §3 step 4; push, CI green; commit `capture: modes`
+- [X] T060 [P] [US4] Create `feature/capture/.../camera/ModeSequencer.kt` to satisfy T058 and use it in `CameraViewModel` (`AddCapturedPage` with tag + page size)
+- [X] T061 [US4] Add the `PpSegmentedControl` modes row, card-shaped guide overlay for IdCard (aspect 1.586, centred, 70 % width) and the mode hints to `CameraScreen.kt`; strings EN/AR
+- [X] T062 [US4] Emulator walkthrough of quickstart §3 step 4; push, CI green; commit `capture: modes`
 
 **Checkpoint**: ID front/back pairs and receipts carry the tags and proportions Feature 7 needs.
 
@@ -189,13 +189,13 @@
 
 ### Tests for User Story 5
 
-- [ ] T063 [P] [US5] Write `feature/capture/src/commonTest/kotlin/app/plainpaper/feature/capture/permission/CameraPermissionFlowTest.kt` (ViewModel: `NotAsked` → explanation panel, camera not started; `AllowCamera` → `request()`; `Granted` → camera starts; `Denied` → denial panel with retry; `DeniedPermanently` → "Open settings" action calls `openSettings()`, no further `request()`; foreground resume re-queries and starts when `Granted`; `Unavailable` → effect `NavigateToImport` with notice; `ImportInstead` → `NavigateToImport`)
+- [X] T063 [P] [US5] Write `feature/capture/src/commonTest/kotlin/app/plainpaper/feature/capture/permission/CameraPermissionFlowTest.kt` (ViewModel: `NotAsked` → explanation panel, camera not started; `AllowCamera` → `request()`; `Granted` → camera starts; `Denied` → denial panel with retry; `DeniedPermanently` → "Open settings" action calls `openSettings()`, no further `request()`; foreground resume re-queries and starts when `Granted`; `Unavailable` → effect `NavigateToImport` with notice; `ImportInstead` → `NavigateToImport`)
 
 ### Implementation for User Story 5
 
-- [ ] T064 [P] [US5] Implement `core/capture/src/androidMain/.../permission/AndroidCameraPermission.kt` (`RequestPermission` launcher, `shouldShowRequestPermissionRationale` + "asked before" flag in preferences to classify `DeniedPermanently`, `FEATURE_CAMERA_ANY`, settings intent) and `core/capture/src/iosMain/.../permission/IosCameraPermission.kt` (`AVCaptureDevice.authorizationStatus`, `requestAccess`, `UIApplicationOpenSettingsURLString`, device discovery for `Unavailable`)
-- [ ] T065 [US5] Create `feature/capture/.../permission/PermissionPanels.kt` (explanation + denial panels per contracts/ui.md, strings EN/AR) and integrate in `CameraScreen`/`CameraViewModel` to satisfy T063; verify Home and Import never call `request()` (test in T063 + `HomeViewModelTest`)
-- [ ] T066 [US5] Emulator: `adb shell pm revoke app.plainpaper android.permission.CAMERA` paths from quickstart §3 step 8 (deny → import works → grant in settings → camera works on return); push, CI green; commit `capture: permission flow`
+- [X] T064 [P] [US5] Implement `core/capture/src/androidMain/.../permission/AndroidCameraPermission.kt` (`RequestPermission` launcher, `shouldShowRequestPermissionRationale` + "asked before" flag in preferences to classify `DeniedPermanently`, `FEATURE_CAMERA_ANY`, settings intent) and `core/capture/src/iosMain/.../permission/IosCameraPermission.kt` (`AVCaptureDevice.authorizationStatus`, `requestAccess`, `UIApplicationOpenSettingsURLString`, device discovery for `Unavailable`)
+- [X] T065 [US5] Create `feature/capture/.../permission/PermissionPanels.kt` (explanation + denial panels per contracts/ui.md, strings EN/AR) and integrate in `CameraScreen`/`CameraViewModel` to satisfy T063; verify Home and Import never call `request()` (test in T063 + `HomeViewModelTest`)
+- [X] T066 [US5] Emulator: `adb shell pm revoke app.plainpaper android.permission.CAMERA` paths from quickstart §3 step 8 (deny → import works → grant in settings → camera works on return); push, CI green; commit `capture: permission flow`
 
 **Checkpoint**: every spec permission scenario passes; no flow is a dead end.
 

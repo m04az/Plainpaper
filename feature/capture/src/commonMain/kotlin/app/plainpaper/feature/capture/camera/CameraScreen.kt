@@ -1,5 +1,6 @@
 package app.plainpaper.feature.capture.camera
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,8 +25,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.hideFromAccessibility
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -177,6 +185,7 @@ fun CameraScreen(
                     },
                 )
                 PpOutline(corners = state.outline, flash = state.capturing, modifier = Modifier.fillMaxSize())
+                if (state.mode == CaptureMode.IdCard) CardGuide(modifier = Modifier.fillMaxSize())
                 CameraChrome(state, onAction)
             }
 
@@ -208,6 +217,37 @@ fun CameraScreen(
     }
     if (state.showDiscardConfirm) DiscardDialog(state.pageCount, onAction)
 }
+
+/** Card-shaped framing guide for ID card mode (contracts/ui.md): 70 % of the width, ID-1 aspect. */
+@Composable
+private fun CardGuide(modifier: Modifier = Modifier) {
+    val stroke = PpColors.CameraOnGlass.copy(alpha = GUIDE_ALPHA)
+    Canvas(modifier = modifier.semantics { hideFromAccessibility() }) {
+        val width = size.width * CARD_WIDTH_FRACTION
+        val height = width / ID_CARD_ASPECT
+        val left = (size.width - width) / 2f
+        val top = (size.height - height) / 2f
+        drawRoundRect(
+            color = stroke,
+            topLeft = Offset(left, top),
+            size = Size(width, height),
+            cornerRadius = CornerRadius(CardCorner.toPx(), CardCorner.toPx()),
+            style =
+                Stroke(
+                    width = GuideStroke.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(DashOn.toPx(), DashOff.toPx())),
+                ),
+        )
+    }
+}
+
+private const val GUIDE_ALPHA = 0.85f
+private const val CARD_WIDTH_FRACTION = 0.7f
+private const val ID_CARD_ASPECT = 1.586f
+private val CardCorner = 12.dp
+private val GuideStroke = 2.dp
+private val DashOn = 14.dp
+private val DashOff = 8.dp
 
 @Composable
 private fun CameraChrome(
