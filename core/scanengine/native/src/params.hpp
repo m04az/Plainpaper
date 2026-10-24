@@ -39,6 +39,19 @@ constexpr double kCannyLowFactor = 0.66;
 constexpr double kCannyHighFactor = 1.33;
 /** approxPolyDP epsilon as a fraction of the hull perimeter. */
 constexpr double kApproxEpsilon = 0.02;
+/** Coarsest approximation tried before fitting the largest four-vertex quad to the hull. */
+constexpr double kApproxEpsilonMax = 0.06;
+constexpr double kApproxEpsilonStep = 0.01;
+/** Hulls with at most this many vertices after approximation get a max-area quad fit. */
+constexpr size_t kMaxQuadFitVertices = 12;
+/** A side within this fraction of the frame size from a border lies on the border. */
+constexpr double kBorderSideMargin = 0.015;
+/** More sides than this on the frame border means the quad is the frame, not a page. */
+constexpr int kMaxBorderSides = 2;
+/** Bright-region fallback: opening width (fraction of the short side) and minimum quad IoU. */
+constexpr double kRegionOpenFraction = 0.10;
+constexpr double kRegionMinIoU = 0.85;
+constexpr int kRegionMaxBorderSides = 1;
 /** Accepted page area as a fraction of the frame. */
 constexpr double kMinPageAreaFraction = 0.20;
 constexpr double kMaxPageAreaFraction = 0.985;
@@ -166,9 +179,16 @@ constexpr double kToneGamma = 1.1;
 /** Color document: pixels with chroma below this and luminance above this fraction are paper. */
 constexpr int kPaperChroma = 12;
 constexpr double kPaperLuminanceFraction = 0.85;
-constexpr double kSaturationBoost = 1.15;
+constexpr double kSaturationBoost = 1.35;
+/** Color document: tone exponent for ink (above 1 darkens strokes more than near-white tones). */
+constexpr double kColorInkGamma = 1.6;
+/** Grayscale: weight of the darkest channel (coloured ink) against luminance. */
+constexpr double kGrayInkWeight = 0.5;
+/** Unsharp mask at output resolution (300 DPI): sigma in pixels and strength. */
+constexpr double kSharpenSigma = 1.2;
+constexpr double kSharpenAmount = 0.8;
 /** Original: brightness lift and white-balance strength (0 = none, 1 = full grey-world). */
-constexpr double kOriginalBrightness = 1.08;
+constexpr double kOriginalBrightness = 1.03;
 constexpr double kOriginalWhiteBalance = 0.5;
 
 } // namespace pp::params
