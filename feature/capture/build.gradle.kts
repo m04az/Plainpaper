@@ -24,6 +24,11 @@ kotlin {
             implementation(libs.androidx.test.ext.junit)
             implementation(libs.junit4)
             implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.androidx.compose.ui.test.junit4)
+            implementation(libs.androidx.compose.ui.test.manifest)
+            implementation(libs.androidx.test.espresso.core)
+            implementation(projects.core.testing)
+            implementation(libs.kotlinx.serialization.json)
         }
     }
 }

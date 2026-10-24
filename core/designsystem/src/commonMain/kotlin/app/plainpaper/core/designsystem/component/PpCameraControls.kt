@@ -3,6 +3,7 @@ package app.plainpaper.core.designsystem.component
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -26,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -36,6 +38,7 @@ import app.plainpaper.core.designsystem.theme.PlainpaperTheme
 import app.plainpaper.core.designsystem.theme.PpColors
 
 private val GlassButtonSize = 44.dp
+private val TouchTarget = 48.dp
 private val GlassIconSize = 18.dp
 private val PillHeight = 44.dp
 private val ChipHeight = 34.dp
@@ -62,7 +65,7 @@ public fun PpCameraGlass(
     }
 }
 
-/** 44 dp round glass icon button (close camera); the touch target is 48 dp. */
+/** 44 dp round glass icon button (close camera) inside a 48 dp touch target. */
 @Composable
 public fun PpGlassIconButton(
     icon: ImageVector,
@@ -70,20 +73,30 @@ public fun PpGlassIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    IconButton(
-        onClick = onClick,
+    Box(
         modifier =
             modifier
-                .minimumInteractiveComponentSize()
-                .size(GlassButtonSize)
-                .border(1.dp, PpColors.CameraGlassStroke, PlainpaperTheme.shapes.capsule),
-        colors =
-            IconButtonDefaults.iconButtonColors(
-                containerColor = PpColors.CameraGlass,
-                contentColor = PpColors.CameraOnGlass,
-            ),
+                .size(TouchTarget)
+                .clip(PlainpaperTheme.shapes.capsule)
+                .clickable(onClick = onClick, role = Role.Button)
+                .semantics { this.contentDescription = contentDescription },
+        contentAlignment = Alignment.Center,
     ) {
-        Icon(imageVector = icon, contentDescription = contentDescription, modifier = Modifier.size(GlassIconSize))
+        Box(
+            modifier =
+                Modifier
+                    .size(GlassButtonSize)
+                    .background(PpColors.CameraGlass, PlainpaperTheme.shapes.capsule)
+                    .border(1.dp, PpColors.CameraGlassStroke, PlainpaperTheme.shapes.capsule),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = PpColors.CameraOnGlass,
+                modifier = Modifier.size(GlassIconSize),
+            )
+        }
     }
 }
 
@@ -119,11 +132,12 @@ public fun PpToggleChip(
     Row(
         modifier =
             modifier
+                .clip(PlainpaperTheme.shapes.capsule)
+                .toggleable(value = selected, onValueChange = onToggle, role = Role.Switch)
+                .semantics { this.contentDescription = contentDescription }
                 .minimumInteractiveComponentSize()
                 .height(ChipHeight)
                 .background(background, PlainpaperTheme.shapes.capsule)
-                .toggleable(value = selected, onValueChange = onToggle, role = Role.Switch)
-                .semantics { this.contentDescription = contentDescription }
                 .padding(horizontal = PlainpaperTheme.spacing.m),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -168,10 +182,11 @@ public fun PpSegmentedControl(
                 Box(
                     modifier =
                         Modifier
+                            .clip(PlainpaperTheme.shapes.capsule)
+                            .selectable(selected = selected, onClick = { onSelect(segment) }, role = Role.Tab)
                             .minimumInteractiveComponentSize()
                             .height(SegmentHeight)
                             .background(background, PlainpaperTheme.shapes.capsule)
-                            .selectable(selected = selected, onClick = { onSelect(segment) }, role = Role.Tab)
                             .padding(horizontal = PlainpaperTheme.spacing.l),
                     contentAlignment = Alignment.Center,
                 ) {
