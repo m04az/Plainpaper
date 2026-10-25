@@ -83,10 +83,10 @@
 
 ## Phase 5b: User Story 4 — adjust the border by hand (P2)
 
-- [ ] T029 [US4] Tests first, then domain: `CapturedPage.detectedCorners` (border found by the engine, kept for Auto; persisted, older indexes default to `corners`) and `PageProcessor.setCorners(sessionId, pageId, quad)` (stores the user border, bumps revision, re-renders with user corners, keeps look/rotation/mirror; Quick scan pages keep `keepOrientation`)
-- [ ] T030 [P] [US4] Tests first, then a pure `CornerEditor` (feature/capture commonMain): image↔view mapping for a fitted image, drag of one corner clamped to the image, rejects non-convex or < 5% area positions, Auto / Full photo, apply result in image pixels
-- [ ] T031 [US4] Original photo for the editor oriented exactly like the engine's decoder (EXIF on Android, image orientation on iOS) at ≤ 1600 px, via `:core:capture`; test that corners line up (decoder size == loader size × scale)
-- [ ] T032 [US4] `CropEditor` composable (photo, border, handles, magnifier, Auto / Full photo / Cancel / Apply; RTL-safe; EN + AR strings) and Crop buttons in the camera review step and the page viewer (`CameraViewModel`, `HandoffViewModel` actions + tests)
+- [X] T029 [US4] Tests first, then domain: `CapturedPage.detectedCorners` (border found by the engine, kept for Auto; persisted, older indexes default to `corners`) and `PageProcessor.setCorners(sessionId, pageId, quad)` (stores the user border, bumps revision, re-renders with user corners, keeps look/rotation/mirror; Quick scan pages keep `keepOrientation`)
+- [X] T030 [P] [US4] Tests first, then a pure `CornerEditor` (feature/capture commonMain): image↔view mapping for a fitted image, drag of one corner clamped to the image, rejects non-convex or < 5% area positions, Auto / Full photo, apply result in image pixels
+- [X] T031 [US4] Original photo for the editor oriented exactly like the engine's decoder (EXIF on Android, image orientation on iOS) at ≤ 1600 px, via `:core:capture`; test that corners line up (decoder size == loader size × scale)
+- [X] T032 [US4] `CropEditor` composable (photo, border, handles, magnifier, Auto / Full photo / Cancel / Apply; RTL-safe; EN + AR strings) and Crop buttons in the camera review step and the page viewer (`CameraViewModel`, `HandoffViewModel` actions + tests)
 
 ## Phase 6: Polish
 

@@ -120,4 +120,14 @@
     <string name="quickscan_subtitle">Uses your phone’s own scanner</string>
     <string name="quickscan_preparing">Your phone is preparing its scanner. Try again in a moment, or use Plainpaper’s camera.</string>
     <string name="quickscan_failed">The phone’s scanner could not be opened.</string>
+    <string name="crop_action">Crop</string>
+    <string name="crop_title">Adjust the border</string>
+    <string name="crop_auto">Auto</string>
+    <string name="crop_full_photo">Full photo</string>
+    <string name="crop_apply">Apply</string>
+    <string name="crop_cancel">Cancel</string>
+    <string name="crop_canvas_cd">Page border editor. Drag the four corner handles.</string>
+    <string name="crop_handle_cd">Corner %1$d of 4</string>
+    <string name="crop_loading_cd">Loading the photo</string>
+    <string name="crop_failed">The photo could not be opened.</string>
 </resources>

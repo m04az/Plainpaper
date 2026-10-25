@@ -3,13 +3,18 @@ package app.plainpaper.feature.capture.handoff
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.plainpaper.core.capture.files.OriginalPhotoLoader
 import app.plainpaper.core.capture.files.ThumbnailLoader
 import app.plainpaper.core.domain.coroutines.DispatcherProvider
 import app.plainpaper.core.domain.model.OutputStyle
+import app.plainpaper.core.domain.model.Quad
 import app.plainpaper.core.domain.model.capture.CaptureSession
+import app.plainpaper.core.domain.model.capture.CapturedPage
 import app.plainpaper.core.domain.model.capture.PageState
 import app.plainpaper.core.domain.usecase.capture.FinishSessionUseCase
 import app.plainpaper.core.domain.usecase.capture.ObserveActiveSessionUseCase
+import app.plainpaper.feature.capture.crop.CropState
+import app.plainpaper.feature.capture.crop.cropStateFor
 import app.plainpaper.feature.capture.processing.PageProcessor
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -42,6 +47,8 @@ data class HandoffUiState(
     val current: Int = 0,
     /** Large image of the current page, null while it loads (the thumbnail stands in). */
     val preview: ImageBitmap? = null,
+    /** The crop editor of the current page, open while non-null (spec 004 FR-014). */
+    val crop: CropState? = null,
 ) {
     val currentPage: HandoffPage? get() = pages.getOrNull(current)
 }
@@ -62,6 +69,14 @@ sealed interface HandoffAction {
     data object RotatePage : HandoffAction
 
     data object FlipPage : HandoffAction
+
+    data object OpenCrop : HandoffAction
+
+    data object CloseCrop : HandoffAction
+
+    data class ApplyCrop(
+        val corners: Quad,
+    ) : HandoffAction
 }
 
 sealed interface HandoffEffect {
@@ -78,6 +93,7 @@ class HandoffViewModel(
     private val finishSession: FinishSessionUseCase,
     private val processor: PageProcessor,
     private val thumbnails: ThumbnailLoader,
+    private val originals: OriginalPhotoLoader,
     private val dispatchers: DispatcherProvider,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(HandoffUiState())
@@ -91,6 +107,7 @@ class HandoffViewModel(
     private var handedOff = false
     private var previewPath: String? = null
     private var previewJob: Job? = null
+    private var session: CaptureSession? = null
 
     init {
         viewModelScope.launch {
@@ -120,11 +137,46 @@ class HandoffViewModel(
                 uiState.value.currentPage?.let { processor.transform(sessionId, it.id, flip = true) }
             }
 
+            HandoffAction.OpenCrop -> {
+                openCrop()
+            }
+
+            HandoffAction.CloseCrop -> {
+                mutableState.update { it.copy(crop = null) }
+            }
+
+            is HandoffAction.ApplyCrop -> {
+                applyCrop(action.corners)
+            }
+
             HandoffAction.ApplyLookToAll -> {
                 val style = uiState.value.currentPage?.style ?: return
                 processor.restyle(sessionId, uiState.value.pages.map { it.id }, style)
             }
         }
+    }
+
+    private fun openCrop() {
+        val page = currentSessionPage() ?: return
+        if (!page.state.hasPage || uiState.value.crop != null) return
+        mutableState.update { it.copy(crop = CropState(page.id)) }
+        viewModelScope.launch(dispatchers.io) {
+            val loaded = originals.cropStateFor(page)
+            // Ignore a result that arrives after the editor was closed.
+            mutableState.update { if (it.crop?.pageId == page.id) it.copy(crop = loaded) else it }
+        }
+    }
+
+    private fun applyCrop(corners: Quad) {
+        val crop = uiState.value.crop ?: return
+        if (crop.photo == null) return
+        mutableState.update { it.copy(crop = null) }
+        processor.setCorners(sessionId, crop.pageId, corners)
+    }
+
+    private fun currentSessionPage(): CapturedPage? {
+        val id = uiState.value.currentPage?.id ?: return null
+        return session?.page(id)
     }
 
     private fun select(index: Int) {
@@ -134,6 +186,7 @@ class HandoffViewModel(
     }
 
     private fun onSession(session: CaptureSession) {
+        this.session = session
         if (!handedOff) {
             handedOff = true
             viewModelScope.launch { finishSession(sessionId) }

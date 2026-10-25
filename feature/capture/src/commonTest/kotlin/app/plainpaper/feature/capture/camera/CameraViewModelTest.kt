@@ -38,6 +38,7 @@ import app.plainpaper.core.testing.TestDispatcherProvider
 import app.plainpaper.feature.capture.fakes.FakeBackgroundTask
 import app.plainpaper.feature.capture.fakes.FakeCameraController
 import app.plainpaper.feature.capture.fakes.FakeImageFiles
+import app.plainpaper.feature.capture.fakes.FakeOriginalPhotoLoader
 import app.plainpaper.feature.capture.fakes.FakeThumbnailLoader
 import app.plainpaper.feature.capture.processing.PageProcessor
 import kotlinx.coroutines.CoroutineScope
@@ -93,6 +94,8 @@ class CameraViewModelTest {
             scope = CoroutineScope(SupervisorJob() + dispatcher),
         )
 
+    private val originals = FakeOriginalPhotoLoader()
+
     private fun viewModel(): CameraViewModel =
         CameraViewModel(
             cameraFactory = { camera },
@@ -109,6 +112,7 @@ class CameraViewModelTest {
             settings = settings,
             files = files,
             thumbnails = thumbnails,
+            originals = originals,
             dispatchers = dispatchers,
         )
 
@@ -482,6 +486,74 @@ class CameraViewModelTest {
                     ?.let { Triple(it.rotation, it.mirrored, it.processing) },
             )
             assertEquals(270 to true, files.transforms[stored.pagePath])
+        }
+
+    @Test
+    fun cropOpensLoadsTheOriginalAndApplyReRendersWithTheNewBorder() =
+        runTest {
+            val vm = runningViewModel()
+            vm.onAction(CameraAction.Shutter)
+            val id = assertNotNull(vm.uiState.value.review).pageId
+            val before = assertNotNull(sessions.state.value?.page(id))
+            vm.onAction(CameraAction.OpenCrop)
+            val crop =
+                assertNotNull(
+                    vm.uiState.value.review
+                        ?.crop,
+                )
+            assertNotNull(crop.photo)
+            assertEquals(listOf(before.originalPath), originals.requested)
+            assertEquals(before.corners, crop.corners)
+            assertEquals(before.detectedCorners, crop.detected)
+
+            val border = Quad(Point(100f, 80f), Point(3000f, 120f), Point(2900f, 2500f), Point(150f, 2400f))
+            vm.onAction(CameraAction.ApplyCrop(border))
+            assertNull(
+                vm.uiState.value.review
+                    ?.crop,
+            )
+            val stored = assertNotNull(sessions.state.value?.page(id))
+            assertEquals(border, stored.corners)
+            assertEquals(before.detectedCorners, stored.detectedCorners)
+            assertEquals(before.revision + 1, stored.revision)
+            assertEquals(PageState.Ready, stored.state)
+        }
+
+    @Test
+    fun cancellingTheCropChangesNothing() =
+        runTest {
+            val vm = runningViewModel()
+            vm.onAction(CameraAction.Shutter)
+            val id = assertNotNull(vm.uiState.value.review).pageId
+            val before = assertNotNull(sessions.state.value?.page(id))
+            vm.onAction(CameraAction.OpenCrop)
+            vm.onAction(CameraAction.CloseCrop)
+            assertNull(
+                vm.uiState.value.review
+                    ?.crop,
+            )
+            assertEquals(before, sessions.state.value?.page(id))
+            vm.onAction(CameraAction.ApplyCrop(Quad.fullFrame(10, 10)))
+            assertEquals(before, sessions.state.value?.page(id), "no editor open, nothing applied")
+        }
+
+    @Test
+    fun cropReportsAPhotoThatCannotBeOpenedAndNeverApplies() =
+        runTest {
+            originals.fail = true
+            val vm = runningViewModel()
+            vm.onAction(CameraAction.Shutter)
+            val id = assertNotNull(vm.uiState.value.review).pageId
+            val before = assertNotNull(sessions.state.value?.page(id))
+            vm.onAction(CameraAction.OpenCrop)
+            assertEquals(
+                true,
+                vm.uiState.value.review
+                    ?.crop
+                    ?.failed,
+            )
+            vm.onAction(CameraAction.ApplyCrop(Quad.fullFrame(4000, 3000)))
+            assertEquals(before, sessions.state.value?.page(id))
         }
 
     @Test

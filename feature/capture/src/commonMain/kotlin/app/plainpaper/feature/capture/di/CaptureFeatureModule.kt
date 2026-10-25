@@ -40,6 +40,7 @@ val captureFeatureModule: Module =
                 settings = get(),
                 files = get(),
                 thumbnails = get(),
+                originals = get(),
                 dispatchers = get(),
             )
         }
@@ -78,6 +79,7 @@ val captureFeatureModule: Module =
                 finishSession = get(),
                 processor = get(),
                 thumbnails = get(),
+                originals = get(),
                 dispatchers = get(),
             )
         }

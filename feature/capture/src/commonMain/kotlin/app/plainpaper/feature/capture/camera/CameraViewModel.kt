@@ -11,6 +11,7 @@ import app.plainpaper.core.capture.camera.CameraState
 import app.plainpaper.core.capture.camera.CaptureResult
 import app.plainpaper.core.capture.camera.PreviewGeometry
 import app.plainpaper.core.capture.files.ImageFiles
+import app.plainpaper.core.capture.files.OriginalPhotoLoader
 import app.plainpaper.core.capture.files.ThumbnailLoader
 import app.plainpaper.core.domain.coroutines.DispatcherProvider
 import app.plainpaper.core.domain.model.DeviceCapability
@@ -33,6 +34,8 @@ import app.plainpaper.core.domain.usecase.capture.ResolveDefaultPageSizeUseCase
 import app.plainpaper.core.domain.usecase.capture.SessionDirectoryUseCase
 import app.plainpaper.core.domain.usecase.capture.StartSessionUseCase
 import app.plainpaper.core.scanengine.ScanEngine
+import app.plainpaper.feature.capture.crop.CropState
+import app.plainpaper.feature.capture.crop.cropStateFor
 import app.plainpaper.feature.capture.handoff.PREVIEW_EDGE
 import app.plainpaper.feature.capture.processing.PageProcessor
 import kotlinx.coroutines.Job
@@ -69,6 +72,7 @@ class CameraViewModel(
     private val settings: CaptureSettingsRepository,
     private val files: ImageFiles,
     private val thumbnails: ThumbnailLoader,
+    private val originals: OriginalPhotoLoader,
     private val dispatchers: DispatcherProvider,
 ) : ViewModel() {
     /** The platform camera; the screen hands it to the preview renderer. */
@@ -198,6 +202,10 @@ class CameraViewModel(
 
             CameraAction.ReviewFlip -> {
                 withReview { if (!it.review.processing) processor.transform(it.sessionId, it.pageId, flip = true) }
+            }
+
+            CameraAction.OpenCrop, CameraAction.CloseCrop, is CameraAction.ApplyCrop -> {
+                onCropAction(action)
             }
 
             CameraAction.ReviewRetake -> {
@@ -435,6 +443,47 @@ class CameraViewModel(
                 }
             }
         }
+    }
+
+    private fun onCropAction(action: CameraAction) {
+        when (action) {
+            CameraAction.OpenCrop -> openCrop()
+            CameraAction.CloseCrop -> setCrop(null)
+            is CameraAction.ApplyCrop -> applyCrop(action.corners)
+            else -> Unit
+        }
+    }
+
+    private fun openCrop() {
+        withReview { context ->
+            val page = lastSession?.page(context.pageId) ?: return@withReview
+            if (context.review.processing || context.review.failed || context.review.crop != null) return@withReview
+            setCrop(CropState(page.id))
+            viewModelScope.launch(dispatchers.io) {
+                val loaded = originals.cropStateFor(page)
+                mutableState.update { state ->
+                    val review = state.review
+                    // Ignore a result that arrives after the editor was closed or the page changed.
+                    if (review?.pageId == page.id && review.crop != null) {
+                        state.copy(review = review.copy(crop = loaded))
+                    } else {
+                        state
+                    }
+                }
+            }
+        }
+    }
+
+    private fun applyCrop(corners: Quad) {
+        withReview { context ->
+            if (context.review.crop?.photo == null) return@withReview
+            setCrop(null)
+            processor.setCorners(context.sessionId, context.pageId, corners)
+        }
+    }
+
+    private fun setCrop(crop: CropState?) {
+        mutableState.update { state -> state.review?.let { state.copy(review = it.copy(crop = crop)) } ?: state }
     }
 
     private fun onRetake() {

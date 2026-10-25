@@ -40,7 +40,9 @@ import app.plainpaper.core.designsystem.icon.PpIcons
 import app.plainpaper.core.designsystem.theme.PlainpaperTheme
 import app.plainpaper.core.domain.model.capture.PageState
 import app.plainpaper.feature.capture.LookChipRow
+import app.plainpaper.feature.capture.crop.CropEditor
 import app.plainpaper.feature.capture.resources.Res
+import app.plainpaper.feature.capture.resources.crop_action
 import app.plainpaper.feature.capture.resources.handoff_apply_all
 import app.plainpaper.feature.capture.resources.handoff_attention_cd
 import app.plainpaper.feature.capture.resources.handoff_back
@@ -78,6 +80,24 @@ fun HandoffRoute(
 /** Pages one at a time, swipe between them, pick a look per page or for all (until Feature 4). */
 @Composable
 fun HandoffScreen(
+    state: HandoffUiState,
+    onAction: (HandoffAction) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier.fillMaxSize()) {
+        HandoffPages(state, onAction, Modifier.fillMaxSize())
+        state.crop?.let { crop ->
+            CropEditor(
+                state = crop,
+                onApply = { onAction(HandoffAction.ApplyCrop(it)) },
+                onCancel = { onAction(HandoffAction.CloseCrop) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun HandoffPages(
     state: HandoffUiState,
     onAction: (HandoffAction) -> Unit,
     modifier: Modifier = Modifier,
@@ -198,6 +218,12 @@ private fun LookBar(
                     text = stringResource(Res.string.review_flip),
                     onClick = { onAction(HandoffAction.FlipPage) },
                     enabled = current != null && !current.busy,
+                )
+                PpToolButton(
+                    icon = PpIcons.Crop,
+                    text = stringResource(Res.string.crop_action),
+                    onClick = { onAction(HandoffAction.OpenCrop) },
+                    enabled = current != null && current.state.hasPage && !current.busy,
                 )
             }
             if (state.pages.size > 1) {

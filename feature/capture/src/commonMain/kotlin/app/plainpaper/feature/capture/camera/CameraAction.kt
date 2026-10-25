@@ -1,6 +1,7 @@
 package app.plainpaper.feature.capture.camera
 
 import app.plainpaper.core.domain.model.OutputStyle
+import app.plainpaper.core.domain.model.Quad
 import app.plainpaper.core.domain.model.capture.CameraPermissionState
 import app.plainpaper.core.domain.model.capture.CaptureMode
 
@@ -55,6 +56,14 @@ sealed interface CameraAction {
     data object ReviewRotate : CameraAction
 
     data object ReviewFlip : CameraAction
+
+    data object OpenCrop : CameraAction
+
+    data object CloseCrop : CameraAction
+
+    data class ApplyCrop(
+        val corners: Quad,
+    ) : CameraAction
 
     data object ReviewRetake : CameraAction
 
