@@ -111,6 +111,35 @@ the camera works, the outline comes from the existing detector, and no error is 
 
 ---
 
+### User Story 4 - Adjust the border by hand (Priority: P2)
+
+*Added 2026-10-25 at the owner's request.*
+
+After a shot (in the review step) or later in the page viewer, the person taps Crop. The original
+photo appears with the detected border; they drag any of the four corners (a magnifier shows the
+area under the finger), can reset to the automatic border or select the whole photo, and tap
+Apply. The page is re-rendered from the original with their border, keeping its look, rotation
+and flip.
+
+**Why this priority**: no detector is right every time; a quick manual fix saves a retake.
+
+**Independent Test**: capture a page, open Crop, drag one corner inwards, Apply, and check the
+page is re-rendered with that border; open Crop again and see the edited border; tap Auto to get
+the detected border back.
+
+**Acceptance Scenarios**:
+
+1. **Given** the review step or the page viewer, **When** Crop is tapped, **Then** the original
+   photo is shown with the page's current border and four draggable corners.
+2. **Given** a corner is dragged, **When** the finger moves, **Then** the border follows, stays
+   inside the photo, and a magnifier shows the area under the finger.
+3. **Given** a drag would make the border cross itself or smaller than 5% of the photo, **When**
+   the finger moves there, **Then** the border does not accept that position.
+4. **Given** an edited border, **When** Apply is tapped, **Then** the page is re-rendered from the
+   original with that border and keeps its look, rotation and flip; Cancel leaves it unchanged.
+5. **Given** the editor, **When** Auto is tapped, **Then** the detected border returns; **When**
+   Full photo is tapped, **Then** the border becomes the photo's edges.
+
 ### Edge Cases
 
 - Two documents in view: the outline goes to the larger, more central one; it must not jump
@@ -164,6 +193,11 @@ the camera works, the outline comes from the existing detector, and no error is 
 - **FR-012**: Pages from Quick scan MUST NOT be cropped a second time; Plainpaper only applies the
   chosen look, rotation and flip to them.
 - **FR-013**: All new text MUST be available in English and Arabic.
+- **FR-014**: The review step and the page viewer MUST offer Crop: the original photo with the
+  page's border, four draggable corners kept inside the photo, convex and at least 5% of it, a
+  magnifier while dragging, Auto (detected border), Full photo, Cancel and Apply. Apply MUST
+  re-render the page from the original with the edited border, keeping look, rotation and flip;
+  the detected border is kept so Auto can restore it.
 
 ### Key Entities
 
