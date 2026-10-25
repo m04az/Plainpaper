@@ -8,6 +8,7 @@ import app.plainpaper.core.domain.model.capture.CameraPermissionState
 import app.plainpaper.core.domain.model.capture.CaptureMode
 import app.plainpaper.core.domain.model.capture.CapturedPage
 import app.plainpaper.core.domain.model.capture.PageState
+import app.plainpaper.feature.capture.crop.CropState
 
 /** What the hint pill says (contracts/ui.md). */
 enum class HintKind { HoldSteady, TapShutter, MoveCloser, TooDark, AdjustFraming, FrontOfCard, BackOfCard, FitReceipt }
@@ -26,6 +27,8 @@ data class ReviewState(
     val rotation: Int = 0,
     val mirrored: Boolean = false,
     val failed: Boolean = false,
+    /** The crop editor, open over the review while non-null (spec 004 FR-014). */
+    val crop: CropState? = null,
 )
 
 data class CameraUiState(

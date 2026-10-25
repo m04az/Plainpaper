@@ -11,6 +11,7 @@ import app.plainpaper.core.scanengine.PreviewFrame
 import app.plainpaper.core.scanengine.ScanPhoto
 import app.plainpaper.core.scanengine.model.Confidence
 import app.plainpaper.core.scanengine.model.CornerSource
+import app.plainpaper.core.scanengine.model.DetectorKind
 import app.plainpaper.core.scanengine.model.FallbackReason
 import app.plainpaper.core.scanengine.model.FitMode
 import app.plainpaper.core.scanengine.model.OrientationConfidence
@@ -29,6 +30,8 @@ import app.plainpaper.scanengine.cinterop.pp_api_version
 import app.plainpaper.scanengine.cinterop.pp_detect
 import app.plainpaper.scanengine.cinterop.pp_detect_info
 import app.plainpaper.scanengine.cinterop.pp_engine_create
+import app.plainpaper.scanengine.cinterop.pp_engine_load_detector
+import app.plainpaper.scanengine.cinterop.pp_engine_set_detector_enabled
 import app.plainpaper.scanengine.cinterop.pp_image_rgba
 import app.plainpaper.scanengine.cinterop.pp_last_error
 import app.plainpaper.scanengine.cinterop.pp_output_free
@@ -44,8 +47,10 @@ import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.CPointerVar
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.IntVar
+import kotlinx.cinterop.UByteVar
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.alloc
+import kotlinx.cinterop.convert
 import kotlinx.cinterop.free
 import kotlinx.cinterop.get
 import kotlinx.cinterop.memScoped
@@ -88,6 +93,7 @@ internal class CinteropNativeBridge : NativeBridge {
         capability: DeviceCapability,
         workingLongEdge: Int,
         allowFlatten: Boolean,
+        keepOrientation: Boolean,
         userCorners: Quad?,
         cancel: NativeCancelFlag,
     ): NativeAnalyzeResult {
@@ -110,6 +116,7 @@ internal class CinteropNativeBridge : NativeBridge {
                 options.capability = (if (capability == DeviceCapability.Full) 0 else 1).toUInt()
                 options.working_long_edge = workingLongEdge
                 options.allow_flatten = if (allowFlatten) 1 else 0
+                options.keep_orientation = if (keepOrientation) 1 else 0
                 options.user_corners = if (userCorners != null) quad.ptr else null
                 val sessionOut = alloc<CPointerVar<pp_session>>()
                 val status =
@@ -178,9 +185,23 @@ internal class CinteropNativeBridge : NativeBridge {
                 values[9] = info.mean_luma.toDouble()
                 values[10] = info.fill_fraction.toDouble()
                 values[11] = info.micros.toDouble()
+                values[12] = info.detector.toInt().toDouble()
+                values[13] = info.presence.toDouble()
                 NativeDetectResult.decode(status, values, if (status == NativeStatus.Ok) "" else lastError())
             }
         }
+    }
+
+    override fun loadDetector(bytes: ByteArray): Boolean {
+        if (bytes.isEmpty()) return false
+        return bytes.usePinned { pinned ->
+            pp_engine_load_detector(engine, pinned.addressOf(0).reinterpret<UByteVar>(), bytes.size.convert())
+                .toInt() == NativeStatus.Ok.code
+        }
+    }
+
+    override fun setDetectorEnabled(enabled: Boolean) {
+        pp_engine_set_detector_enabled(engine, if (enabled) 1 else 0)
     }
 
     private fun lastError(): String = pp_last_error()?.toKString().orEmpty()
@@ -231,6 +252,8 @@ internal class CinteropNativeBridge : NativeBridge {
                     specularHighlight = info.flags and PP_FLAG_SPECULAR_HIGHLIGHT != 0u,
                     steps = steps,
                     peakBytes = info.peak_bytes,
+                    detector = DetectorKind.entries[info.detector.toInt().coerceIn(0, 1)],
+                    presence = info.presence,
                 )
             }
 

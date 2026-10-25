@@ -3,6 +3,7 @@ package app.plainpaper.core.domain.usecase.capture
 import app.plainpaper.core.domain.model.PageSize
 import app.plainpaper.core.domain.model.capture.CaptureSession
 import app.plainpaper.core.domain.model.capture.CapturedPage
+import app.plainpaper.core.domain.model.capture.PageSource
 import app.plainpaper.core.domain.model.capture.PageTag
 import app.plainpaper.core.domain.model.capture.SessionSource
 import app.plainpaper.core.domain.repository.CaptureSessionRepository
@@ -29,7 +30,8 @@ public class AddCapturedPageUseCase(
         originalPath: String,
         tag: PageTag,
         pageSize: PageSize,
-    ): CapturedPage = repository.addPage(sessionId, originalPath, tag, pageSize)
+        source: PageSource = PageSource.Camera,
+    ): CapturedPage = repository.addPage(sessionId, originalPath, tag, pageSize, source)
 }
 
 public class RemovePageUseCase(

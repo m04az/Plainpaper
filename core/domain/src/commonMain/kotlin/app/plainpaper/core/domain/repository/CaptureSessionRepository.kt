@@ -3,6 +3,7 @@ package app.plainpaper.core.domain.repository
 import app.plainpaper.core.domain.model.PageSize
 import app.plainpaper.core.domain.model.capture.CaptureSession
 import app.plainpaper.core.domain.model.capture.CapturedPage
+import app.plainpaper.core.domain.model.capture.PageSource
 import app.plainpaper.core.domain.model.capture.PageTag
 import app.plainpaper.core.domain.model.capture.SessionSource
 import kotlinx.coroutines.flow.Flow
@@ -21,6 +22,7 @@ public interface CaptureSessionRepository {
         originalPath: String,
         tag: PageTag,
         pageSize: PageSize,
+        source: PageSource = PageSource.Camera,
     ): CapturedPage
 
     public suspend fun updatePage(

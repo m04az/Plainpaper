@@ -9,6 +9,7 @@ import app.plainpaper.core.domain.model.capture.AttentionReason
 import app.plainpaper.core.domain.model.capture.CaptureSession
 import app.plainpaper.core.domain.model.capture.CapturedPage
 import app.plainpaper.core.domain.model.capture.PageFailure
+import app.plainpaper.core.domain.model.capture.PageSource
 import app.plainpaper.core.domain.model.capture.PageState
 import app.plainpaper.core.domain.model.capture.PageTag
 import app.plainpaper.core.domain.model.capture.SessionSource
@@ -39,6 +40,8 @@ internal data class PageIndex(
     val state: StateIndex = StateIndex("Pending"),
     val tag: TagIndex = TagIndex("Document"),
     val corners: List<Float>? = null,
+    /** Absent in older indexes: defaults to [corners]. */
+    val detectedCorners: List<Float>? = null,
     val confidence: String? = null,
     val pageSize: String = "A4",
     val rotationApplied: Int = 0,
@@ -46,6 +49,8 @@ internal data class PageIndex(
     val rotation: Int = 0,
     val mirrored: Boolean = false,
     val revision: Int = 0,
+    /** Absent in older indexes: defaults from the session source. */
+    val source: String? = null,
 )
 
 @Serializable
@@ -70,20 +75,23 @@ internal fun CaptureSession.toIndex(directory: Path): SessionIndex =
     )
 
 /** A page read from disk; a page that was `Processing` when the process died is `Pending` again. */
-internal fun SessionIndex.toSession(directory: Path): CaptureSession =
-    CaptureSession(
+internal fun SessionIndex.toSession(directory: Path): CaptureSession {
+    val sessionSource = enumOrDefault(source, SessionSource.Camera)
+    val defaultSource = if (sessionSource == SessionSource.Import) PageSource.Import else PageSource.Camera
+    return CaptureSession(
         id = id,
-        source = enumOrDefault(source, SessionSource.Camera),
+        source = sessionSource,
         createdAtEpochMillis = createdAtEpochMillis,
         pages =
             pages.sortedBy { it.position }.mapIndexed {
                 index,
                 page,
                 ->
-                page.toPage(directory).copy(position = index)
+                page.toPage(directory, defaultSource).copy(position = index)
             },
         status = enumOrDefault(status, SessionStatus.Active),
     )
+}
 
 private fun CapturedPage.toIndex(directory: Path): PageIndex =
     PageIndex(
@@ -95,6 +103,7 @@ private fun CapturedPage.toIndex(directory: Path): PageIndex =
         state = state.toIndex(),
         tag = tag.toIndex(),
         corners = corners?.toFloatArray()?.toList(),
+        detectedCorners = detectedCorners?.toFloatArray()?.toList(),
         confidence = confidence?.name,
         pageSize = pageSize.name,
         rotationApplied = rotationApplied,
@@ -102,23 +111,25 @@ private fun CapturedPage.toIndex(directory: Path): PageIndex =
         rotation = rotation,
         mirrored = mirrored,
         revision = revision,
+        source = source.name,
     )
 
-private fun PageIndex.toPage(directory: Path): CapturedPage =
+private fun PageIndex.toPage(
+    directory: Path,
+    defaultSource: PageSource,
+): CapturedPage =
     CapturedPage(
         id = id,
         position = position,
         originalPath = resolve(originalPath, directory),
         tag = tag.toTag(),
         pageSize = enumOrDefault(pageSize, PageSize.A4),
+        source = enumOrDefault(source, defaultSource),
         state = state.toState(),
         pagePath = pagePath?.let { resolve(it, directory) },
         thumbnailPath = thumbnailPath?.let { resolve(it, directory) },
-        corners =
-            corners
-                ?.takeIf {
-                    it.size == QUAD_VALUES
-                }?.let { Quad.fromDoubles(DoubleArray(QUAD_VALUES) { i -> it[i].toDouble() }) },
+        corners = corners.toQuad(),
+        detectedCorners = detectedCorners.toQuad() ?: corners.toQuad(),
         confidence = confidence?.let { name -> Confidence.entries.firstOrNull { it.name == name } },
         rotationApplied = rotationApplied,
         style = enumOrDefault(style, CapturedPage.DEFAULT_STYLE),
@@ -128,6 +139,13 @@ private fun PageIndex.toPage(directory: Path): CapturedPage =
     )
 
 private const val QUAD_VALUES = 8
+
+private fun List<Float>?.toQuad(): Quad? =
+    this?.takeIf { it.size == QUAD_VALUES }?.let {
+        Quad.fromDoubles(
+            DoubleArray(QUAD_VALUES) { i -> it[i].toDouble() },
+        )
+    }
 
 private fun PageState.toIndex(): StateIndex =
     when (this) {

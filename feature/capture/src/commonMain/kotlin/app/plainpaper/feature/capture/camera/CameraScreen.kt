@@ -59,6 +59,7 @@ import app.plainpaper.core.domain.model.capture.CameraPermissionState
 import app.plainpaper.core.domain.model.capture.CaptureMode
 import app.plainpaper.feature.capture.permission.PermissionDeniedPanel
 import app.plainpaper.feature.capture.permission.PermissionExplanationPanel
+import app.plainpaper.feature.capture.quickscan.QuickScanCameraButton
 import app.plainpaper.feature.capture.resources.Res
 import app.plainpaper.feature.capture.resources.camera_auto
 import app.plainpaper.feature.capture.resources.camera_auto_cd
@@ -161,6 +162,7 @@ fun CameraRoute(
         state = state,
         onAction = viewModel::onAction,
         preview = { modifier -> renderer.Render(viewModel.camera, modifier) },
+        quickScan = { QuickScanCameraButton(onHandoff = onHandoff) },
     )
 }
 
@@ -172,6 +174,7 @@ fun CameraScreen(
     onAction: (CameraAction) -> Unit,
     preview: @Composable (Modifier) -> Unit,
     modifier: Modifier = Modifier,
+    quickScan: @Composable () -> Unit = {},
 ) {
     BackHandler { onAction(CameraAction.Close) }
     Box(modifier = modifier.fillMaxSize().background(Color.Black)) {
@@ -188,7 +191,7 @@ fun CameraScreen(
                 if (state.mode == CaptureMode.IdCard) CardGuide(modifier = Modifier.fillMaxSize())
                 val review = state.review
                 if (review == null) {
-                    CameraChrome(state, onAction)
+                    CameraChrome(state, onAction, quickScan)
                 } else {
                     ReviewOverlay(state, review, onAction)
                 }
@@ -258,6 +261,7 @@ private val DashOff = 8.dp
 private fun CameraChrome(
     state: CameraUiState,
     onAction: (CameraAction) -> Unit,
+    quickScan: @Composable () -> Unit,
 ) {
     val spacing = PlainpaperTheme.spacing
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
@@ -308,6 +312,7 @@ private fun CameraChrome(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(spacing.xl),
         ) {
+            quickScan()
             PpSegmentedControl(
                 segments =
                     listOf(

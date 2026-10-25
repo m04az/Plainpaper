@@ -5,6 +5,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -12,6 +13,8 @@ import androidx.navigation.compose.rememberNavController
 import app.plainpaper.core.designsystem.theme.PlainpaperTheme
 import app.plainpaper.core.domain.model.AppPreferences
 import app.plainpaper.core.domain.usecase.ObservePreferencesUseCase
+import app.plainpaper.core.scanengine.DetectorModelSource
+import app.plainpaper.core.scanengine.ScanEngine
 import app.plainpaper.feature.capture.CaptureResume
 import app.plainpaper.locale.AppEnvironment
 import app.plainpaper.locale.systemLanguageTag
@@ -27,6 +30,12 @@ fun PlainpaperApp() {
     val observePreferences: ObservePreferencesUseCase = koinInject()
     val preferences: AppPreferences? by observePreferences().collectAsStateWithLifecycle(initialValue = null)
     val loaded = preferences
+
+    // Loads the detection model once per process; the engine reads it off the main thread and keeps
+    // the classic detector when the model is missing or unusable.
+    val engine: ScanEngine = koinInject()
+    val modelSource: DetectorModelSource = koinInject()
+    LaunchedEffect(engine, modelSource) { engine.loadDetector(modelSource) }
 
     if (loaded == null) {
         // One blank frame on the paper background instead of a flash of the wrong language/theme.

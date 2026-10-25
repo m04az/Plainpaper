@@ -29,6 +29,7 @@ set(PP_CORE_SOURCES
     src/flatten.cpp
     src/illumination.cpp
     src/render.cpp
+    src/model.cpp
 )
 
 if(PP_PLATFORM STREQUAL "ios")
@@ -61,4 +62,12 @@ elseif(PP_PLATFORM STREQUAL "host")
     endif()
 else()
     target_compile_definitions(plainpaper_scan PRIVATE PP_IOS=1)
+endif()
+
+# Host-only parity check of the detection model against PyTorch test vectors (specs/004):
+#   cmake -DPP_PLATFORM=host -DPP_BUILD_TESTS=ON ...; model_parity <model.ppdm> <vectors.vec>
+option(PP_BUILD_TESTS "Build host test executables" OFF)
+if(PP_BUILD_TESTS AND PP_PLATFORM STREQUAL "host")
+    add_executable(model_parity tests/model_parity.cpp)
+    target_link_libraries(model_parity PRIVATE plainpaper_scan)
 endif()

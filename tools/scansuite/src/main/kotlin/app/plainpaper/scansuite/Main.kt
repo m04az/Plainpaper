@@ -5,7 +5,7 @@ import app.plainpaper.core.domain.model.OutputStyle
 import java.io.File
 
 /**
- * `./gradlew :tools:scansuite:run [--args="--styles scan,grayscale --simplified --only <id-substring>"]`
+ * `./gradlew :tools:scansuite:run [--args="--styles scan,grayscale --simplified --no-model --only <id-substring>"]`
  * Writes build/scansuite/report.{md,json} and outputs/; never fails the build (the gate is the test).
  */
 fun main(args: Array<String>) {
@@ -21,11 +21,18 @@ fun main(args: Array<String>) {
             ?: setOf(OutputStyle.Scan)
     val capability = if (args.contains("--simplified")) DeviceCapability.Simplified else DeviceCapability.Full
     args.getOrNull(args.indexOf("--photos") + 1)?.takeIf { args.contains("--photos") }?.let { dir ->
-        AdHoc.run(File(dir), File(outputDir, "adhoc"), capability)
+        AdHoc.run(File(dir), File(outputDir, "adhoc"), capability, useModel = !args.contains("--no-model"))
         return
     }
     val only = args.getOrNull(args.indexOf("--only") + 1)?.takeIf { args.contains("--only") }
-    val runner = SuiteRunner(outputDir, capability, styles, legibility = Tesseract.ifAvailable())
+    val runner =
+        SuiteRunner(
+            outputDir,
+            capability,
+            styles,
+            legibility = Tesseract.ifAvailable(),
+            useModel = !args.contains("--no-model"),
+        )
     val sources =
         SuiteRunner.defaultSources(rootDir, outputDir).map { source ->
             if (only ==

@@ -9,6 +9,7 @@ import app.plainpaper.core.capture.picker.PickedPhoto
 import app.plainpaper.core.domain.coroutines.DispatcherProvider
 import app.plainpaper.core.domain.model.capture.CaptureMode
 import app.plainpaper.core.domain.model.capture.CaptureSession
+import app.plainpaper.core.domain.model.capture.PageSource
 import app.plainpaper.core.domain.model.capture.PageState
 import app.plainpaper.core.domain.model.capture.PageTag
 import app.plainpaper.core.domain.model.capture.SessionSource
@@ -155,7 +156,7 @@ class ImportViewModel(
                 val destination = "$directory/original-${index.toString().padStart(INDEX_DIGITS, '0')}.jpg"
                 when (files.copyOriginal(photo.uri, destination)) {
                     is CopyResult.Copied -> {
-                        val page = addPage(session.id, destination, PageTag.Document, pageSize)
+                        val page = addPage(session.id, destination, PageTag.Document, pageSize, PageSource.Import)
                         pageToItem[page.id] = index
                         pageIds += page.id
                     }

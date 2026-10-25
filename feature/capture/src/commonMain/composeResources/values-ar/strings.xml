@@ -152,4 +152,18 @@
     <string name="review_processing">جارٍ معالجة الصفحة…</string>
     <string name="review_failed">تعذّرت معالجة هذه الصفحة. أعد تصويرها.</string>
     <string name="review_preview_cd">معاينة الصفحة</string>
+    <string name="quickscan_action">مسح سريع</string>
+    <string name="quickscan_subtitle">يستخدم الماسح المدمج في هاتفك</string>
+    <string name="quickscan_preparing">هاتفك يجهّز الماسح الضوئي. حاول مرة أخرى بعد قليل، أو استخدم كاميرا Plainpaper.</string>
+    <string name="quickscan_failed">تعذّر فتح الماسح الضوئي في الهاتف.</string>
+    <string name="crop_action">اقتصاص</string>
+    <string name="crop_title">اضبط الحدود</string>
+    <string name="crop_auto">تلقائي</string>
+    <string name="crop_full_photo">الصورة كاملة</string>
+    <string name="crop_apply">تطبيق</string>
+    <string name="crop_cancel">إلغاء</string>
+    <string name="crop_canvas_cd">محرر حدود الصفحة. اسحب مقابض الزوايا الأربع.</string>
+    <string name="crop_handle_cd">الزاوية %1$d من 4</string>
+    <string name="crop_loading_cd">جارٍ تحميل الصورة</string>
+    <string name="crop_failed">تعذّر فتح الصورة.</string>
 </resources>

@@ -6,9 +6,12 @@ import app.plainpaper.core.domain.coroutines.DispatcherProvider
 import app.plainpaper.core.domain.model.Confidence
 import app.plainpaper.core.domain.model.DeviceCapability
 import app.plainpaper.core.domain.model.OutputStyle
+import app.plainpaper.core.domain.model.Point
+import app.plainpaper.core.domain.model.Quad
 import app.plainpaper.core.domain.model.capture.AttentionReason
 import app.plainpaper.core.domain.model.capture.CapturedPage
 import app.plainpaper.core.domain.model.capture.PageFailure
+import app.plainpaper.core.domain.model.capture.PageSource
 import app.plainpaper.core.domain.model.capture.PageState
 import app.plainpaper.core.domain.repository.CaptureSessionRepository
 import app.plainpaper.core.scanengine.AnalyzeResult
@@ -45,7 +48,7 @@ data class PageWork(
  * JPEG + thumbnail → session update (research R8). One page at a time on Simplified devices,
  * two on Full. Survives screen changes; `resume()` re-queues pending pages after a restart.
  */
-@Suppress("TooManyFunctions") // queue operations: enqueue, cancel, resume, restyle, transform
+@Suppress("TooManyFunctions") // queue operations: enqueue, cancel, resume, restyle, transform, setCorners
 class PageProcessor(
     private val engine: ScanEngine,
     private val decoder: PhotoDecoder,
@@ -159,8 +162,17 @@ class PageProcessor(
         page: CapturedPage,
         photo: ScanPhoto,
     ) {
-        // A page that was already detected keeps its corners: a new look re-renders the same crop.
-        val options = page.corners?.let { AnalyzeOptions(userCorners = it) } ?: AnalyzeOptions()
+        // Quick scan pages are already cropped and upright: the full frame is the crop and the
+        // engine must not turn them (spec 004 FR-012). Otherwise a page that was already
+        // detected keeps its corners: a new look re-renders the same crop.
+        val quickScan = page.source == PageSource.QuickScan
+        val corners = page.corners ?: if (quickScan) fullFrame(photo) else null
+        val options =
+            when {
+                quickScan -> AnalyzeOptions(userCorners = corners, keepOrientation = true)
+                corners != null -> AnalyzeOptions(userCorners = corners)
+                else -> AnalyzeOptions()
+            }
         when (val analyzed = engine.analyze(photo, options)) {
             is AnalyzeResult.Failed -> {
                 finish(
@@ -195,13 +207,16 @@ class PageProcessor(
         val thumbnailWritten = files.writeThumbnail(pagePath, thumbnailPath)
         // The first detection's verdict stands: a re-render with stored corners reports them as
         // user corners, which would otherwise hide a page that still needs attention.
-        val confidence = page.confidence ?: analysis.confidence
+        val confidence =
+            page.confidence ?: if (page.source == PageSource.QuickScan) Confidence.High else analysis.confidence
         finish(work, page) {
             it.copy(
                 state = stateFor(analysis.outcome, confidence),
                 pagePath = pagePath,
                 thumbnailPath = if (thumbnailWritten) thumbnailPath else null,
                 corners = page.corners ?: analysis.corners,
+                // Kept from the first detection: user borders never replace what Auto returns to.
+                detectedCorners = page.detectedCorners ?: page.corners ?: analysis.corners,
                 confidence = confidence,
                 rotationApplied = analysis.rotationApplied,
             )
@@ -255,6 +270,34 @@ class PageProcessor(
             val page = session.page(pageId) ?: return@launch
             if (page.state is PageState.Pending || page.state is PageState.Processing) return@launch
             sessions.updatePage(sessionId, transformed(page, rotateClockwise, flip).copy(state = PageState.Pending))
+            enqueue(sessionId, pageId)
+        }
+    }
+
+    /**
+     * Sets the page border by hand ([corners] in original-photo pixels, in the page's reading
+     * order) and re-renders from the original; look, rotation and mirror stay. Pages still being
+     * processed are left alone.
+     */
+    fun setCorners(
+        sessionId: String,
+        pageId: String,
+        corners: Quad,
+    ) {
+        scope.launch {
+            val session = sessions.activeSession.first()?.takeIf { it.id == sessionId } ?: return@launch
+            val page = session.page(pageId) ?: return@launch
+            if (page.state is PageState.Pending || page.state is PageState.Processing) return@launch
+            val edited =
+                page.copy(
+                    corners = corners,
+                    detectedCorners = page.detectedCorners ?: page.corners,
+                    // The user chose this border, so a "low confidence" verdict no longer applies.
+                    confidence = Confidence.High,
+                    revision = page.revision + 1,
+                    state = PageState.Pending,
+                )
+            sessions.updatePage(sessionId, edited)
             enqueue(sessionId, pageId)
         }
     }
@@ -325,6 +368,12 @@ class PageProcessor(
             Outcome.Cancelled -> PageFailure.Cancelled
             else -> PageFailure.Internal
         }
+
+    private fun fullFrame(photo: ScanPhoto): Quad {
+        val w = photo.width.toFloat()
+        val h = photo.height.toFloat()
+        return Quad(Point(0f, 0f), Point(w, 0f), Point(w, h), Point(0f, h))
+    }
 
     private companion object {
         const val FULL_WORKERS = 2

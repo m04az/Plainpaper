@@ -59,6 +59,7 @@ fun HomeRoute(
     onNavigateToScan: () -> Unit,
     onNavigateToImport: () -> Unit,
     onNavigateToHandoff: (sessionId: String) -> Unit,
+    quickScanAction: @Composable (Modifier) -> Unit = {},
 ) {
     val viewModel: HomeViewModel = koinViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -87,7 +88,7 @@ fun HomeRoute(
         }
     }
 
-    HomeScreen(state = state, onAction = viewModel::onAction)
+    HomeScreen(state = state, onAction = viewModel::onAction, quickScanAction = quickScanAction)
 }
 
 @Composable
@@ -95,6 +96,7 @@ fun HomeScreen(
     state: HomeUiState,
     onAction: (HomeAction) -> Unit,
     modifier: Modifier = Modifier,
+    quickScanAction: @Composable (Modifier) -> Unit = {},
 ) {
     val spacing = PlainpaperTheme.spacing
     Column(
@@ -121,12 +123,15 @@ fun HomeScreen(
                     )
                 },
                 secondaryAction = {
-                    PpGlassButton(
-                        text = stringResource(Res.string.home_import_button),
-                        onClick = { onAction(HomeAction.ImportClicked) },
-                        leadingIcon = PpIcons.ImportPhoto,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(spacing.s)) {
+                        PpGlassButton(
+                            text = stringResource(Res.string.home_import_button),
+                            onClick = { onAction(HomeAction.ImportClicked) },
+                            leadingIcon = PpIcons.ImportPhoto,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        quickScanAction(Modifier.fillMaxWidth())
+                    }
                 },
                 modifier = Modifier.fillMaxWidth().padding(top = spacing.xxxl * 2),
             )

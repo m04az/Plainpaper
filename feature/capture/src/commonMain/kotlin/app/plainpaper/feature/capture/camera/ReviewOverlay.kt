@@ -54,9 +54,11 @@ import app.plainpaper.core.designsystem.icon.PpIcons
 import app.plainpaper.core.designsystem.theme.PlainpaperTheme
 import app.plainpaper.core.designsystem.theme.PpColors
 import app.plainpaper.feature.capture.LookChipRow
+import app.plainpaper.feature.capture.crop.CropEditor
 import app.plainpaper.feature.capture.resources.Res
 import app.plainpaper.feature.capture.resources.camera_done
 import app.plainpaper.feature.capture.resources.camera_pages_cd
+import app.plainpaper.feature.capture.resources.crop_action
 import app.plainpaper.feature.capture.resources.review_failed
 import app.plainpaper.feature.capture.resources.review_flip
 import app.plainpaper.feature.capture.resources.review_preview_cd
@@ -112,6 +114,13 @@ internal fun ReviewOverlay(
             ReviewControls(review, onAction)
         }
         ReviewPage(review, area)
+        review.crop?.let { crop ->
+            CropEditor(
+                state = crop,
+                onApply = { onAction(CameraAction.ApplyCrop(it)) },
+                onCancel = { onAction(CameraAction.CloseCrop) },
+            )
+        }
     }
 }
 
@@ -165,6 +174,12 @@ private fun ReviewControls(
                     icon = PpIcons.FlipHorizontal,
                     text = stringResource(Res.string.review_flip),
                     onClick = { onAction(CameraAction.ReviewFlip) },
+                    enabled = !review.processing && !review.failed,
+                )
+                PpToolButton(
+                    icon = PpIcons.Crop,
+                    text = stringResource(Res.string.crop_action),
+                    onClick = { onAction(CameraAction.OpenCrop) },
                     enabled = !review.processing && !review.failed,
                 )
                 PpToolButton(

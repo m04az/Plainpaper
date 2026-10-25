@@ -6,6 +6,8 @@ namespace pp::params {
 
 /** Smallest accepted long edge of an input photo (FR-001 validation). */
 constexpr int kMinInputLongEdge = 640;
+/** Smallest accepted long edge for pre-cropped pages analysed with keep_orientation (specs/004). */
+constexpr int kMinKeptInputLongEdge = 200;
 /** Largest accepted long edge of an input photo; decoders cap at 12 MP (research R12). */
 constexpr int kMaxInputLongEdge = 6000;
 /** Working resolution bounds accepted from the caller. */
@@ -32,6 +34,31 @@ constexpr int kThreadsFullMax = 4;
 } // namespace pp::params
 
 namespace pp::params {
+
+// ---- detection model (specs/004 research R2) ----
+/** Model input side (frame resized, aspect not kept) and output mask side. */
+constexpr int kModelInput = 256;
+constexpr int kModelMask = 128;
+/** Presence below this: no document (no outline, classic detector not consulted). */
+constexpr double kModelAbsentPresence = 0.2;
+/** Mask probability threshold for the document region. */
+constexpr double kModelMaskThreshold = 0.5;
+/** Confidence: High needs presence and mask/quad IoU at least these; Low the second pair. */
+constexpr double kModelHighPresence = 0.8;
+constexpr double kModelHighIoU = 0.9;
+constexpr double kModelLowPresence = 0.5;
+constexpr double kModelLowIoU = 0.75;
+/** Edge snapping of the model quad may move a corner at most this fraction of the diagonal. */
+constexpr double kModelSnapMaxShift = 0.03;
+/** Hybrid: an edge quad replaces the model quad when it is well supported, lies inside the
+ * model's region, covers at least this share of the model quad's area and differs from a thin
+ * ring around it by kHullMinContrast. */
+/** Classic and model quads overlapping this much are the same document (classic edges kept). */
+constexpr double kModelAgreeIoU = 0.85;
+constexpr double kHybridMinSupport = 0.5;
+constexpr double kHybridMinMeanSupport = 0.75;
+constexpr double kHybridMinCoverage = 0.9;
+constexpr double kHybridMinAreaRatio = 0.3;
 
 // ---- detection (research R5 step 2) ----
 /** Auto-Canny thresholds as factors of the median luminance. */

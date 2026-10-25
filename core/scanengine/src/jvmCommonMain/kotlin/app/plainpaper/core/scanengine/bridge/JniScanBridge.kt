@@ -36,6 +36,7 @@ public object JniScanBridge {
         capability: Int,
         workingLongEdge: Int,
         allowFlatten: Boolean,
+        keepOrientation: Boolean,
         userCorners: FloatArray?,
         cancel: Long,
         outStatus: IntArray,
@@ -50,12 +51,13 @@ public object JniScanBridge {
         capability: Int,
         workingLongEdge: Int,
         allowFlatten: Boolean,
+        keepOrientation: Boolean,
         userCorners: FloatArray?,
         cancel: Long,
         outStatus: IntArray,
     ): Long
 
-    /** `pp_detect` on RGBA/BGRA bytes; [out] gets 8 corners, confidence, mean luma, fill, micros. Returns the status. */
+    /** `pp_detect` on RGBA/BGRA bytes; [out] gets 8 corners, confidence, mean luma, fill, micros, detector, presence. Returns the status. */
     @JvmStatic
     @Suppress("LongParameterList")
     public external fun nativeDetectBytes(
@@ -83,7 +85,7 @@ public object JniScanBridge {
         out: DoubleArray,
     ): Int
 
-    /** Packs `pp_analysis_info` into [longs] (>= 34 entries) and [doubles] (>= 9 entries). */
+    /** Packs `pp_analysis_info` into [longs] (>= 35 entries) and [doubles] (>= 10 entries). */
     @JvmStatic
     public external fun nativeSessionInfo(
         session: Long,
@@ -116,6 +118,32 @@ public object JniScanBridge {
         cancel: Long,
         bitmap: Any,
         outInfo: LongArray,
+    ): Int
+
+    /** `pp_engine_load_detector` with .ppdm bytes; returns the `pp_status` code. */
+    @JvmStatic
+    public external fun nativeLoadDetector(
+        engine: Long,
+        bytes: ByteArray,
+    ): Int
+
+    /** `pp_engine_set_detector_enabled`. */
+    @JvmStatic
+    public external fun nativeSetDetectorEnabled(
+        engine: Long,
+        enabled: Boolean,
+    )
+
+    /**
+     * `pp_detector_run` (diagnostics, parity test): [input] 3x256x256 planar floats, [maskOut] 128x128
+     * probabilities, [presenceOut] one probability. Returns the status code.
+     */
+    @JvmStatic
+    public external fun nativeDetectorRun(
+        engine: Long,
+        input: FloatArray,
+        maskOut: FloatArray,
+        presenceOut: FloatArray,
     ): Int
 
     @JvmStatic

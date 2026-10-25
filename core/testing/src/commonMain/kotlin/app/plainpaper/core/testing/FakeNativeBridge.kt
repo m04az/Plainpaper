@@ -16,6 +16,7 @@ import app.plainpaper.core.scanengine.bridge.NativeSession
 import app.plainpaper.core.scanengine.bridge.NativeStatus
 import app.plainpaper.core.scanengine.model.Confidence
 import app.plainpaper.core.scanengine.model.CornerSource
+import app.plainpaper.core.scanengine.model.DetectorKind
 import app.plainpaper.core.scanengine.model.FitMode
 import app.plainpaper.core.scanengine.model.OrientationConfidence
 import app.plainpaper.core.scanengine.model.ProcessingStep
@@ -32,6 +33,7 @@ class FakeNativeBridge(
         val capability: DeviceCapability,
         val workingLongEdge: Int,
         val allowFlatten: Boolean,
+        val keepOrientation: Boolean,
         val userCorners: Quad?,
         val flagSetDuringCall: Boolean,
     )
@@ -103,6 +105,13 @@ class FakeNativeBridge(
     var onAnalyze: (() -> Unit)? = null
     var onRender: (() -> Unit)? = null
 
+    /** Result of [loadDetector]; set false to simulate unusable model bytes. */
+    var loadDetectorResult: Boolean = true
+    val loadedDetectors = mutableListOf<ByteArray>()
+
+    /** Every [setDetectorEnabled] call in order. */
+    val detectorEnabledCalls = mutableListOf<Boolean>()
+
     override fun apiVersion(): Int = apiVersion
 
     override fun createCancelFlag(): NativeCancelFlag = FakeCancelFlag().also { flags += it }
@@ -112,12 +121,13 @@ class FakeNativeBridge(
         capability: DeviceCapability,
         workingLongEdge: Int,
         allowFlatten: Boolean,
+        keepOrientation: Boolean,
         userCorners: Quad?,
         cancel: NativeCancelFlag,
     ): NativeAnalyzeResult {
         onAnalyze?.invoke()
         val flag = cancel as FakeCancelFlag
-        calls += AnalyzeCall(photo, capability, workingLongEdge, allowFlatten, userCorners, flag.isSet)
+        calls += AnalyzeCall(photo, capability, workingLongEdge, allowFlatten, keepOrientation, userCorners, flag.isSet)
         if (flag.isSet) return NativeAnalyzeResult.Failure(NativeStatus.Cancelled, "")
         return when (val script = analyzeScript.removeFirstOrNull() ?: Script.Succeed()) {
             is Script.Fail -> {
@@ -142,10 +152,21 @@ class FakeNativeBridge(
         return detectScript.removeFirstOrNull() ?: defaultDetect(frame)
     }
 
+    override fun loadDetector(bytes: ByteArray): Boolean {
+        loadedDetectors += bytes
+        return loadDetectorResult
+    }
+
+    override fun setDetectorEnabled(enabled: Boolean) {
+        detectorEnabledCalls += enabled
+    }
+
     companion object {
         fun defaultDetect(
             frame: PreviewFrame,
             confidence: Confidence = Confidence.High,
+            detector: DetectorKind = DetectorKind.Classic,
+            micros: Long = 5_000,
         ): NativeDetectResult =
             NativeDetectResult(
                 status = NativeStatus.Ok,
@@ -153,7 +174,9 @@ class FakeNativeBridge(
                 confidence = confidence,
                 fillFraction = 1f,
                 meanLuma = 128f,
-                micros = 5_000,
+                micros = micros,
+                detector = detector,
+                presence = if (detector == DetectorKind.Model) 0.95f else 0f,
             )
 
         fun defaultInfo(

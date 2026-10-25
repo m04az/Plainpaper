@@ -4,6 +4,8 @@ import app.cash.turbine.test
 import app.plainpaper.core.domain.model.DeviceCapability
 import app.plainpaper.core.domain.model.OutputStyle
 import app.plainpaper.core.domain.model.PageSize
+import app.plainpaper.core.domain.model.Point
+import app.plainpaper.core.domain.model.Quad
 import app.plainpaper.core.domain.model.capture.PageState
 import app.plainpaper.core.domain.model.capture.PageTag
 import app.plainpaper.core.domain.model.capture.SessionSource
@@ -18,6 +20,7 @@ import app.plainpaper.core.testing.FakePhotoDecoder
 import app.plainpaper.core.testing.TestDispatcherProvider
 import app.plainpaper.feature.capture.fakes.FakeBackgroundTask
 import app.plainpaper.feature.capture.fakes.FakeImageFiles
+import app.plainpaper.feature.capture.fakes.FakeOriginalPhotoLoader
 import app.plainpaper.feature.capture.fakes.FakeThumbnailLoader
 import app.plainpaper.feature.capture.processing.PageProcessor
 import kotlinx.coroutines.CoroutineScope
@@ -32,6 +35,8 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -66,6 +71,7 @@ class HandoffViewModelTest {
         )
     }
 
+    private val originals = FakeOriginalPhotoLoader()
     private val pageProcessor by lazy { processor() }
 
     private fun viewModel(sessionId: String) =
@@ -75,6 +81,7 @@ class HandoffViewModelTest {
             finishSession = FinishSessionUseCase(sessions),
             processor = pageProcessor,
             thumbnails = thumbnails,
+            originals = originals,
             dispatchers = TestDispatcherProvider(dispatcher),
         )
 
@@ -208,5 +215,64 @@ class HandoffViewModelTest {
             assertEquals(PageState.Ready, pages[1].state)
             assertEquals(270 to true, files.transforms[pages[1].pagePath])
             assertTrue(pages[1].pagePath!!.contains("-r2-"))
+        }
+
+    @Test
+    fun cropEditsOnlyTheCurrentPageAndKeepsTheLook() =
+        runTest {
+            val id = processedSession(2)
+            val vm = viewModel(id)
+            vm.onAction(HandoffAction.SelectPage(1))
+            vm.onAction(HandoffAction.ChooseLook(OutputStyle.Scan))
+            val before = sessions.state.value!!.pages
+            vm.onAction(HandoffAction.OpenCrop)
+            val crop = assertNotNull(vm.uiState.value.crop)
+            assertEquals(before[1].id, crop.pageId)
+            assertNotNull(crop.photo)
+            assertEquals(before[1].corners, crop.corners)
+
+            val border = Quad(Point(100f, 80f), Point(3000f, 120f), Point(2900f, 2500f), Point(150f, 2400f))
+            vm.onAction(HandoffAction.ApplyCrop(border))
+            assertNull(vm.uiState.value.crop)
+            val pages = sessions.state.value!!.pages
+            assertEquals(before[0], pages[0])
+            assertEquals(border, pages[1].corners)
+            assertEquals(before[1].detectedCorners, pages[1].detectedCorners)
+            assertEquals(OutputStyle.Scan, pages[1].style)
+            assertEquals(before[1].revision + 1, pages[1].revision)
+            assertEquals(PageState.Ready, pages[1].state)
+        }
+
+    @Test
+    fun cancellingTheCropOrFailingToLoadChangesNothing() =
+        runTest {
+            val id = processedSession(1)
+            val vm = viewModel(id)
+            val before = sessions.state.value!!.pages
+            vm.onAction(HandoffAction.OpenCrop)
+            vm.onAction(HandoffAction.CloseCrop)
+            assertNull(vm.uiState.value.crop)
+            vm.onAction(HandoffAction.ApplyCrop(Quad.fullFrame(10, 10)))
+            assertEquals(before, sessions.state.value!!.pages)
+
+            originals.fail = true
+            vm.onAction(HandoffAction.OpenCrop)
+            assertEquals(
+                true,
+                vm.uiState.value.crop
+                    ?.failed,
+            )
+            vm.onAction(HandoffAction.ApplyCrop(Quad.fullFrame(4000, 3000)))
+            assertEquals(before, sessions.state.value!!.pages)
+        }
+
+    @Test
+    fun cropIsIgnoredWhileThePageIsBeingProcessed() =
+        runTest {
+            val session = sessions.start(SessionSource.Camera)
+            sessions.addPage(session.id, "/p.jpg", PageTag.Document, PageSize.A4)
+            val vm = viewModel(session.id)
+            vm.onAction(HandoffAction.OpenCrop)
+            assertNull(vm.uiState.value.crop)
         }
 }

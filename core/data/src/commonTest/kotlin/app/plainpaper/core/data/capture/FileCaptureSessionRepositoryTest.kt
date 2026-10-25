@@ -5,6 +5,7 @@ import app.plainpaper.core.domain.model.OutputStyle
 import app.plainpaper.core.domain.model.PageSize
 import app.plainpaper.core.domain.model.Point
 import app.plainpaper.core.domain.model.Quad
+import app.plainpaper.core.domain.model.capture.PageSource
 import app.plainpaper.core.domain.model.capture.PageState
 import app.plainpaper.core.domain.model.capture.PageTag
 import app.plainpaper.core.domain.model.capture.SessionSource
@@ -235,5 +236,52 @@ class FileCaptureSessionRepositoryTest {
             assertTrue(fs.exists("$root/id1/page-${b.id}-r0-Scan.jpg".toPath()))
             val stored = assertNotNull(FileCaptureSessionRepository(fs, root, now = { clock }).recoverable())
             assertEquals(listOf(b.id), stored.pages.map { it.id })
+        }
+
+    @Test
+    fun pageSourceRoundTripsAndOldIndexesDefaultFromTheSessionSource() =
+        runTest {
+            val session = repository.start(SessionSource.Camera)
+            repository.addPage(session.id, "$root/id1/a.jpg", PageTag.Document, PageSize.A4, PageSource.QuickScan)
+            repository.addPage(session.id, "$root/id1/b.jpg", PageTag.Document, PageSize.A4)
+            val reloaded = assertNotNull(FileCaptureSessionRepository(fs, root, now = { clock }).recoverable())
+            assertEquals(listOf(PageSource.QuickScan, PageSource.Camera), reloaded.pages.map { it.source })
+
+            assertEquals(PageSource.Camera, oldIndexSource("Camera"))
+            assertEquals(PageSource.Import, oldIndexSource("Import"))
+        }
+
+    private suspend fun oldIndexSource(sessionSource: String): PageSource {
+        val oldFs = FakeFileSystem()
+        oldFs.createDirectories("$root/old".toPath())
+        oldFs.write("$root/old/$SESSION_INDEX_FILE".toPath()) {
+            writeUtf8(
+                """{"schemaVersion":1,"id":"old","source":"$sessionSource","createdAtEpochMillis":5,"status":"Active",
+                "pages":[{"id":"p","position":0,"originalPath":"o.jpg"}]}""",
+            )
+        }
+        return assertNotNull(
+            FileCaptureSessionRepository(oldFs, root, now = { clock }).recoverable(),
+        ).pages.single().source
+    }
+
+    @Test
+    fun detectedCornersRoundTripAndOldIndexesDefaultToTheCorners() =
+        runTest {
+            val session = repository.start(SessionSource.Camera)
+            val page = repository.addPage(session.id, "$root/id1/original-000.jpg", PageTag.Document, PageSize.A4)
+            val detected = Quad(Point(1f, 2f), Point(30f, 2f), Point(30f, 50f), Point(1f, 50f))
+            val edited = Quad(Point(5f, 6f), Point(31f, 6f), Point(31f, 51f), Point(5f, 51f))
+            repository.updatePage(session.id, page.copy(corners = edited, detectedCorners = detected))
+            val stored =
+                assertNotNull(FileCaptureSessionRepository(fs, root, now = { clock }).recoverable()).pages.single()
+            assertEquals(detected, stored.detectedCorners)
+            assertEquals(edited, stored.corners)
+
+            val old = indexText("id1").replace(Regex(",\"detectedCorners\":\\[[^\\]]*\\]"), "")
+            fs.write("$root/id1/$SESSION_INDEX_FILE".toPath()) { writeUtf8(old) }
+            val legacy =
+                assertNotNull(FileCaptureSessionRepository(fs, root, now = { clock }).recoverable()).pages.single()
+            assertEquals(edited, legacy.detectedCorners)
         }
 }

@@ -104,6 +104,8 @@ jobs:
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;30.0.16248370" "cmake;3.22.1" > /dev/null
       - name: Assemble debug APK and device-test APKs
         run: ./gradlew :androidApp:assembleDebug :core:capture:assembleAndroidDeviceTest :feature:capture:assembleAndroidDeviceTest
+      - name: No network permission in the merged release manifest
+        run: scripts/check-no-network-permission.sh
       - uses: actions/upload-artifact@v7
         with:
           name: androidApp-debug

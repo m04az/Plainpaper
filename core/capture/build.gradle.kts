@@ -23,6 +23,8 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.koin.android)
             implementation(libs.androidx.core.ktx)
+            implementation(libs.androidx.exifinterface)
+            implementation(libs.play.services.mlkit.document.scanner)
         }
         commonTest.dependencies {
             implementation(projects.core.testing)

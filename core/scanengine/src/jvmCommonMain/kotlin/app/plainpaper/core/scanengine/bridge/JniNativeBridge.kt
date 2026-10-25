@@ -9,6 +9,7 @@ import app.plainpaper.core.scanengine.PreviewFrame
 import app.plainpaper.core.scanengine.ScanPhoto
 import app.plainpaper.core.scanengine.model.Confidence
 import app.plainpaper.core.scanengine.model.CornerSource
+import app.plainpaper.core.scanengine.model.DetectorKind
 import app.plainpaper.core.scanengine.model.FallbackReason
 import app.plainpaper.core.scanengine.model.FitMode
 import app.plainpaper.core.scanengine.model.OrientationConfidence
@@ -18,9 +19,9 @@ import app.plainpaper.core.scanengine.model.SkipReason
 import app.plainpaper.core.scanengine.model.StepStatus
 import app.plainpaper.core.scanengine.model.StepTiming
 
-private const val INFO_HEADER = 7
+private const val INFO_HEADER = 8
 private val INFO_LONGS = INFO_HEADER + 3 * ProcessingStep.entries.size
-private const val INFO_DOUBLES = 9
+private const val INFO_DOUBLES = 10
 private const val RENDER_INFO = 6
 private const val FLAG_INVERTED = 1L
 private const val FLAG_SPECULAR = 2L
@@ -74,6 +75,7 @@ public abstract class JniNativeBridge : NativeBridge {
         capability: DeviceCapability,
         workingLongEdge: Int,
         allowFlatten: Boolean,
+        keepOrientation: Boolean,
         userCorners: Quad?,
         cancel: NativeCancelFlag,
     ): NativeAnalyzeResult {
@@ -85,6 +87,7 @@ public abstract class JniNativeBridge : NativeBridge {
                 capability = capability.code,
                 workingLongEdge = workingLongEdge,
                 allowFlatten = allowFlatten,
+                keepOrientation = keepOrientation,
                 userCorners = userCorners?.toFloatArray(),
                 cancel = (cancel as JniCancelFlag).handle,
                 outStatus = status,
@@ -129,6 +132,15 @@ public abstract class JniNativeBridge : NativeBridge {
         return NativeDetectResult.decode(nativeStatus, out, detail)
     }
 
+    override fun loadDetector(bytes: ByteArray): Boolean {
+        if (bytes.isEmpty()) return false
+        return JniScanBridge.nativeLoadDetector(engine, bytes) == NativeStatus.Ok.code
+    }
+
+    override fun setDetectorEnabled(enabled: Boolean) {
+        JniScanBridge.nativeSetDetectorEnabled(engine, enabled)
+    }
+
     /** Platform frame types other than [ByteArrayPreviewFrame]; returns the status code. */
     protected open fun detectNative(
         engine: Long,
@@ -144,6 +156,7 @@ public abstract class JniNativeBridge : NativeBridge {
         capability: Int,
         workingLongEdge: Int,
         allowFlatten: Boolean,
+        keepOrientation: Boolean,
         userCorners: FloatArray?,
         cancel: Long,
         outStatus: IntArray,
@@ -232,6 +245,8 @@ public abstract class JniNativeBridge : NativeBridge {
                 specularHighlight = longs[4] and FLAG_SPECULAR != 0L,
                 steps = steps,
                 peakBytes = longs[6],
+                detector = DetectorKind.entries[longs[7].toInt().coerceIn(0, 1)],
+                presence = doubles[9].toFloat(),
             )
         }
 

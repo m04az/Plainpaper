@@ -125,6 +125,14 @@ public object PpIcons {
         }
     }
 
+    /** Crop marks: two overlapping right angles. */
+    public val Crop: ImageVector by lazy {
+        strokeIcon("Crop") {
+            path("M6 2v14a2 2 0 0 0 2 2h14")
+            path("M18 22V8a2 2 0 0 0-2-2H2")
+        }
+    }
+
     /** Left-right mirror: a centre line with a triangle on each side. */
     public val FlipHorizontal: ImageVector by lazy {
         strokeIcon("FlipHorizontal") {

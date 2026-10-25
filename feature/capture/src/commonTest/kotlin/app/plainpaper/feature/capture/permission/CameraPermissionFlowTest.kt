@@ -29,6 +29,7 @@ import app.plainpaper.feature.capture.fakes.FakeBackgroundTask
 import app.plainpaper.feature.capture.fakes.FakeCameraController
 import app.plainpaper.feature.capture.fakes.FakeCameraPermission
 import app.plainpaper.feature.capture.fakes.FakeImageFiles
+import app.plainpaper.feature.capture.fakes.FakeOriginalPhotoLoader
 import app.plainpaper.feature.capture.fakes.FakeThumbnailLoader
 import app.plainpaper.feature.capture.processing.PageProcessor
 import kotlinx.coroutines.CoroutineScope
@@ -93,6 +94,7 @@ class CameraPermissionFlowTest {
             settings = FakeCaptureSettingsRepository(),
             files = FakeImageFiles(),
             thumbnails = FakeThumbnailLoader(),
+            originals = FakeOriginalPhotoLoader(),
             dispatchers = dispatchers,
         )
 

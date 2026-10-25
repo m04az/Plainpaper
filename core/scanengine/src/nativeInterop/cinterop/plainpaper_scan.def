@@ -2,4 +2,4 @@ headers = plainpaper_scan.h
 headerFilter = plainpaper_scan.h
 package = app.plainpaper.scanengine.cinterop
 linkerOpts = -lc++
-nonStrictEnums = pp_capability pp_style pp_fit pp_status pp_confidence pp_corner_source pp_step pp_step_status pp_orientation_confidence pp_fallback_reason
+nonStrictEnums = pp_capability pp_style pp_fit pp_status pp_confidence pp_corner_source pp_step pp_step_status pp_orientation_confidence pp_fallback_reason pp_detector

@@ -34,6 +34,9 @@ exifinterface = "1.4.2"
 
 # Capture & import (003, research R1)
 camerax = "1.6.2"
+
+# Quick scan (004, research R7): Google's on-device document scanner, delivered through Play services
+mlkitDocumentScanner = "16.0.0"
 # Jetpack Compose runtime that Compose Multiplatform 1.12.2 resolves to on Android (device tests only)
 composeAndroidUi = "1.12.1"
 androidNdk = "30.0.16248370"
@@ -74,6 +77,7 @@ okio-fakefilesystem = { module = "com.squareup.okio:okio-fakefilesystem", versio
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
 androidx-exifinterface = { module = "androidx.exifinterface:exifinterface", version.ref = "exifinterface" }
+play-services-mlkit-document-scanner = { module = "com.google.android.gms:play-services-mlkit-document-scanner", version.ref = "mlkitDocumentScanner" }
 androidx-camera-core = { module = "androidx.camera:camera-core", version.ref = "camerax" }
 androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "camerax" }
 androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camerax" }

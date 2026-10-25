@@ -7,11 +7,17 @@ import app.plainpaper.core.scanengine.model.AnalyzeOptions
 import app.plainpaper.core.scanengine.model.Confidence
 import app.plainpaper.core.scanengine.model.CornerSource
 import app.plainpaper.core.scanengine.model.DetectResult
+import app.plainpaper.core.scanengine.model.DetectorKind
 import app.plainpaper.core.scanengine.model.OrientationConfidence
 import app.plainpaper.core.scanengine.model.Outcome
 import app.plainpaper.core.scanengine.model.Quad
 import app.plainpaper.core.scanengine.model.RenderOptions
 import app.plainpaper.core.scanengine.model.StepTiming
+
+/** Supplies the bytes of the detection model (`.ppdm`); null when the model is not bundled. */
+public fun interface DetectorModelSource {
+    public suspend fun bytes(): ByteArray?
+}
 
 /** The scan pipeline façade (contracts/kotlin-api.md). */
 public interface ScanEngine {
@@ -32,6 +38,13 @@ public interface ScanEngine {
      * cancellation; an internal failure reports [Confidence.NotFound].
      */
     public suspend fun detect(frame: PreviewFrame): DetectResult
+
+    /**
+     * Loads the document-detection model once; false when it is unavailable or unusable (the
+     * classic detector stays in use, nothing is surfaced to the user). Bytes are read off the
+     * main thread.
+     */
+    public suspend fun loadDetector(source: DetectorModelSource): Boolean
 
     /** Capability the engine uses unless overridden per call. */
     public val capability: DeviceCapability
@@ -74,6 +87,8 @@ public class ScanAnalysis internal constructor(
     public val steps: List<StepTiming>,
     public val peakNativeBytes: Long,
     public val outcome: Outcome,
+    public val detector: DetectorKind = DetectorKind.Classic,
+    public val presence: Float = 0f,
 ) : AutoCloseable {
     public val isLandscape: Boolean
         get() = detectedAspect > 1.0

@@ -6,6 +6,7 @@
 #ifndef PLAINPAPER_SCAN_H
 #define PLAINPAPER_SCAN_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -80,6 +81,9 @@ typedef enum {
 
 typedef enum { PP_FALLBACK_NONE = 0, PP_FALLBACK_INVERTED = 1 } pp_fallback_reason;
 
+/* Which detector produced the corners (specs/004). */
+typedef enum { PP_DETECTOR_CLASSIC = 0, PP_DETECTOR_MODEL = 1 } pp_detector;
+
 typedef struct {
     float x, y;
 } pp_point;
@@ -105,6 +109,8 @@ typedef struct {
     int32_t working_long_edge;   /* 800..3000 */
     int32_t allow_flatten;       /* 0/1 */
     const pp_quad* user_corners; /* nullable */
+    int32_t keep_orientation;    /* 1: user_corners used in the given TL,TR,BR,BL order; no
+                                    rotation, deskew, up/down vote or flattening (specs/004) */
 } pp_analyze_options;
 
 typedef struct {
@@ -117,7 +123,9 @@ typedef struct {
     uint32_t flags;                                   /* PP_FLAG_* */
     pp_step_timing steps[PP_STEP_COUNT];
     int32_t step_count;
-    int64_t peak_bytes; /* allocator high-water mark during analyze */
+    int64_t peak_bytes;   /* allocator high-water mark during analyze */
+    pp_detector detector; /* model or classic */
+    float presence;       /* model's document-present probability; 0 for classic */
 } pp_analysis_info;
 
 typedef struct {
@@ -138,11 +146,34 @@ typedef struct {
     float mean_luma;          /* 0..255 mean luminance of the frame */
     float fill_fraction;      /* quad area / frame area, 0 when not found */
     int64_t micros;           /* wall time of the call */
+    pp_detector detector;     /* model or classic */
+    float presence;           /* model's document-present probability; 0 for classic */
 } pp_detect_info;
 
 PP_EXPORT int pp_api_version(void);
 PP_EXPORT pp_engine* pp_engine_create(void);
 PP_EXPORT void pp_engine_destroy(pp_engine* engine);
+
+/*
+ * Loads the document-detection model (.ppdm bytes, copied; specs/004 contracts/c-api-detector.md).
+ * Call before analysing; returns PP_OK or PP_ERR_INVALID_INPUT (unusable model, see
+ * pp_last_error). Without a model the classic detector is used.
+ */
+PP_EXPORT pp_status pp_engine_load_detector(pp_engine* engine, const uint8_t* bytes, size_t length);
+
+/*
+ * Enables (1, default) or disables (0) use of the loaded model by pp_detect / pp_analyze; the
+ * classic detector is used while disabled. Used by the engine's performance policy on slow
+ * devices (specs/004 data-model.md "Detector policy"). Safe between calls.
+ */
+PP_EXPORT void pp_engine_set_detector_enabled(pp_engine* engine, int32_t enabled);
+
+/*
+ * Diagnostics for the parity test: runs the loaded model on a planar RGB input (3 x 256 x 256
+ * floats in 0..1) and writes the mask probabilities (128 x 128) and the presence probability.
+ */
+PP_EXPORT pp_status pp_detector_run(pp_engine* engine, const float* rgb_planar, float* mask_out,
+                                    float* presence_out);
 
 /*
  * Analyse one photo. On PP_OK or PP_ERR_TOO_DARK *out_session is set (TOO_DARK still yields

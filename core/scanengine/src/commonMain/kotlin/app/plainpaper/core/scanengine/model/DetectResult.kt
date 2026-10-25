@@ -10,11 +10,17 @@ public data class DetectResult(
     /** Mean luminance of the frame, 0..255. */
     val meanLuma: Float,
     val micros: Long,
+    /** Which detector produced the corners. */
+    val detector: DetectorKind = DetectorKind.Classic,
+    /** The model's document-present score 0..1; 0 for the classic detector. */
+    val presence: Float = 0f,
 ) {
     public companion object {
         public fun notFound(
             meanLuma: Float = 0f,
             micros: Long = 0,
-        ): DetectResult = DetectResult(null, Confidence.NotFound, 0f, meanLuma, micros)
+            detector: DetectorKind = DetectorKind.Classic,
+            presence: Float = 0f,
+        ): DetectResult = DetectResult(null, Confidence.NotFound, 0f, meanLuma, micros, detector, presence)
     }
 }

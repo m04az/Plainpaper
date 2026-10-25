@@ -1,5 +1,6 @@
 #include "cancel.hpp"
 #include "debug.hpp"
+#include "model.hpp"
 #include "params.hpp"
 #include "stages.hpp"
 
@@ -837,6 +838,130 @@ bool brightRegionCandidate(const cv::Mat& gray, double frameArea, Candidate& out
     return true;
 }
 
+/** Fraction of the quad's area that lies inside `region` (8-bit mask). */
+double quadCoverage(const Quad& quad, const cv::Mat& region) {
+    cv::Mat quadMask = cv::Mat::zeros(region.size(), CV_8U);
+    std::vector<cv::Point> pts;
+    for (const auto& p : quad) {
+        pts.emplace_back(static_cast<int>(std::lround(p.x)), static_cast<int>(std::lround(p.y)));
+    }
+    cv::fillConvexPoly(quadMask, pts, cv::Scalar(255));
+    const int total = cv::countNonZero(quadMask);
+    if (total == 0) {
+        return 0.0;
+    }
+    cv::Mat inside;
+    cv::bitwise_and(quadMask, region, inside);
+    return static_cast<double>(cv::countNonZero(inside)) / total;
+}
+
+/**
+ * Hybrid: the best edge quad (contours or filled edges) that lies inside the model's region,
+ * covers at least kHybridMinAreaRatio of `referenceArea` and stands out from its surroundings.
+ * The mask alone may spill onto cloth or a hand next to the document; edges give the border.
+ */
+bool edgeQuadInside(const cv::Mat& edges, const cv::Mat& gray, double frameArea,
+                    const cv::Mat& region, double referenceArea, Candidate& out) {
+    Candidate edgeBest;
+    bool edgeFound = fromContours(edges, edges, gray, frameArea, cv::RETR_LIST, edgeBest);
+    Candidate filled;
+    if (fromFilledEdges(edges, gray, frameArea, filled) &&
+        (!edgeFound || filled.score > edgeBest.score)) {
+        edgeBest = filled;
+        edgeFound = true;
+    }
+    if (!edgeFound || edgeBest.minSupport < params::kHybridMinSupport ||
+        edgeBest.meanSupport < params::kHybridMinMeanSupport) {
+        return false;
+    }
+    const double coverage = quadCoverage(edgeBest.quad, region);
+    const double ratio = edgeBest.areaFraction / std::max(1e-6, referenceArea);
+    // A box printed on the page has the page's own white around it; a real card or sheet
+    // differs clearly from its surroundings.
+    const double contrast = std::abs(ringContrast(gray, edgeBest.quad));
+    debugLog("hybrid: coverage / area ratio / contrast", coverage, ratio, contrast);
+    if (coverage < params::kHybridMinCoverage || ratio < params::kHybridMinAreaRatio ||
+        contrast < params::kHullMinContrast) {
+        return false;
+    }
+    out = edgeBest;
+    return true;
+}
+
+/** Outcome of the model path (specs/004 data-model.md, detector policy). */
+enum class ModelVerdict { Found, Absent, Unsure };
+
+/**
+ * Model path: the document mask's largest region is fitted with the hull quad, then snapped to
+ * the image edges when that improves their support. "Absent" (low presence) skips the classic
+ * detector so clutter never produces an outline; "Unsure" falls back to it.
+ */
+ModelVerdict modelCandidate(DetectorModel& model, const cv::Mat& working, const cv::Mat& edges,
+                            double frameArea, Candidate& out, pp_confidence& confidence,
+                            float& presence, cv::Mat& regionOut) {
+    cv::Mat probability;
+    if (!model.infer(working, probability, presence)) {
+        return ModelVerdict::Unsure;
+    }
+    debugLog("model: presence", presence, 0, 0);
+    if (presence < params::kModelAbsentPresence) {
+        return ModelVerdict::Absent;
+    }
+    cv::Mat upscaled;
+    cv::resize(probability, upscaled, working.size(), 0, 0, cv::INTER_LINEAR);
+    cv::Mat region = upscaled > params::kModelMaskThreshold;
+    debugDump("model-mask", region);
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(region, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    const std::vector<cv::Point>* largest = nullptr;
+    double largestArea = 0;
+    for (const auto& c : contours) {
+        const double a = cv::contourArea(c);
+        if (a > largestArea) {
+            largestArea = a;
+            largest = &c;
+        }
+    }
+    if (largest == nullptr || largestArea < params::kMinSmallPageAreaFraction * frameArea) {
+        return ModelVerdict::Unsure;
+    }
+    cv::Mat component = cv::Mat::zeros(region.size(), CV_8U);
+    cv::drawContours(component, std::vector<std::vector<cv::Point>>{*largest}, 0, cv::Scalar(255),
+                     cv::FILLED);
+    regionOut = component;
+    Quad quad;
+    if (!quadFromContour(*largest, quad)) {
+        return ModelVerdict::Unsure;
+    }
+    Candidate c = scoreQuad(quad, edges, frameArea);
+    Quad refined;
+    if (refineQuad(edges, quad, refined)) {
+        double shift = 0;
+        for (int i = 0; i < 4; ++i) {
+            shift = std::max(shift, static_cast<double>(cv::norm(refined[i] - quad[i])));
+        }
+        Candidate r = scoreQuad(refined, edges, frameArea);
+        const double diagonal = std::hypot(working.cols, working.rows);
+        if (r.meanSupport > c.meanSupport && shift <= params::kModelSnapMaxShift * diagonal) {
+            c = r;
+        }
+    }
+    const double iou = quadIoU(c.quad, component);
+    debugLog("model quad: area iou support", c.areaFraction, iou, c.meanSupport);
+    if (c.areaFraction > params::kMaxPageAreaFraction + 0.01) {
+        return ModelVerdict::Unsure;
+    }
+    if (presence >= params::kModelHighPresence && iou >= params::kModelHighIoU &&
+        c.areaFraction >= params::kMinSmallPageAreaFraction) {
+        confidence = PP_CONF_HIGH;
+    } else if (presence >= params::kModelLowPresence && iou >= params::kModelLowIoU) {
+        confidence = PP_CONF_LOW;
+    } else {
+        return ModelVerdict::Unsure;
+    }
+    out = c;
+    return ModelVerdict::Found;
+}
 } // namespace
 
 Quad fullFrameQuad(const pp_image_rgba& photo) {
@@ -845,21 +970,16 @@ Quad fullFrameQuad(const pp_image_rgba& photo) {
     return Quad{cv::Point2f(0.f, 0.f), cv::Point2f(w, 0.f), cv::Point2f(w, h), cv::Point2f(0.f, h)};
 }
 
-DetectResult detectPage(AnalyzeContext& ctx) {
+namespace {
+
+/** The edge-based detector (002/003): contours, filled edges, Hough, faint and bright passes. */
+DetectResult classicDetect(AnalyzeContext& ctx, const cv::Mat& gray, const cv::Mat& edges,
+                           double frameArea, Quad& workingQuad, bool& quadFound) {
     DetectResult result;
     result.quad = fullFrameQuad(*ctx.photo);
     result.confidence = PP_CONF_NOT_FOUND;
     result.source = PP_SRC_FULL_FRAME;
-
-    cv::Mat gray;
-    cv::cvtColor(ctx.working, gray, cv::COLOR_BGR2GRAY);
-    const double frameArea = static_cast<double>(gray.rows) * gray.cols;
-    checkCancel(ctx.cancel);
-    cv::Mat edges = edgeMap(gray);
-    debugDump("working", ctx.working);
-    debugDump("edges-primary", edges);
-    checkCancel(ctx.cancel);
-
+    quadFound = false;
     Candidate best;
     bool found = fromContours(edges, edges, gray, frameArea, cv::RETR_LIST, best);
     {
@@ -932,6 +1052,8 @@ DetectResult detectPage(AnalyzeContext& ctx) {
                           best.areaFraction >= params::kHighConfidenceArea;
         result.confidence = high ? PP_CONF_HIGH : PP_CONF_LOW;
         result.source = PP_SRC_DETECTED;
+        workingQuad = best.quad;
+        quadFound = true;
         return result;
     }
 
@@ -939,6 +1061,95 @@ DetectResult detectPage(AnalyzeContext& ctx) {
         result.confidence = PP_CONF_LOW;
         result.source = PP_SRC_DETECTED;
     }
+    return result;
+}
+
+/** IoU of two quads rasterised at `size`. */
+double quadPairIoU(const Quad& a, const Quad& b, cv::Size size) {
+    cv::Mat mask = cv::Mat::zeros(size, CV_8U);
+    std::vector<cv::Point> pts;
+    for (const auto& p : b) {
+        pts.emplace_back(static_cast<int>(std::lround(p.x)), static_cast<int>(std::lround(p.y)));
+    }
+    cv::fillConvexPoly(mask, pts, cv::Scalar(255));
+    return quadIoU(a, mask);
+}
+
+} // namespace
+
+DetectResult detectPage(AnalyzeContext& ctx) {
+    cv::Mat gray;
+    cv::cvtColor(ctx.working, gray, cv::COLOR_BGR2GRAY);
+    const double frameArea = static_cast<double>(gray.rows) * gray.cols;
+    checkCancel(ctx.cancel);
+    cv::Mat edges = edgeMap(gray);
+    debugDump("working", ctx.working);
+    debugDump("edges-primary", edges);
+    checkCancel(ctx.cancel);
+
+    Quad classicQuad;
+    bool classicFound = false;
+    DetectResult classic = classicDetect(ctx, gray, edges, frameArea, classicQuad, classicFound);
+    if (ctx.detector == nullptr) {
+        return classic;
+    }
+    checkCancel(ctx.cancel);
+
+    // Model (specs/004): decides whether a document is there and where; the classic detector's
+    // verified edges win when it is confident or agrees with the model.
+    Candidate modelBest;
+    pp_confidence modelConfidence = PP_CONF_NOT_FOUND;
+    cv::Mat region;
+    float presence = 0.f;
+    ModelVerdict verdict = modelCandidate(*ctx.detector, ctx.working, edges, frameArea, modelBest,
+                                          modelConfidence, presence, region);
+    checkCancel(ctx.cancel);
+    classic.presence = presence;
+    if (classic.confidence == PP_CONF_HIGH) {
+        return classic;
+    }
+    DetectResult result;
+    result.quad = fullFrameQuad(*ctx.photo);
+    result.presence = presence;
+    result.detector = PP_DETECTOR_MODEL;
+    if (verdict == ModelVerdict::Absent) {
+        return result; // no document: no outline, whatever the clutter looks like
+    }
+    if (verdict == ModelVerdict::Found) {
+        Candidate edgeQuad;
+        if (edgeQuadInside(edges, gray, frameArea, region, modelBest.areaFraction, edgeQuad)) {
+            modelBest = edgeQuad;
+        }
+    } else if (!region.empty()) {
+        // Unsure (the region is not quad-shaped, e.g. a hand or cloth merged with the card):
+        // a clean edge quad inside the region still gives the document.
+        Candidate edgeQuad;
+        if (!edgeQuadInside(edges, gray, frameArea, region, cv::countNonZero(region) / frameArea,
+                            edgeQuad)) {
+            return classic;
+        }
+        modelBest = edgeQuad;
+        modelConfidence = PP_CONF_LOW;
+    } else {
+        return classic;
+    }
+    const Quad* chosen = &modelBest.quad;
+    bool agreed = false;
+    if (classicFound &&
+        quadPairIoU(classicQuad, modelBest.quad, gray.size()) >= params::kModelAgreeIoU) {
+        chosen = &classicQuad; // same document: keep the classic detector's exact edges
+        agreed = true;
+    }
+    // A mask alone can spill onto cloth or a hand next to the page; only an outline the edges
+    // confirm may be High (auto-capture on the shorter steady window).
+    if (!agreed && modelConfidence == PP_CONF_HIGH) {
+        modelConfidence = PP_CONF_LOW;
+    }
+    for (int i = 0; i < 4; ++i) {
+        result.quad[i] = (*chosen)[i] * static_cast<float>(1.0 / ctx.workingScale);
+    }
+    result.confidence = modelConfidence;
+    result.source = PP_SRC_DETECTED;
     return result;
 }
 

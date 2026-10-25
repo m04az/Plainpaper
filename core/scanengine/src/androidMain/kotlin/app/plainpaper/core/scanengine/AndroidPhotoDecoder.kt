@@ -9,8 +9,6 @@ import androidx.exifinterface.media.ExifInterface
 import app.plainpaper.core.domain.coroutines.DispatcherProvider
 import kotlinx.coroutines.withContext
 import java.io.File
-import kotlin.math.ceil
-import kotlin.math.sqrt
 
 /**
  * `ImageDecoder` on API 28+ (EXIF applied, HEIC where the device supports HEVC); `BitmapFactory`
@@ -47,7 +45,9 @@ public class AndroidPhotoDecoder(
                 decoder.isMutableRequired = false
                 val pixels = info.size.width.toLong() * info.size.height
                 if (pixels > maxPixels) {
-                    decoder.setTargetSampleSize(sampleSizeFor(pixels, maxPixels))
+                    decoder.setTargetSampleSize(
+                        DecodeSizing.sampleSize(info.size.width, info.size.height, maxPixels),
+                    )
                 }
             }
         return DecodeResult.Ready(BitmapScanPhoto(bitmap))
@@ -67,7 +67,11 @@ public class AndroidPhotoDecoder(
         val options =
             BitmapFactory.Options().apply {
                 inPreferredConfig = Bitmap.Config.ARGB_8888
-                if (pixels > maxPixels) inSampleSize = sampleSizeFor(pixels, maxPixels)
+                if (pixels >
+                    maxPixels
+                ) {
+                    inSampleSize = DecodeSizing.sampleSize(bounds.outWidth, bounds.outHeight, maxPixels)
+                }
             }
         val decoded = BitmapFactory.decodeFile(file.path, options) ?: return DecodeResult.Failed(DecodeFailure.Corrupt)
         val rotation = exifRotationDegrees(file)
@@ -98,14 +102,4 @@ public class AndroidPhotoDecoder(
             ExifInterface.ORIENTATION_ROTATE_270 -> 270f
             else -> 0f
         }
-
-    private fun sampleSizeFor(
-        pixels: Long,
-        maxPixels: Int,
-    ): Int {
-        var sample = 1
-        val needed = ceil(sqrt(pixels.toDouble() / maxPixels)).toInt()
-        while (sample < needed) sample *= 2
-        return sample
-    }
 }
