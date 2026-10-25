@@ -121,6 +121,8 @@ internal fun CropEditor(
     }
 }
 
+private val HandleInset = 24.dp
+
 @Composable
 private fun CropCanvas(
     state: CropState,
@@ -154,6 +156,8 @@ private fun CropCanvas(
         modifier =
             modifier
                 .background(Color.Black)
+                // Inset so handles on the photo's edges stay whole and reachable.
+                .padding(HandleInset)
                 .onSizeChanged { viewSize = it }
                 .semantics { contentDescription = description }
                 .pointerInput(Unit) {

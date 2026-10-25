@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -164,7 +165,11 @@ private fun PageView(
                 bitmap = image,
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize().shadow(6.dp),
+                // The card takes the page's own shape, so landscape pages are not boxed in portrait.
+                modifier =
+                    Modifier
+                        .aspectRatio(image.width.toFloat() / image.height.coerceAtLeast(1))
+                        .shadow(6.dp),
             )
         }
         when (page.state) {
