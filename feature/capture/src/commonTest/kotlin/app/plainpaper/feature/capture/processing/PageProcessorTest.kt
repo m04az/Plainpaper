@@ -413,4 +413,87 @@ class PageProcessorTest {
             assertEquals(Triple(270, true, 1), Triple(turned.rotation, turned.mirrored, turned.revision))
             assertEquals(true, seen.last().keepOrientation)
         }
+
+    private val userQuad = Quad(Point(100f, 80f), Point(3000f, 120f), Point(2900f, 2500f), Point(150f, 2400f))
+
+    @Test
+    fun firstDetectionKeepsTheEngineBorderAsDetectedCorners() =
+        runTest {
+            val processor = processor()
+            val (sessionId, page) = page()
+            processor.enqueue(sessionId, page.id)
+            advanceUntilIdle()
+            val result = stored(page.id)
+            assertNotNull(result.detectedCorners)
+            assertEquals(result.corners, result.detectedCorners)
+        }
+
+    @Test
+    fun setCornersStoresTheBorderReRendersAndKeepsTheDetectedOne() =
+        runTest {
+            val processor = processor()
+            val (sessionId, page) = page()
+            processor.enqueue(sessionId, page.id)
+            advanceUntilIdle()
+            val first = stored(page.id)
+            processor.restyle(sessionId, listOf(page.id), OutputStyle.Scan)
+            advanceUntilIdle()
+            processor.transform(sessionId, page.id, rotateClockwise = true)
+            advanceUntilIdle()
+            val before = stored(page.id)
+
+            processor.setCorners(sessionId, page.id, userQuad)
+            advanceUntilIdle()
+            val edited = stored(page.id)
+            assertEquals(userQuad, edited.corners)
+            assertEquals(userQuad, bridge.calls.last().userCorners)
+            assertEquals(first.detectedCorners, edited.detectedCorners, "Auto still has the engine border")
+            assertEquals(before.revision + 1, edited.revision)
+            assertEquals(Triple(OutputStyle.Scan, 90, false), Triple(edited.style, edited.rotation, edited.mirrored))
+            assertEquals(PageState.Ready, edited.state)
+            assertEquals(Confidence.High, edited.confidence)
+            assertTrue(edited.pagePath != before.pagePath, "new revision, new file")
+        }
+
+    @Test
+    fun setCornersIgnoresPagesThatAreStillProcessing() =
+        runTest {
+            val processor = processor()
+            val (sessionId, page) = page()
+            processor.setCorners(sessionId, page.id, userQuad)
+            advanceUntilIdle()
+            val result = stored(page.id)
+            assertNull(result.corners)
+            assertEquals(0, result.revision)
+        }
+
+    @Test
+    fun setCornersOnAnOldPageKeepsItsPreviousBorderAsDetected() =
+        runTest {
+            val processor = processor()
+            val (sessionId, page) = page()
+            processor.enqueue(sessionId, page.id)
+            advanceUntilIdle()
+            val first = stored(page.id)
+            sessions.updatePage(sessionId, first.copy(detectedCorners = null))
+            processor.setCorners(sessionId, page.id, userQuad)
+            advanceUntilIdle()
+            assertEquals(first.corners, stored(page.id).detectedCorners)
+        }
+
+    @Test
+    fun setCornersKeepsQuickScanOrientation() =
+        runTest {
+            val processor = processor()
+            val session = sessions.start(SessionSource.Camera)
+            val quick =
+                sessions.addPage(session.id, "/fake/q.jpg", PageTag.Document, PageSize.A4, PageSource.QuickScan)
+            processor.enqueue(session.id, quick.id)
+            advanceUntilIdle()
+            processor.setCorners(session.id, quick.id, userQuad)
+            advanceUntilIdle()
+            assertEquals(true, bridge.calls.last().keepOrientation)
+            assertEquals(userQuad, bridge.calls.last().userCorners)
+            assertEquals(Quad.fullFrame(4000, 3000), stored(quick.id).detectedCorners)
+        }
 }

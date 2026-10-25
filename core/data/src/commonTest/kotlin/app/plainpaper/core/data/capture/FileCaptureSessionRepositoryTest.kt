@@ -264,4 +264,24 @@ class FileCaptureSessionRepositoryTest {
             FileCaptureSessionRepository(oldFs, root, now = { clock }).recoverable(),
         ).pages.single().source
     }
+
+    @Test
+    fun detectedCornersRoundTripAndOldIndexesDefaultToTheCorners() =
+        runTest {
+            val session = repository.start(SessionSource.Camera)
+            val page = repository.addPage(session.id, "$root/id1/original-000.jpg", PageTag.Document, PageSize.A4)
+            val detected = Quad(Point(1f, 2f), Point(30f, 2f), Point(30f, 50f), Point(1f, 50f))
+            val edited = Quad(Point(5f, 6f), Point(31f, 6f), Point(31f, 51f), Point(5f, 51f))
+            repository.updatePage(session.id, page.copy(corners = edited, detectedCorners = detected))
+            val stored =
+                assertNotNull(FileCaptureSessionRepository(fs, root, now = { clock }).recoverable()).pages.single()
+            assertEquals(detected, stored.detectedCorners)
+            assertEquals(edited, stored.corners)
+
+            val old = indexText("id1").replace(Regex(",\"detectedCorners\":\\[[^\\]]*\\]"), "")
+            fs.write("$root/id1/$SESSION_INDEX_FILE".toPath()) { writeUtf8(old) }
+            val legacy =
+                assertNotNull(FileCaptureSessionRepository(fs, root, now = { clock }).recoverable()).pages.single()
+            assertEquals(edited, legacy.detectedCorners)
+        }
 }

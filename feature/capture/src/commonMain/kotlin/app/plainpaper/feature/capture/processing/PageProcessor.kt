@@ -48,7 +48,7 @@ data class PageWork(
  * JPEG + thumbnail → session update (research R8). One page at a time on Simplified devices,
  * two on Full. Survives screen changes; `resume()` re-queues pending pages after a restart.
  */
-@Suppress("TooManyFunctions") // queue operations: enqueue, cancel, resume, restyle, transform
+@Suppress("TooManyFunctions") // queue operations: enqueue, cancel, resume, restyle, transform, setCorners
 class PageProcessor(
     private val engine: ScanEngine,
     private val decoder: PhotoDecoder,
@@ -215,6 +215,8 @@ class PageProcessor(
                 pagePath = pagePath,
                 thumbnailPath = if (thumbnailWritten) thumbnailPath else null,
                 corners = page.corners ?: analysis.corners,
+                // Kept from the first detection: user borders never replace what Auto returns to.
+                detectedCorners = page.detectedCorners ?: page.corners ?: analysis.corners,
                 confidence = confidence,
                 rotationApplied = analysis.rotationApplied,
             )
@@ -268,6 +270,34 @@ class PageProcessor(
             val page = session.page(pageId) ?: return@launch
             if (page.state is PageState.Pending || page.state is PageState.Processing) return@launch
             sessions.updatePage(sessionId, transformed(page, rotateClockwise, flip).copy(state = PageState.Pending))
+            enqueue(sessionId, pageId)
+        }
+    }
+
+    /**
+     * Sets the page border by hand ([corners] in original-photo pixels, in the page's reading
+     * order) and re-renders from the original; look, rotation and mirror stay. Pages still being
+     * processed are left alone.
+     */
+    fun setCorners(
+        sessionId: String,
+        pageId: String,
+        corners: Quad,
+    ) {
+        scope.launch {
+            val session = sessions.activeSession.first()?.takeIf { it.id == sessionId } ?: return@launch
+            val page = session.page(pageId) ?: return@launch
+            if (page.state is PageState.Pending || page.state is PageState.Processing) return@launch
+            val edited =
+                page.copy(
+                    corners = corners,
+                    detectedCorners = page.detectedCorners ?: page.corners,
+                    // The user chose this border, so a "low confidence" verdict no longer applies.
+                    confidence = Confidence.High,
+                    revision = page.revision + 1,
+                    state = PageState.Pending,
+                )
+            sessions.updatePage(sessionId, edited)
             enqueue(sessionId, pageId)
         }
     }

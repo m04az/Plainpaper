@@ -21,6 +21,8 @@ public data class CapturedPage(
     val thumbnailPath: String? = null,
     /** Engine corners in original-photo pixels; null until processed. */
     val corners: Quad? = null,
+    /** The border the engine first found, kept so "Auto" in the crop editor can return to it. */
+    val detectedCorners: Quad? = null,
     val confidence: Confidence? = null,
     val rotationApplied: Int = 0,
     /** The look the page is rendered in (spec 003 FR-024); new pages use the enhanced look. */

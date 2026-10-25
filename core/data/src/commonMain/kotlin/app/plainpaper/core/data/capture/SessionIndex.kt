@@ -40,6 +40,8 @@ internal data class PageIndex(
     val state: StateIndex = StateIndex("Pending"),
     val tag: TagIndex = TagIndex("Document"),
     val corners: List<Float>? = null,
+    /** Absent in older indexes: defaults to [corners]. */
+    val detectedCorners: List<Float>? = null,
     val confidence: String? = null,
     val pageSize: String = "A4",
     val rotationApplied: Int = 0,
@@ -101,6 +103,7 @@ private fun CapturedPage.toIndex(directory: Path): PageIndex =
         state = state.toIndex(),
         tag = tag.toIndex(),
         corners = corners?.toFloatArray()?.toList(),
+        detectedCorners = detectedCorners?.toFloatArray()?.toList(),
         confidence = confidence?.name,
         pageSize = pageSize.name,
         rotationApplied = rotationApplied,
@@ -125,11 +128,8 @@ private fun PageIndex.toPage(
         state = state.toState(),
         pagePath = pagePath?.let { resolve(it, directory) },
         thumbnailPath = thumbnailPath?.let { resolve(it, directory) },
-        corners =
-            corners
-                ?.takeIf {
-                    it.size == QUAD_VALUES
-                }?.let { Quad.fromDoubles(DoubleArray(QUAD_VALUES) { i -> it[i].toDouble() }) },
+        corners = corners.toQuad(),
+        detectedCorners = detectedCorners.toQuad() ?: corners.toQuad(),
         confidence = confidence?.let { name -> Confidence.entries.firstOrNull { it.name == name } },
         rotationApplied = rotationApplied,
         style = enumOrDefault(style, CapturedPage.DEFAULT_STYLE),
@@ -139,6 +139,13 @@ private fun PageIndex.toPage(
     )
 
 private const val QUAD_VALUES = 8
+
+private fun List<Float>?.toQuad(): Quad? =
+    this?.takeIf { it.size == QUAD_VALUES }?.let {
+        Quad.fromDoubles(
+            DoubleArray(QUAD_VALUES) { i -> it[i].toDouble() },
+        )
+    }
 
 private fun PageState.toIndex(): StateIndex =
     when (this) {
