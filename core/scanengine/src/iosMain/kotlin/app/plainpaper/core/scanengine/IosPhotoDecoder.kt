@@ -19,8 +19,6 @@ import platform.ImageIO.CGImageSourceCreateWithURL
 import platform.ImageIO.kCGImageSourceCreateThumbnailFromImageAlways
 import platform.ImageIO.kCGImageSourceCreateThumbnailWithTransform
 import platform.ImageIO.kCGImageSourceThumbnailMaxPixelSize
-import kotlin.math.ceil
-import kotlin.math.sqrt
 
 /**
  * ImageIO thumbnail decoding: applies EXIF orientation, decodes HEIC natively and caps the pixel
@@ -43,7 +41,7 @@ public class IosPhotoDecoder(
             if (url != null) CFRelease(url)
             if (source == null) return@withContext DecodeResult.Failed(DecodeFailure.UnsupportedFormat)
             // Max pixel size = the long edge of a maxPixels image with a 4:3 aspect (conservative).
-            val maxEdge = ceil(sqrt(maxPixels.toDouble() * 4.0 / 3.0)).toInt()
+            val maxEdge = DecodeSizing.thumbnailMaxEdge(maxPixels)
             val options =
                 mapOf<Any?, Any?>(
                     CFBridgingRelease(kCGImageSourceCreateThumbnailFromImageAlways) to true,

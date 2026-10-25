@@ -7,8 +7,10 @@ import app.plainpaper.core.capture.camera.CameraPreviewRenderer
 import app.plainpaper.core.capture.camera.CameraXControllerFactory
 import app.plainpaper.core.capture.camera.CameraXPreviewRenderer
 import app.plainpaper.core.capture.files.AndroidImageFiles
+import app.plainpaper.core.capture.files.AndroidOriginalPhotoLoader
 import app.plainpaper.core.capture.files.AndroidThumbnailLoader
 import app.plainpaper.core.capture.files.ImageFiles
+import app.plainpaper.core.capture.files.OriginalPhotoLoader
 import app.plainpaper.core.capture.files.ThumbnailLoader
 import app.plainpaper.core.capture.permission.AndroidCameraPermissionFactory
 import app.plainpaper.core.capture.permission.CameraPermissionFactory
@@ -28,6 +30,7 @@ public actual val capturePlatformModule: Module =
         single<BackgroundTask> { AndroidBackgroundTask() }
         single<ImageFiles> { AndroidImageFiles(androidContext(), get()) }
         single<ThumbnailLoader> { AndroidThumbnailLoader(get()) }
+        single<OriginalPhotoLoader> { AndroidOriginalPhotoLoader(get()) }
         single<CameraControllerFactory> { CameraXControllerFactory(androidContext(), get()) }
         single<CameraPreviewRenderer> { CameraXPreviewRenderer() }
         single<CameraPermissionFactory> { AndroidCameraPermissionFactory() }
